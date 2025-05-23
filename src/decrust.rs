@@ -3575,20 +3575,18 @@ impl NetworkConnectionFixGenerator {
             }
         }
         // Generic connection issues
-        else {
-            if let Some(h) = host {
-                fixes.push((
-                    format!("Check network connectivity to {}", h),
-                    format!("Connection to {} failed. This could be due to network issues or the host being unreachable.", h),
-                    format!("# Check if {} is reachable\n# Verify network connectivity\n# Check firewall rules", h)
-                ));
-            } else {
-                fixes.push((
-                    "Check network connectivity".to_string(),
-                    "Connection failed. This could be due to network issues or the host being unreachable.".to_string(),
-                    "# Check if the host is reachable\n# Verify network connectivity\n# Check firewall rules".to_string()
-                ));
-            }
+        else if let Some(h) = host {
+            fixes.push((
+                format!("Check network connectivity to {}", h),
+                format!("Connection to {} failed. This could be due to network issues or the host being unreachable.", h),
+                format!("# Check if {} is reachable\n# Verify network connectivity\n# Check firewall rules", h)
+            ));
+        } else {
+            fixes.push((
+                "Check network connectivity".to_string(),
+                "Connection failed. This could be due to network issues or the host being unreachable.".to_string(),
+                "# Check if the host is reachable\n# Verify network connectivity\n# Check firewall rules".to_string()
+            ));
         }
 
         fixes
@@ -5100,20 +5098,18 @@ impl NetworkTlsFixGenerator {
             }
         }
         // Generic TLS issue
-        else {
-            if let Some(host) = hostname {
-                fixes.push((
-                    format!("TLS certificate issue with {}", host),
-                    format!("There is a TLS certificate validation issue with {}.", host),
-                    format!("# Check the certificate:\nopenssl s_client -connect {}:443 -servername {}\n\n# Update your system's CA certificates:\nsudo update-ca-certificates\n\n# If using a custom CA bundle, make sure it's up to date", host, host)
-                ));
-            } else {
-                fixes.push((
-                    "TLS certificate validation issue".to_string(),
-                    "There is a TLS certificate validation issue.".to_string(),
-                    "# Update your system's CA certificates:\nsudo update-ca-certificates\n\n# If using a custom CA bundle, make sure it's up to date".to_string()
-                ));
-            }
+        else if let Some(host) = hostname {
+            fixes.push((
+                format!("TLS certificate issue with {}", host),
+                format!("There is a TLS certificate validation issue with {}.", host),
+                format!("# Check the certificate:\nopenssl s_client -connect {}:443 -servername {}\n\n# Update your system's CA certificates:\nsudo update-ca-certificates\n\n# If using a custom CA bundle, make sure it's up to date", host, host)
+            ));
+        } else {
+            fixes.push((
+                "TLS certificate validation issue".to_string(),
+                "There is a TLS certificate validation issue.".to_string(),
+                "# Update your system's CA certificates:\nsudo update-ca-certificates\n\n# If using a custom CA bundle, make sure it's up to date".to_string()
+            ));
         }
 
         fixes

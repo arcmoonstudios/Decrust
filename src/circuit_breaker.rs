@@ -452,7 +452,7 @@ impl CircuitBreaker {
                 } else {
                     // Still open, reject the operation
                     self.record_rejected();
-                    Err(super::CircuitBreakerOpenSnafu {
+                    Err(DecrustError::CircuitBreakerOpen {
                         name: self.name.clone(),
                         retry_after: Some(
                             self.config
@@ -462,8 +462,8 @@ impl CircuitBreaker {
                                 )
                                 .unwrap_or_default(),
                         ),
-                    }
-                    .build())
+                        backtrace: Backtrace::generate(),
+                    })
                 }
             }
             CircuitBreakerState::HalfOpen => {
@@ -637,11 +637,11 @@ impl CircuitBreaker {
             {
                 // Too many concurrent operations in half-open state
                 self.record_rejected();
-                return Err(super::CircuitBreakerOpenSnafu {
+                return Err(DecrustError::CircuitBreakerOpen {
                     name: self.name.clone(),
                     retry_after: Some(Duration::from_millis(100)),
-                }
-                .build());
+                    backtrace: Backtrace::generate(),
+                });
             }
 
             // Increment concurrency count
@@ -740,11 +740,11 @@ impl CircuitBreaker {
                 Err(_) => {
                     // Operation timed out
                     self.record_timeout();
-                    Err(super::TimeoutSnafu {
+                    Err(DecrustError::Timeout {
                         operation: format!("Operation in circuit breaker '{}'", self.name),
                         duration: timeout,
-                    }
-                    .build())
+                        backtrace: Backtrace::generate(),
+                    })
                 }
             }
         }
@@ -764,11 +764,11 @@ impl CircuitBreaker {
             Ok(result) => result,
             Err(_) => {
                 self.record_timeout();
-                Err(super::TimeoutSnafu {
+                Err(DecrustError::Timeout {
                     operation: format!("Operation in circuit breaker '{}'", self.name),
                     duration: timeout,
-                }
-                .build())
+                    backtrace: Backtrace::generate(),
+                })
             }
         }
     }
