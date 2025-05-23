@@ -29,3 +29,8 @@ Thumbs.db
 # Test coverage
 /coverage/
 *.profraw
+
+# GitHub prompts and instructions (development/AI assistance files)
+.github/prompts/
+.github/referenced-instructions/
+.github/copilot-*.md
