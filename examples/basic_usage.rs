@@ -6,10 +6,10 @@
 //! - Using the error reporting system
 //! - Basic autocorrection suggestions
 
-use decrust::{DecrustError, Result};
-use decrust::backtrace::{DecrustBacktrace, BacktraceCompat};
-use decrust::reporter::{ErrorReporter, ErrorReportConfig};
+use decrust::backtrace::{BacktraceCompat, DecrustBacktrace};
+use decrust::reporter::{ErrorReportConfig, ErrorReporter};
 use decrust::types::ErrorReportFormat;
+use decrust::{DecrustError, Result};
 use std::error::Error;
 use std::path::PathBuf;
 
@@ -55,10 +55,7 @@ fn main() -> Result<()> {
 /// Simulates an I/O error
 fn simulate_io_error() -> Result<()> {
     let path = PathBuf::from("/nonexistent/file.txt");
-    let io_error = std::io::Error::new(
-        std::io::ErrorKind::NotFound,
-        "No such file or directory"
-    );
+    let io_error = std::io::Error::new(std::io::ErrorKind::NotFound, "No such file or directory");
 
     Err(DecrustError::Io {
         source: io_error,
@@ -89,10 +86,7 @@ fn simulate_validation_error() -> Result<()> {
 
 /// Simulates a network error
 fn simulate_network_error() -> Result<()> {
-    let network_error = std::io::Error::new(
-        std::io::ErrorKind::TimedOut,
-        "Connection timed out"
-    );
+    let network_error = std::io::Error::new(std::io::ErrorKind::TimedOut, "Connection timed out");
 
     Err(DecrustError::Network {
         source: Box::new(network_error),

@@ -72,15 +72,15 @@
 //! This module provides the `Decrust` struct and related types for suggesting
 //! and implementing syntax autocorrections for errors handled by this framework.
 
-use super::DecrustError;
 use super::types::{
-    Autocorrection, DiagnosticResult, ErrorCategory, ExtractedParameters, FixType,
-    FixGenerator, FixTemplate, FixDetails, ParameterExtractor, ParameterSource
+    Autocorrection, DiagnosticResult, ErrorCategory, ExtractedParameters, FixDetails, FixGenerator,
+    FixTemplate, FixType, ParameterExtractor, ParameterSource,
 };
-use std::collections::HashMap;
-use tracing::{debug, warn};
-use std::path::PathBuf;
+use super::DecrustError;
 use regex::Regex;
+use std::collections::HashMap;
+use std::path::PathBuf;
+use tracing::{debug, warn};
 
 /// Extracts parameters from error messages using regex patterns
 pub struct RegexParameterExtractor {
@@ -135,7 +135,8 @@ impl RegexParameterExtractor {
         ));
 
         patterns.push((
-            Regex::new(r"if this is intentional, prefix it with an underscore: `_([^`]+)`").unwrap(),
+            Regex::new(r"if this is intentional, prefix it with an underscore: `_([^`]+)`")
+                .unwrap(),
             ErrorCategory::Validation,
             0.9,
         ));
@@ -167,7 +168,10 @@ impl ParameterExtractor for RegexParameterExtractor {
         for (pattern, pat_category, confidence) in &self.patterns {
             if *pat_category == category {
                 if let Some(captures) = pattern.captures(&message) {
-                    let mut params = ExtractedParameters::with_source(ParameterSource::ErrorMessage, *confidence);
+                    let mut params = ExtractedParameters::with_source(
+                        ParameterSource::ErrorMessage,
+                        *confidence,
+                    );
 
                     // Extract named captures
                     for name in pattern.capture_names().flatten() {
@@ -284,15 +288,19 @@ impl FixGenerator for NotFoundFixGenerator {
         &self,
         _error: &DecrustError,
         params: &ExtractedParameters,
-        _source_code_context: Option<&str>
+        _source_code_context: Option<&str>,
     ) -> Option<Autocorrection> {
         // Extract resource_type and identifier from parameters
-        let resource_type = params.values.get("resource_type")
+        let resource_type = params
+            .values
+            .get("resource_type")
             .or_else(|| params.values.get("param1"))
             .cloned()
             .unwrap_or_else(|| "unknown resource".to_string());
 
-        let identifier = params.values.get("identifier")
+        let identifier = params
+            .values
+            .get("identifier")
             .or_else(|| params.values.get("param2"))
             .cloned()
             .unwrap_or_else(|| "unknown identifier".to_string());
@@ -349,10 +357,12 @@ impl FixGenerator for UnusedImportFixGenerator {
         &self,
         _error: &DecrustError,
         params: &ExtractedParameters,
-        source_code_context: Option<&str>
+        source_code_context: Option<&str>,
     ) -> Option<Autocorrection> {
         // Extract the unused import from parameters
-        let unused_import = params.values.get("param1")
+        let unused_import = params
+            .values
+            .get("param1")
             .cloned()
             .unwrap_or_else(|| "unknown import".to_string());
 
@@ -360,12 +370,16 @@ impl FixGenerator for UnusedImportFixGenerator {
         let description = format!("Remove unused import: `{}`", unused_import);
 
         // Extract file path from parameters if available
-        let file_path = params.values.get("file_path")
+        let file_path = params
+            .values
+            .get("file_path")
             .cloned()
             .unwrap_or_else(|| "unknown_file.rs".to_string());
 
         // Extract line number from parameters if available
-        let line = params.values.get("line")
+        let line = params
+            .values
+            .get("line")
             .and_then(|l| l.parse::<usize>().ok())
             .unwrap_or(1);
 
@@ -399,13 +413,14 @@ impl UnusedImportFixGenerator {
         unused_import: &str,
         file_path: &str,
         line: usize,
-        context: &str
+        context: &str,
     ) -> (FixDetails, Vec<String>, String) {
         // Parse the context to determine the import style
         let lines: Vec<&str> = context.lines().collect();
 
         // Look for the line containing the unused import
-        let import_line = lines.iter()
+        let import_line = lines
+            .iter()
             .find(|&&l| l.contains(unused_import))
             .map(|&l| l.trim())
             .unwrap_or("");
@@ -430,7 +445,7 @@ impl UnusedImportFixGenerator {
         unused_import: &str,
         file_path: &str,
         line: usize,
-        import_line: &str
+        import_line: &str,
     ) -> (FixDetails, Vec<String>, String) {
         // Extract the base path and the items
         let parts: Vec<&str> = import_line.split("{").collect();
@@ -442,7 +457,8 @@ impl UnusedImportFixGenerator {
         let items_part = parts[1].trim_end_matches("};").trim();
 
         // Split the items and filter out the unused import
-        let items: Vec<&str> = items_part.split(',')
+        let items: Vec<&str> = items_part
+            .split(',')
             .map(|s| s.trim())
             .filter(|&s| s != unused_import && !s.is_empty())
             .collect();
@@ -450,7 +466,8 @@ impl UnusedImportFixGenerator {
         // If there's only one item left, convert to a simple import
         let (new_import_line, sed_command) = if items.len() == 1 {
             let new_line = format!("{}{};", base_path, items[0]);
-            let sed_cmd = format!("sed -i '{}s/{}/{}/' \"{}\"",
+            let sed_cmd = format!(
+                "sed -i '{}s/{}/{}/' \"{}\"",
                 line,
                 regex::escape(import_line),
                 regex::escape(&new_line),
@@ -465,7 +482,8 @@ impl UnusedImportFixGenerator {
             // Otherwise, rebuild the grouped import without the unused item
             let new_items = items.join(", ");
             let new_line = format!("{}{{{}}};", base_path, new_items);
-            let sed_cmd = format!("sed -i '{}s/{}/{}/' \"{}\"",
+            let sed_cmd = format!(
+                "sed -i '{}s/{}/{}/' \"{}\"",
                 line,
                 regex::escape(import_line),
                 regex::escape(&new_line),
@@ -478,7 +496,11 @@ impl UnusedImportFixGenerator {
             "Removing unused import '{}' from grouped import statement. \
             The import statement will be updated to '{}'.",
             unused_import,
-            if new_import_line.is_empty() { "be removed entirely" } else { &new_import_line }
+            if new_import_line.is_empty() {
+                "be removed entirely"
+            } else {
+                &new_import_line
+            }
         );
 
         let details = FixDetails::SuggestCodeChange {
@@ -492,7 +514,15 @@ impl UnusedImportFixGenerator {
             explanation,
         };
 
-        let diff = format!("-{}\n+{}", import_line, if new_import_line.is_empty() { "" } else { &new_import_line });
+        let diff = format!(
+            "-{}\n+{}",
+            import_line,
+            if new_import_line.is_empty() {
+                ""
+            } else {
+                &new_import_line
+            }
+        );
 
         (details, vec![sed_command], diff)
     }
@@ -502,7 +532,7 @@ impl UnusedImportFixGenerator {
         &self,
         unused_import: &str,
         file_path: &str,
-        line: usize
+        line: usize,
     ) -> (FixDetails, Vec<String>, String) {
         // For a simple import, just remove the entire line
         self.generate_simple_fix(unused_import, file_path, line)
@@ -513,9 +543,12 @@ impl UnusedImportFixGenerator {
         &self,
         unused_import: &str,
         file_path: &str,
-        line: usize
+        line: usize,
     ) -> (FixDetails, Vec<String>, String) {
-        let suggestion = format!("// Remove this unused import line containing: {}", unused_import);
+        let suggestion = format!(
+            "// Remove this unused import line containing: {}",
+            unused_import
+        );
 
         let details = FixDetails::SuggestCodeChange {
             file_path: PathBuf::from(file_path),
@@ -524,9 +557,7 @@ impl UnusedImportFixGenerator {
             explanation: "Unused imports should be removed to improve code clarity and avoid compiler warnings.".to_string(),
         };
 
-        let commands = vec![
-            format!("sed -i '{}d' \"{}\"", line, file_path),
-        ];
+        let commands = vec![format!("sed -i '{}d' \"{}\"", line, file_path)];
 
         let diff = format!("-use ... {} ...", unused_import);
 
@@ -549,19 +580,25 @@ impl FixGenerator for MissingSemicolonFixGenerator {
         &self,
         _error: &DecrustError,
         params: &ExtractedParameters,
-        source_code_context: Option<&str>
+        source_code_context: Option<&str>,
     ) -> Option<Autocorrection> {
         // Extract the line and column information
-        let file_path = params.values.get("file_path")
+        let file_path = params
+            .values
+            .get("file_path")
             .cloned()
             .unwrap_or_else(|| "unknown_file.rs".to_string());
 
-        let line = params.values.get("line")
+        let line = params
+            .values
+            .get("line")
             .and_then(|l| l.parse::<usize>().ok())
             .unwrap_or(1);
 
         // Try to extract the exact message
-        let message = params.values.get("message")
+        let message = params
+            .values
+            .get("message")
             .cloned()
             .unwrap_or_else(|| "expected `;`".to_string());
 
@@ -598,7 +635,7 @@ impl MissingSemicolonFixGenerator {
         &self,
         file_path: &str,
         line: usize,
-        context: &str
+        context: &str,
     ) -> (FixDetails, Vec<String>, String) {
         let lines: Vec<&str> = context.lines().collect();
 
@@ -616,7 +653,8 @@ impl MissingSemicolonFixGenerator {
         let new_line = format!("{};", trimmed_line);
 
         // Generate sed command
-        let sed_command = format!("sed -i '{}s/{}$/{}/' \"{}\"",
+        let sed_command = format!(
+            "sed -i '{}s/{}$/{}/' \"{}\"",
             line,
             regex::escape(trimmed_line),
             regex::escape(&new_line),
@@ -640,7 +678,7 @@ impl MissingSemicolonFixGenerator {
     fn generate_simple_fix(
         &self,
         file_path: &str,
-        line: usize
+        line: usize,
     ) -> (FixDetails, Vec<String>, String) {
         // Generic fix without context
         let sed_command = format!("sed -i '{}s/$/;/' \"{}\"", line, file_path);
@@ -675,13 +713,16 @@ impl FixGenerator for MismatchedTypeFixGenerator {
         &self,
         _error: &DecrustError,
         params: &ExtractedParameters,
-        _source_code_context: Option<&str>
+        _source_code_context: Option<&str>,
     ) -> Option<Autocorrection> {
         // Extract parameters
         let message = params.values.get("message")?;
 
         // Check if it's a type mismatch error
-        if !message.contains("mismatched types") && !message.contains("expected") && !message.contains("found") {
+        if !message.contains("mismatched types")
+            && !message.contains("expected")
+            && !message.contains("found")
+        {
             return None;
         }
 
@@ -698,11 +739,15 @@ impl FixGenerator for MismatchedTypeFixGenerator {
             "found_type".to_string()
         };
 
-        let file_path = params.values.get("file_path")
+        let file_path = params
+            .values
+            .get("file_path")
             .cloned()
             .unwrap_or_else(|| "unknown_file.rs".to_string());
 
-        let line = params.values.get("line")
+        let line = params
+            .values
+            .get("line")
             .and_then(|l| l.parse::<usize>().ok())
             .unwrap_or(1);
 
@@ -711,7 +756,9 @@ impl FixGenerator for MismatchedTypeFixGenerator {
 
         let explanation = format!(
             "Type mismatch: expected `{}`, found `{}`. Consider one of these solutions:\n{}",
-            expected_type, found_type, suggestions.join("\n")
+            expected_type,
+            found_type,
+            suggestions.join("\n")
         );
 
         let details = FixDetails::SuggestCodeChange {
@@ -722,7 +769,10 @@ impl FixGenerator for MismatchedTypeFixGenerator {
         };
 
         Some(Autocorrection {
-            description: format!("Fix type mismatch between `{}` and `{}`", expected_type, found_type),
+            description: format!(
+                "Fix type mismatch between `{}` and `{}`",
+                expected_type, found_type
+            ),
             fix_type: FixType::ManualInterventionRequired,
             confidence: 0.7,
             details: Some(details),
@@ -743,18 +793,32 @@ impl MismatchedTypeFixGenerator {
         let mut suggestions = Vec::new();
 
         // Common numeric conversions
-        if (expected.contains("i32") || expected.contains("i64") || expected.contains("u32") ||
-            expected.contains("u64") || expected.contains("usize") || expected.contains("isize")) &&
-           (found.contains("i32") || found.contains("i64") || found.contains("u32") ||
-            found.contains("u64") || found.contains("usize") || found.contains("isize")) {
-
-            suggestions.push(format!("// 1. Use type casting: `your_variable as {}`", expected));
+        if (expected.contains("i32")
+            || expected.contains("i64")
+            || expected.contains("u32")
+            || expected.contains("u64")
+            || expected.contains("usize")
+            || expected.contains("isize"))
+            && (found.contains("i32")
+                || found.contains("i64")
+                || found.contains("u32")
+                || found.contains("u64")
+                || found.contains("usize")
+                || found.contains("isize"))
+        {
+            suggestions.push(format!(
+                "// 1. Use type casting: `your_variable as {}`",
+                expected
+            ));
         }
 
         // String conversions
         if expected.contains("String") && found.contains("&str") {
-            suggestions.push("// 1. Convert &str to String using .to_string() or String::from()".to_string());
-            suggestions.push("//    Example: your_str.to_string() or String::from(your_str)".to_string());
+            suggestions.push(
+                "// 1. Convert &str to String using .to_string() or String::from()".to_string(),
+            );
+            suggestions
+                .push("//    Example: your_str.to_string() or String::from(your_str)".to_string());
         } else if expected.contains("String") {
             // For any type to String conversion
             suggestions.push("// 1. Convert to String using .to_string()".to_string());
@@ -763,7 +827,9 @@ impl MismatchedTypeFixGenerator {
         }
 
         if expected.contains("&str") && found.contains("String") {
-            suggestions.push("// 1. Get a string slice using &your_string or your_string.as_str()".to_string());
+            suggestions.push(
+                "// 1. Get a string slice using &your_string or your_string.as_str()".to_string(),
+            );
         }
 
         // Option handling
@@ -773,7 +839,9 @@ impl MismatchedTypeFixGenerator {
 
         if !expected.contains("Option<") && found.contains("Option<") {
             suggestions.push("// 1. Unwrap the Option: your_option.unwrap()".to_string());
-            suggestions.push("// 2. Use a default value: your_option.unwrap_or(default_value)".to_string());
+            suggestions.push(
+                "// 2. Use a default value: your_option.unwrap_or(default_value)".to_string(),
+            );
             suggestions.push("// 3. Match on the Option for safer handling".to_string());
         }
 
@@ -785,9 +853,13 @@ impl MismatchedTypeFixGenerator {
 
         if !expected.contains("Result<") && found.contains("Result<") {
             suggestions.push("// 1. Unwrap the Result: your_result.unwrap()".to_string());
-            suggestions.push("// 2. Use a default value: your_result.unwrap_or(default_value)".to_string());
+            suggestions.push(
+                "// 2. Use a default value: your_result.unwrap_or(default_value)".to_string(),
+            );
             suggestions.push("// 3. Match on the Result for safer error handling".to_string());
-            suggestions.push("// 4. Propagate the error using ? if in a function returning Result".to_string());
+            suggestions.push(
+                "// 4. Propagate the error using ? if in a function returning Result".to_string(),
+            );
         }
 
         // References and dereferences
@@ -797,19 +869,27 @@ impl MismatchedTypeFixGenerator {
 
         if !expected.starts_with('&') && found.starts_with('&') {
             suggestions.push("// 1. Dereference the value: *your_reference".to_string());
-            suggestions.push("// 2. Clone the referenced value: your_reference.clone()".to_string());
+            suggestions
+                .push("// 2. Clone the referenced value: your_reference.clone()".to_string());
         }
 
         // Path/PathBuf
         if expected.contains("PathBuf") && (found.contains("&str") || found.contains("String")) {
-            suggestions.push("// 1. Convert to PathBuf: std::path::PathBuf::from(your_string)".to_string());
+            suggestions.push(
+                "// 1. Convert to PathBuf: std::path::PathBuf::from(your_string)".to_string(),
+            );
         }
 
         // Generic fallbacks
         if suggestions.is_empty() {
             suggestions.push(format!("// 1. Make sure your value has type: {}", expected));
-            suggestions.push("// 2. Change the expected type in the receiving function/variable".to_string());
-            suggestions.push("// 3. Implement From<YourType> for TargetType or use .into() if applicable".to_string());
+            suggestions.push(
+                "// 2. Change the expected type in the receiving function/variable".to_string(),
+            );
+            suggestions.push(
+                "// 3. Implement From<YourType> for TargetType or use .into() if applicable"
+                    .to_string(),
+            );
         }
 
         suggestions
@@ -831,7 +911,7 @@ impl FixGenerator for ImmutableBorrowFixGenerator {
         &self,
         _error: &DecrustError,
         params: &ExtractedParameters,
-        source_code_context: Option<&str>
+        source_code_context: Option<&str>,
     ) -> Option<Autocorrection> {
         // Extract message
         let message = params.values.get("message")?;
@@ -844,11 +924,15 @@ impl FixGenerator for ImmutableBorrowFixGenerator {
         // Extract the variable name (this is a simplified approach)
         let variable_name = extract_variable_from_borrow_error(message)?;
 
-        let file_path = params.values.get("file_path")
+        let file_path = params
+            .values
+            .get("file_path")
             .cloned()
             .unwrap_or_else(|| "unknown_file.rs".to_string());
 
-        let line = params.values.get("line")
+        let line = params
+            .values
+            .get("line")
             .and_then(|l| l.parse::<usize>().ok())
             .unwrap_or(1);
 
@@ -860,7 +944,10 @@ impl FixGenerator for ImmutableBorrowFixGenerator {
         };
 
         Some(Autocorrection {
-            description: format!("Change variable `{}` declaration to be mutable", variable_name),
+            description: format!(
+                "Change variable `{}` declaration to be mutable",
+                variable_name
+            ),
             fix_type: FixType::TextReplacement,
             confidence: 0.8,
             details: Some(details),
@@ -881,41 +968,61 @@ impl ImmutableBorrowFixGenerator {
         file_path: &str,
         line: usize,
         variable_name: &str,
-        context: &str
+        context: &str,
     ) -> (FixDetails, Vec<String>, String) {
         // Find the variable declaration line
         let lines: Vec<&str> = context.lines().collect();
 
         // Look for the pattern "let variable_name = " or similar
-        let declaration_line_idx = lines.iter().position(|&l|
-            l.contains(&format!("let {} =", variable_name)) ||
-            l.contains(&format!("let {}: ", variable_name)) ||
-            l.contains(&format!("fn {}(", variable_name))  // Also check function parameters
+        let declaration_line_idx = lines.iter().position(
+            |&l| {
+                l.contains(&format!("let {} =", variable_name))
+                    || l.contains(&format!("let {}: ", variable_name))
+                    || l.contains(&format!("fn {}(", variable_name))
+            }, // Also check function parameters
         );
 
         if let Some(idx) = declaration_line_idx {
             let declaration_line = lines[idx];
             let new_line = if declaration_line.contains(&format!("let {} =", variable_name)) {
-                declaration_line.replace(&format!("let {} =", variable_name), &format!("let mut {} =", variable_name))
+                declaration_line.replace(
+                    &format!("let {} =", variable_name),
+                    &format!("let mut {} =", variable_name),
+                )
             } else if declaration_line.contains(&format!("let {}: ", variable_name)) {
-                declaration_line.replace(&format!("let {}: ", variable_name), &format!("let mut {}: ", variable_name))
+                declaration_line.replace(
+                    &format!("let {}: ", variable_name),
+                    &format!("let mut {}: ", variable_name),
+                )
             } else if declaration_line.contains(&format!("fn {}(", variable_name)) {
                 // For function parameters, need more complex parsing
                 let mut new_declaration = declaration_line.to_string();
                 let re = Regex::new(&format!(r"(\b{}\b)(\s*:[^,\)]+)", variable_name)).unwrap();
                 if re.is_match(&new_declaration) {
-                    new_declaration = re.replace(&new_declaration, format!("mut $1$2")).to_string();
+                    new_declaration = re
+                        .replace(&new_declaration, format!("mut $1$2"))
+                        .to_string();
                 } else {
-                    new_declaration = new_declaration.replace(&format!("{}:", variable_name), &format!("mut {}:", variable_name));
-                    new_declaration = new_declaration.replace(&format!("{},", variable_name), &format!("mut {},", variable_name));
-                    new_declaration = new_declaration.replace(&format!("{})", variable_name), &format!("mut {})", variable_name));
+                    new_declaration = new_declaration.replace(
+                        &format!("{}:", variable_name),
+                        &format!("mut {}:", variable_name),
+                    );
+                    new_declaration = new_declaration.replace(
+                        &format!("{},", variable_name),
+                        &format!("mut {},", variable_name),
+                    );
+                    new_declaration = new_declaration.replace(
+                        &format!("{})", variable_name),
+                        &format!("mut {})", variable_name),
+                    );
                 }
                 new_declaration
             } else {
                 declaration_line.to_string()
             };
 
-            let sed_command = format!("sed -i '{}s/{}/{}/' \"{}\"",
+            let sed_command = format!(
+                "sed -i '{}s/{}/{}/' \"{}\"",
                 idx + 1, // 1-indexed for sed
                 regex::escape(declaration_line),
                 regex::escape(&new_line),
@@ -947,7 +1054,7 @@ impl ImmutableBorrowFixGenerator {
         &self,
         file_path: &str,
         line: usize,
-        variable_name: &str
+        variable_name: &str,
     ) -> (FixDetails, Vec<String>, String) {
         // Generic suggestion without context
         let explanation = format!(
@@ -958,18 +1065,27 @@ impl ImmutableBorrowFixGenerator {
         let details = FixDetails::SuggestCodeChange {
             file_path: PathBuf::from(file_path),
             line_hint: line,
-            suggested_code_snippet: format!("// Find where '{}' is declared and change to:\nlet mut {} = ...",
-                variable_name, variable_name),
+            suggested_code_snippet: format!(
+                "// Find where '{}' is declared and change to:\nlet mut {} = ...",
+                variable_name, variable_name
+            ),
             explanation,
         };
 
-        let diff = format!("-let {} = ...\n+let mut {} = ...", variable_name, variable_name);
+        let diff = format!(
+            "-let {} = ...\n+let mut {} = ...",
+            variable_name, variable_name
+        );
 
         // For the generic case, we'll provide a grep command to find the declaration
-        let commands = vec![
-            format!("grep -n \"let {} =\" --include=\"*.rs\" -r \"{}\"",
-                variable_name, PathBuf::from(file_path).parent().unwrap_or(&PathBuf::from(".")).display()),
-        ];
+        let commands = vec![format!(
+            "grep -n \"let {} =\" --include=\"*.rs\" -r \"{}\"",
+            variable_name,
+            PathBuf::from(file_path)
+                .parent()
+                .unwrap_or(&PathBuf::from("."))
+                .display()
+        )];
 
         (details, commands, diff)
     }
@@ -990,7 +1106,7 @@ impl FixGenerator for UnnecessaryBracesFixGenerator {
         &self,
         _error: &DecrustError,
         params: &ExtractedParameters,
-        source_code_context: Option<&str>
+        source_code_context: Option<&str>,
     ) -> Option<Autocorrection> {
         // Extract message
         let message = params.values.get("message")?;
@@ -1000,11 +1116,15 @@ impl FixGenerator for UnnecessaryBracesFixGenerator {
             return None;
         }
 
-        let file_path = params.values.get("file_path")
+        let file_path = params
+            .values
+            .get("file_path")
             .cloned()
             .unwrap_or_else(|| "unknown_file.rs".to_string());
 
-        let line = params.values.get("line")
+        let line = params
+            .values
+            .get("line")
             .and_then(|l| l.parse::<usize>().ok())
             .unwrap_or(1);
 
@@ -1036,7 +1156,7 @@ impl UnnecessaryBracesFixGenerator {
         &self,
         file_path: &str,
         line: usize,
-        context: &str
+        context: &str,
     ) -> (FixDetails, Vec<String>, String) {
         let lines: Vec<&str> = context.lines().collect();
 
@@ -1050,7 +1170,8 @@ impl UnnecessaryBracesFixGenerator {
         };
 
         // Check if this is a use statement with braces
-        if !import_line.contains("use ") || !import_line.contains("{") || !import_line.contains("}") {
+        if !import_line.contains("use ") || !import_line.contains("{") || !import_line.contains("}")
+        {
             return self.generate_simple_fix(file_path, line);
         }
 
@@ -1066,14 +1187,16 @@ impl UnnecessaryBracesFixGenerator {
                 let new_line = format!("use {}{};", prefix, item);
 
                 // Generate sed command
-                let sed_command = format!("sed -i '{}s/{}/{}/' \"{}\"",
+                let sed_command = format!(
+                    "sed -i '{}s/{}/{}/' \"{}\"",
                     line,
                     regex::escape(import_line),
                     regex::escape(&new_line),
                     file_path
                 );
 
-                let explanation = "Removing unnecessary braces around a single import item.".to_string();
+                let explanation =
+                    "Removing unnecessary braces around a single import item.".to_string();
 
                 let details = FixDetails::SuggestCodeChange {
                     file_path: PathBuf::from(file_path),
@@ -1095,10 +1218,11 @@ impl UnnecessaryBracesFixGenerator {
     fn generate_simple_fix(
         &self,
         file_path: &str,
-        line: usize
+        line: usize,
     ) -> (FixDetails, Vec<String>, String) {
         // Generic suggestion without context
-        let explanation = "Rust style guide recommends not using braces for single-item imports.".to_string();
+        let explanation =
+            "Rust style guide recommends not using braces for single-item imports.".to_string();
 
         let details = FixDetails::SuggestCodeChange {
             file_path: PathBuf::from(file_path),
@@ -1108,7 +1232,10 @@ impl UnnecessaryBracesFixGenerator {
         };
 
         // Generic sed command to remove braces around single imports
-        let sed_command = format!("sed -i '{}s/{{\\([^,}}]*\\)}}/\\1/' \"{}\"", line, file_path);
+        let sed_command = format!(
+            "sed -i '{}s/{{\\([^,}}]*\\)}}/\\1/' \"{}\"",
+            line, file_path
+        );
 
         let diff = "-use std::time::{Duration};\n+use std::time::Duration;".to_string();
 
@@ -1131,7 +1258,7 @@ impl FixGenerator for MissingLifetimeFixGenerator {
         &self,
         _error: &DecrustError,
         params: &ExtractedParameters,
-        source_code_context: Option<&str>
+        source_code_context: Option<&str>,
     ) -> Option<Autocorrection> {
         // Extract message
         let message = params.values.get("message")?;
@@ -1141,11 +1268,15 @@ impl FixGenerator for MissingLifetimeFixGenerator {
             return None;
         }
 
-        let file_path = params.values.get("file_path")
+        let file_path = params
+            .values
+            .get("file_path")
             .cloned()
             .unwrap_or_else(|| "unknown_file.rs".to_string());
 
-        let line = params.values.get("line")
+        let line = params
+            .values
+            .get("line")
             .and_then(|l| l.parse::<usize>().ok())
             .unwrap_or(1);
 
@@ -1177,14 +1308,14 @@ impl MissingLifetimeFixGenerator {
         &self,
         file_path: &str,
         line: usize,
-        context: &str
+        context: &str,
     ) -> (FixDetails, Vec<String>, String) {
         let lines: Vec<&str> = context.lines().collect();
 
         // Find a function or struct definition
-        let def_line_idx = lines.iter().position(|&l|
+        let def_line_idx = lines.iter().position(|&l| {
             l.contains("fn ") || l.contains("struct ") || l.contains("impl") || l.contains("trait")
-        );
+        });
 
         if let Some(idx) = def_line_idx {
             let def_line = lines[idx];
@@ -1218,7 +1349,8 @@ impl MissingLifetimeFixGenerator {
                 return self.generate_simple_fix(file_path, line, "Missing lifetime parameter");
             }
 
-            let sed_command = format!("sed -i '{}s/{}/{}/' \"{}\"",
+            let sed_command = format!(
+                "sed -i '{}s/{}/{}/' \"{}\"",
                 idx + 1, // 1-indexed for sed
                 regex::escape(def_line),
                 regex::escape(&new_line),
@@ -1248,7 +1380,7 @@ impl MissingLifetimeFixGenerator {
         &self,
         file_path: &str,
         line: usize,
-        _message: &str
+        _message: &str,
     ) -> (FixDetails, Vec<String>, String) {
         // Generic suggestions for lifetime errors
         let suggestions = vec![
@@ -1277,7 +1409,9 @@ impl MissingLifetimeFixGenerator {
         let commands = vec![];
 
         // Generic diff suggestion
-        let diff = format!("-// Code with missing lifetime parameter\n+// Code with added lifetime parameter <'a>");
+        let diff = format!(
+            "-// Code with missing lifetime parameter\n+// Code with added lifetime parameter <'a>"
+        );
 
         (details, commands, diff)
     }
@@ -1298,7 +1432,7 @@ impl FixGenerator for MatchPatternFixGenerator {
         &self,
         _error: &DecrustError,
         params: &ExtractedParameters,
-        source_code_context: Option<&str>
+        source_code_context: Option<&str>,
     ) -> Option<Autocorrection> {
         // Extract message
         let message = params.values.get("message")?;
@@ -1309,11 +1443,15 @@ impl FixGenerator for MatchPatternFixGenerator {
         //     return None;
         // }
 
-        let file_path = params.values.get("file_path")
+        let file_path = params
+            .values
+            .get("file_path")
             .cloned()
             .unwrap_or_else(|| "unknown_file.rs".to_string());
 
-        let line = params.values.get("line")
+        let line = params
+            .values
+            .get("line")
             .and_then(|l| l.parse::<usize>().ok())
             .unwrap_or(1);
 
@@ -1339,7 +1477,14 @@ impl FixGenerator for MatchPatternFixGenerator {
             details: Some(details),
             diff_suggestion: Some(diff),
             commands_to_apply: commands,
-            targets_error_code: Some(if is_non_exhaustive { "non_exhaustive_patterns" } else { "unreachable_pattern" }.to_string()),
+            targets_error_code: Some(
+                if is_non_exhaustive {
+                    "non_exhaustive_patterns"
+                } else {
+                    "unreachable_pattern"
+                }
+                .to_string(),
+            ),
         })
     }
 
@@ -1354,16 +1499,19 @@ impl MatchPatternFixGenerator {
         file_path: &str,
         line: usize,
         context: &str,
-        is_non_exhaustive: bool
+        is_non_exhaustive: bool,
     ) -> (FixDetails, Vec<String>, String) {
         let lines: Vec<&str> = context.lines().collect();
 
         // Find the match expression and its closing brace
         let match_start_idx = lines.iter().take(line).rposition(|&l| l.contains("match "));
-        let closing_brace_idx = match_start_idx.and_then(|start_idx|
-            lines.iter().skip(start_idx).position(|&l| l.trim() == "}")
+        let closing_brace_idx = match_start_idx.and_then(|start_idx| {
+            lines
+                .iter()
+                .skip(start_idx)
+                .position(|&l| l.trim() == "}")
                 .map(|rel_pos| start_idx + rel_pos)
-        );
+        });
 
         if let (Some(match_idx), Some(close_idx)) = (match_start_idx, closing_brace_idx) {
             // Extract the match expression and determine the enum/type being matched
@@ -1372,14 +1520,23 @@ impl MatchPatternFixGenerator {
 
             if is_non_exhaustive {
                 // For non-exhaustive patterns, add a catch-all pattern
-                let indent = lines[close_idx].chars().take_while(|&c| c.is_whitespace()).collect::<String>();
+                let indent = lines[close_idx]
+                    .chars()
+                    .take_while(|&c| c.is_whitespace())
+                    .collect::<String>();
                 let catch_all = format!("{}_ => {{", indent);
                 let catch_all_body = format!("{}    // Handle all other cases", indent);
                 let catch_all_close = format!("{}}},", indent);
 
-                let new_lines: Vec<_> = lines[..close_idx].to_vec()
+                let new_lines: Vec<_> = lines[..close_idx]
+                    .to_vec()
                     .into_iter()
-                    .chain(vec![catch_all.as_str(), catch_all_body.as_str(), catch_all_close.as_str(), lines[close_idx]])
+                    .chain(vec![
+                        catch_all.as_str(),
+                        catch_all_body.as_str(),
+                        catch_all_close.as_str(),
+                        lines[close_idx],
+                    ])
                     .collect();
 
                 let new_content = new_lines.join("\n");
@@ -1405,12 +1562,17 @@ impl MatchPatternFixGenerator {
                 let details = FixDetails::SuggestCodeChange {
                     file_path: PathBuf::from(file_path),
                     line_hint: close_idx,
-                    suggested_code_snippet: format!("// Add before closing brace:\n{}\n{}\n{}",
-                        catch_all, catch_all_body, catch_all_close),
+                    suggested_code_snippet: format!(
+                        "// Add before closing brace:\n{}\n{}\n{}",
+                        catch_all, catch_all_body, catch_all_close
+                    ),
                     explanation,
                 };
 
-                let diff = format!("@@ match expression @@\n...\n+{}\n+{}\n+{}", catch_all, catch_all_body, catch_all_close);
+                let diff = format!(
+                    "@@ match expression @@\n...\n+{}\n+{}\n+{}",
+                    catch_all, catch_all_body, catch_all_close
+                );
 
                 return (details, vec![sed_script], diff);
             } else {
@@ -1422,12 +1584,17 @@ impl MatchPatternFixGenerator {
                 let details = FixDetails::SuggestCodeChange {
                     file_path: PathBuf::from(file_path),
                     line_hint: line,
-                    suggested_code_snippet: "// Review your match patterns to identify which ones overlap".to_string(),
+                    suggested_code_snippet:
+                        "// Review your match patterns to identify which ones overlap".to_string(),
                     explanation,
                 };
 
                 // This is a case where we need more compiler information to make a specific fix
-                return (details, vec![], "// Need to review match patterns for overlap".to_string());
+                return (
+                    details,
+                    vec![],
+                    "// Need to review match patterns for overlap".to_string(),
+                );
             }
         }
 
@@ -1439,7 +1606,7 @@ impl MatchPatternFixGenerator {
         &self,
         file_path: &str,
         line: usize,
-        is_non_exhaustive: bool
+        is_non_exhaustive: bool,
     ) -> (FixDetails, Vec<String>, String) {
         // Generic suggestions
         let (explanation, suggestion) = if is_non_exhaustive {
@@ -1482,7 +1649,8 @@ impl MatchPatternFixGenerator {
             "+    _ => { /* Handle all other cases */ },"
         } else {
             "-    [unreachable pattern] => { ... },"
-        }.to_string();
+        }
+        .to_string();
 
         (details, commands, diff)
     }
@@ -1534,7 +1702,7 @@ impl FixGenerator for PrivateFieldAccessFixGenerator {
         &self,
         _error: &DecrustError,
         params: &ExtractedParameters,
-        source_code_context: Option<&str>
+        source_code_context: Option<&str>,
     ) -> Option<Autocorrection> {
         // Extract message
         let message = params.values.get("message")?;
@@ -1548,19 +1716,32 @@ impl FixGenerator for PrivateFieldAccessFixGenerator {
         let field_name = extract_private_field_name(message)?;
         let struct_name = extract_struct_name(message).unwrap_or_else(|| "StructName".to_string());
 
-        let file_path = params.values.get("file_path")
+        let file_path = params
+            .values
+            .get("file_path")
             .cloned()
             .unwrap_or_else(|| "unknown_file.rs".to_string());
 
-        let line = params.values.get("line")
+        let line = params
+            .values
+            .get("line")
             .and_then(|l| l.parse::<usize>().ok())
             .unwrap_or(1);
 
         // Generate autocorrection
-        let (details, commands, diff) = self.generate_fixes(&file_path, line, &struct_name, &field_name, source_code_context);
+        let (details, commands, diff) = self.generate_fixes(
+            &file_path,
+            line,
+            &struct_name,
+            &field_name,
+            source_code_context,
+        );
 
         Some(Autocorrection {
-            description: format!("Fix access to private field `{}` of struct `{}`", field_name, struct_name),
+            description: format!(
+                "Fix access to private field `{}` of struct `{}`",
+                field_name, struct_name
+            ),
             fix_type: FixType::ManualInterventionRequired,
             confidence: 0.75,
             details: Some(details),
@@ -1582,7 +1763,7 @@ impl PrivateFieldAccessFixGenerator {
         line: usize,
         struct_name: &str,
         field_name: &str,
-        source_code_context: Option<&str>
+        source_code_context: Option<&str>,
     ) -> (FixDetails, Vec<String>, String) {
         let is_accessing_self = source_code_context
             .map(|ctx| ctx.contains("self."))
@@ -1592,7 +1773,9 @@ impl PrivateFieldAccessFixGenerator {
 
         if is_accessing_self {
             // We're likely inside an impl block but trying to access a private field
-            suggestions.push(format!("// Option 1: Make the field public in the struct definition"));
+            suggestions.push(format!(
+                "// Option 1: Make the field public in the struct definition"
+            ));
             suggestions.push(format!("pub {}: Type", field_name));
             suggestions.push(format!(""));
             suggestions.push(format!("// Option 2: Add a getter method"));
@@ -1601,13 +1784,17 @@ impl PrivateFieldAccessFixGenerator {
             suggestions.push(format!("}}"));
         } else {
             // We're trying to access a private field from outside the module
-            suggestions.push(format!("// Option 1: If you control the struct definition, make the field public"));
+            suggestions.push(format!(
+                "// Option 1: If you control the struct definition, make the field public"
+            ));
             suggestions.push(format!("pub {}: Type", field_name));
             suggestions.push(format!(""));
             suggestions.push(format!("// Option 2: Use a getter method if available"));
             suggestions.push(format!("instance.{}()", field_name));
             suggestions.push(format!(""));
-            suggestions.push(format!("// Option 3: Define a getter in the struct implementation"));
+            suggestions.push(format!(
+                "// Option 3: Define a getter in the struct implementation"
+            ));
             suggestions.push(format!("impl {} {{", struct_name));
             suggestions.push(format!("    pub fn {}(&self) -> &Type {{", field_name));
             suggestions.push(format!("        &self.{}", field_name));
@@ -1615,9 +1802,14 @@ impl PrivateFieldAccessFixGenerator {
             suggestions.push(format!("}}"));
         }
 
-        let find_struct_command = format!("grep -n \"struct {}\" --include=\"*.rs\" -r \"{}\"",
+        let find_struct_command = format!(
+            "grep -n \"struct {}\" --include=\"*.rs\" -r \"{}\"",
             struct_name,
-            PathBuf::from(file_path).parent().unwrap_or(&PathBuf::from(".")).display());
+            PathBuf::from(file_path)
+                .parent()
+                .unwrap_or(&PathBuf::from("."))
+                .display()
+        );
 
         let explanation = format!(
             "You're trying to access the private field `{}` of struct `{}`. \
@@ -1695,24 +1887,31 @@ impl FixGenerator for GenericParamConflictFixGenerator {
         &self,
         _error: &DecrustError,
         params: &ExtractedParameters,
-        source_code_context: Option<&str>
+        source_code_context: Option<&str>,
     ) -> Option<Autocorrection> {
         // Extract message
         let message = params.values.get("message")?;
 
         // Check if it's a generic parameter conflict error
-        if !message.contains("generic parameter") && !message.contains("parameter") && !message.contains("shadow") {
+        if !message.contains("generic parameter")
+            && !message.contains("parameter")
+            && !message.contains("shadow")
+        {
             return None;
         }
 
         // Try to extract the parameter name
         let param_name = extract_generic_param_name(message)?;
 
-        let file_path = params.values.get("file_path")
+        let file_path = params
+            .values
+            .get("file_path")
             .cloned()
             .unwrap_or_else(|| "unknown_file.rs".to_string());
 
-        let line = params.values.get("line")
+        let line = params
+            .values
+            .get("line")
             .and_then(|l| l.parse::<usize>().ok())
             .unwrap_or(1);
 
@@ -1724,7 +1923,10 @@ impl FixGenerator for GenericParamConflictFixGenerator {
         };
 
         Some(Autocorrection {
-            description: format!("Rename generic parameter `{}` to avoid conflict", param_name),
+            description: format!(
+                "Rename generic parameter `{}` to avoid conflict",
+                param_name
+            ),
             fix_type: FixType::TextReplacement,
             confidence: 0.75,
             details: Some(details),
@@ -1745,14 +1947,15 @@ impl GenericParamConflictFixGenerator {
         file_path: &str,
         line: usize,
         param_name: &str,
-        context: &str
+        context: &str,
     ) -> (FixDetails, Vec<String>, String) {
         let lines: Vec<&str> = context.lines().collect();
 
         // Find the generic parameter declaration
-        if let Some(idx) = lines.iter().position(|&l|
-            l.contains("<") && l.contains(">") && l.contains(param_name)
-        ) {
+        if let Some(idx) = lines
+            .iter()
+            .position(|&l| l.contains("<") && l.contains(">") && l.contains(param_name))
+        {
             let decl_line = lines[idx];
 
             // Generate a new name for the parameter
@@ -1769,7 +1972,8 @@ impl GenericParamConflictFixGenerator {
             // We also need to replace the parameter in the code that follows, but this is complex
             // For now, we'll provide a sed command for the declaration only and recommend manual update
 
-            let sed_command = format!("sed -i '{}s/{}/{}/' \"{}\"",
+            let sed_command = format!(
+                "sed -i '{}s/{}/{}/' \"{}\"",
                 idx + 1, // 1-indexed for sed
                 regex::escape(decl_line),
                 regex::escape(&new_line),
@@ -1785,8 +1989,10 @@ impl GenericParamConflictFixGenerator {
             let details = FixDetails::SuggestCodeChange {
                 file_path: PathBuf::from(file_path),
                 line_hint: idx + 1,
-                suggested_code_snippet: format!("// Change to:\n{}\n\n// Then update all uses of '{}' to '{}'",
-                    new_line, param_name, new_param_name),
+                suggested_code_snippet: format!(
+                    "// Change to:\n{}\n\n// Then update all uses of '{}' to '{}'",
+                    new_line, param_name, new_param_name
+                ),
                 explanation,
             };
 
@@ -1803,7 +2009,7 @@ impl GenericParamConflictFixGenerator {
         &self,
         file_path: &str,
         line: usize,
-        param_name: &str
+        param_name: &str,
     ) -> (FixDetails, Vec<String>, String) {
         // Generate a new name for the parameter
         let new_param_name = format!("{}2", param_name);
@@ -1818,16 +2024,21 @@ impl GenericParamConflictFixGenerator {
         let details = FixDetails::SuggestCodeChange {
             file_path: PathBuf::from(file_path),
             line_hint: line,
-            suggested_code_snippet: format!("// Replace '{}' with '{}' throughout this declaration and its scope",
-                param_name, new_param_name),
+            suggested_code_snippet: format!(
+                "// Replace '{}' with '{}' throughout this declaration and its scope",
+                param_name, new_param_name
+            ),
             explanation,
         };
 
         // Generic sed command to replace the parameter
-        let commands = vec![
-            format!("sed -i '{}s/\\b{}\\b/{}/g' \"{}\"",
-                line, regex::escape(param_name), new_param_name, file_path),
-        ];
+        let commands = vec![format!(
+            "sed -i '{}s/\\b{}\\b/{}/g' \"{}\"",
+            line,
+            regex::escape(param_name),
+            new_param_name,
+            file_path
+        )];
 
         let diff = format!("-<{}>\n+<{}>", param_name, new_param_name);
 
@@ -1861,7 +2072,11 @@ fn replace_generic_param(line: &str, old_param: &str, new_param: &str) -> String
     // This is a simplified approach - a proper implementation would use a parser
     // to properly handle nested generics, where clauses, etc.
     let mut result = line.to_string();
-    let re = Regex::new(&format!(r"<([^>]*)\b{}\b([^>]*)>", regex::escape(old_param))).unwrap();
+    let re = Regex::new(&format!(
+        r"<([^>]*)\b{}\b([^>]*)>",
+        regex::escape(old_param)
+    ))
+    .unwrap();
 
     if let Some(captures) = re.captures(line) {
         if captures.len() >= 3 {
@@ -1890,7 +2105,7 @@ impl FixGenerator for MissingReturnFixGenerator {
         &self,
         _error: &DecrustError,
         params: &ExtractedParameters,
-        source_code_context: Option<&str>
+        source_code_context: Option<&str>,
     ) -> Option<Autocorrection> {
         // Extract message
         let message = params.values.get("message")?;
@@ -1904,11 +2119,15 @@ impl FixGenerator for MissingReturnFixGenerator {
         // Try to extract the expected return type
         let return_type = extract_return_type(message)?;
 
-        let file_path = params.values.get("file_path")
+        let file_path = params
+            .values
+            .get("file_path")
             .cloned()
             .unwrap_or_else(|| "unknown_file.rs".to_string());
 
-        let line = params.values.get("line")
+        let line = params
+            .values
+            .get("line")
             .and_then(|l| l.parse::<usize>().ok())
             .unwrap_or(1);
 
@@ -1941,7 +2160,7 @@ impl MissingReturnFixGenerator {
         file_path: &str,
         line: usize,
         return_type: &str,
-        context: &str
+        context: &str,
     ) -> (FixDetails, Vec<String>, String) {
         let lines: Vec<&str> = context.lines().collect();
 
@@ -1953,13 +2172,17 @@ impl MissingReturnFixGenerator {
             let default_value = generate_default_value(return_type);
 
             // Get the indentation from the closing brace line
-            let indent = lines[idx].chars().take_while(|&c| c.is_whitespace()).collect::<String>();
+            let indent = lines[idx]
+                .chars()
+                .take_while(|&c| c.is_whitespace())
+                .collect::<String>();
 
             // Create a new return statement
             let return_stmt = format!("{}return {};", indent, default_value);
 
             // Insert the return statement before the closing brace
-            let new_lines: Vec<_> = lines[..idx].to_vec()
+            let new_lines: Vec<_> = lines[..idx]
+                .to_vec()
                 .into_iter()
                 .chain(vec![return_stmt.as_str(), lines[idx]])
                 .collect();
@@ -2000,7 +2223,7 @@ impl MissingReturnFixGenerator {
         &self,
         file_path: &str,
         line: usize,
-        return_type: &str
+        return_type: &str,
     ) -> (FixDetails, Vec<String>, String) {
         // Generate a default return value based on the type
         let default_value = generate_default_value(return_type);
@@ -2365,9 +2588,9 @@ impl IoPermissionFixGenerator {
 
     /// Checks if an error message indicates a permission error
     fn is_permission_error(&self, message: &str) -> bool {
-        message.contains("Permission denied") ||
-        message.contains("permission denied") ||
-        message.contains("Access is denied")
+        message.contains("Permission denied")
+            || message.contains("permission denied")
+            || message.contains("Access is denied")
     }
 
     /// Determines the appropriate permission fix based on the file path and error
@@ -2463,12 +2686,12 @@ impl JsonParseFixGenerator {
 
     /// Detects if the error message indicates a JSON parsing error
     fn is_json_parse_error(&self, message: &str) -> bool {
-        message.contains("JSON") &&
-        (message.contains("parse") ||
-         message.contains("syntax") ||
-         message.contains("invalid") ||
-         message.contains("unexpected") ||
-         message.contains("expected"))
+        message.contains("JSON")
+            && (message.contains("parse")
+                || message.contains("syntax")
+                || message.contains("invalid")
+                || message.contains("unexpected")
+                || message.contains("expected"))
     }
 
     /// Extracts the line number from an error message
@@ -2545,7 +2768,13 @@ impl JsonParseFixGenerator {
     }
 
     /// Generates a fix suggestion for a JSON parsing error
-    fn generate_json_fix(&self, file_path: &str, line_number: Option<usize>, column_number: Option<usize>, expected_token: Option<String>) -> (String, String, Option<String>) {
+    fn generate_json_fix(
+        &self,
+        file_path: &str,
+        line_number: Option<usize>,
+        column_number: Option<usize>,
+        expected_token: Option<String>,
+    ) -> (String, String, Option<String>) {
         // Command to fix the JSON file
         let command = format!("jsonlint --fix {}", file_path);
 
@@ -2553,38 +2782,46 @@ impl JsonParseFixGenerator {
         let explanation = match (line_number, column_number, expected_token.as_deref()) {
             (Some(line), Some(col), Some(token)) => {
                 format!("JSON parsing error at line {}, column {}. Expected {}. This command will attempt to fix the JSON syntax.", line, col, token)
-            },
+            }
             (Some(line), Some(col), None) => {
                 format!("JSON parsing error at line {}, column {}. This command will attempt to fix the JSON syntax.", line, col)
-            },
+            }
             (Some(line), None, Some(token)) => {
                 format!("JSON parsing error at line {}. Expected {}. This command will attempt to fix the JSON syntax.", line, token)
-            },
+            }
             (Some(line), None, None) => {
                 format!("JSON parsing error at line {}. This command will attempt to fix the JSON syntax.", line)
-            },
+            }
             (None, Some(col), Some(token)) => {
                 format!("JSON parsing error at column {}. Expected {}. This command will attempt to fix the JSON syntax.", col, token)
-            },
+            }
             (None, Some(col), None) => {
                 format!("JSON parsing error at column {}. This command will attempt to fix the JSON syntax.", col)
-            },
+            }
             (None, None, Some(token)) => {
                 format!("JSON parsing error. Expected {}. This command will attempt to fix the JSON syntax.", token)
-            },
+            }
             (None, None, None) => {
                 format!("JSON parsing error. This command will attempt to fix the JSON syntax.")
-            },
+            }
         };
 
         // Suggestion for common JSON syntax errors
         let suggestion = match expected_token.as_deref() {
             Some("object") => Some("Make sure your JSON starts with { and ends with }".to_string()),
             Some("array") => Some("Make sure your JSON starts with [ and ends with ]".to_string()),
-            Some("string") => Some("Make sure your strings are enclosed in double quotes".to_string()),
-            Some("number") => Some("Make sure your numbers don't have leading zeros or invalid characters".to_string()),
-            Some("comma") => Some("Make sure you have commas between array elements or object properties".to_string()),
-            Some("colon") => Some("Make sure you have colons between property names and values".to_string()),
+            Some("string") => {
+                Some("Make sure your strings are enclosed in double quotes".to_string())
+            }
+            Some("number") => Some(
+                "Make sure your numbers don't have leading zeros or invalid characters".to_string(),
+            ),
+            Some("comma") => Some(
+                "Make sure you have commas between array elements or object properties".to_string(),
+            ),
+            Some("colon") => {
+                Some("Make sure you have colons between property names and values".to_string())
+            }
             Some("}") => Some("Make sure you close all opened curly braces".to_string()),
             Some("]") => Some("Make sure you close all opened square brackets".to_string()),
             Some("\"") => Some("Make sure you close all opened double quotes".to_string()),
@@ -2603,12 +2840,12 @@ impl YamlParseFixGenerator {
 
     /// Detects if the error message indicates a YAML parsing error
     fn is_yaml_parse_error(&self, message: &str) -> bool {
-        message.contains("YAML") &&
-        (message.contains("parse") ||
-         message.contains("syntax") ||
-         message.contains("invalid") ||
-         message.contains("unexpected") ||
-         message.contains("expected"))
+        message.contains("YAML")
+            && (message.contains("parse")
+                || message.contains("syntax")
+                || message.contains("invalid")
+                || message.contains("unexpected")
+                || message.contains("expected"))
     }
 
     /// Extracts the line number from an error message
@@ -2697,7 +2934,13 @@ impl YamlParseFixGenerator {
     }
 
     /// Generates a fix suggestion for a YAML parsing error
-    fn generate_yaml_fix(&self, file_path: &str, line_number: Option<usize>, column_number: Option<usize>, error_type: Option<String>) -> (String, String, Option<String>) {
+    fn generate_yaml_fix(
+        &self,
+        file_path: &str,
+        line_number: Option<usize>,
+        column_number: Option<usize>,
+        error_type: Option<String>,
+    ) -> (String, String, Option<String>) {
         // Command to fix the YAML file
         let command = format!("yamllint -f parsable {}", file_path);
 
@@ -2705,28 +2948,28 @@ impl YamlParseFixGenerator {
         let explanation = match (line_number, column_number, error_type.as_deref()) {
             (Some(line), Some(col), Some(error)) => {
                 format!("YAML parsing error at line {}, column {}: {}. This command will check the YAML syntax and provide detailed error information.", line, col, error)
-            },
+            }
             (Some(line), Some(col), None) => {
                 format!("YAML parsing error at line {}, column {}. This command will check the YAML syntax and provide detailed error information.", line, col)
-            },
+            }
             (Some(line), None, Some(error)) => {
                 format!("YAML parsing error at line {}: {}. This command will check the YAML syntax and provide detailed error information.", line, error)
-            },
+            }
             (Some(line), None, None) => {
                 format!("YAML parsing error at line {}. This command will check the YAML syntax and provide detailed error information.", line)
-            },
+            }
             (None, Some(col), Some(error)) => {
                 format!("YAML parsing error at column {}: {}. This command will check the YAML syntax and provide detailed error information.", col, error)
-            },
+            }
             (None, Some(col), None) => {
                 format!("YAML parsing error at column {}. This command will check the YAML syntax and provide detailed error information.", col)
-            },
+            }
             (None, None, Some(error)) => {
                 format!("YAML parsing error: {}. This command will check the YAML syntax and provide detailed error information.", error)
-            },
+            }
             (None, None, None) => {
                 format!("YAML parsing error. This command will check the YAML syntax and provide detailed error information.")
-            },
+            }
         };
 
         // Suggestion for common YAML syntax errors
@@ -2973,18 +3216,18 @@ impl UnusedMutFixGenerator {
 
         // Check if the variable is used in a mutable context
         // This is a simplified check and might have false positives/negatives
-        let has_mutation = code.contains(&format!("{} =", variable_name)) ||
-                          code.contains(&format!("{}+=", variable_name)) ||
-                          code.contains(&format!("{}-=", variable_name)) ||
-                          code.contains(&format!("{}*=", variable_name)) ||
-                          code.contains(&format!("{}/=", variable_name)) ||
-                          code.contains(&format!("{}%=", variable_name)) ||
-                          code.contains(&format!("{}&=", variable_name)) ||
-                          code.contains(&format!("{}|=", variable_name)) ||
-                          code.contains(&format!("{}^=", variable_name)) ||
-                          code.contains(&format!("{}<<=", variable_name)) ||
-                          code.contains(&format!("{}>>=", variable_name)) ||
-                          code.contains(&format!("&mut {}", variable_name));
+        let has_mutation = code.contains(&format!("{} =", variable_name))
+            || code.contains(&format!("{}+=", variable_name))
+            || code.contains(&format!("{}-=", variable_name))
+            || code.contains(&format!("{}*=", variable_name))
+            || code.contains(&format!("{}/=", variable_name))
+            || code.contains(&format!("{}%=", variable_name))
+            || code.contains(&format!("{}&=", variable_name))
+            || code.contains(&format!("{}|=", variable_name))
+            || code.contains(&format!("{}^=", variable_name))
+            || code.contains(&format!("{}<<=", variable_name))
+            || code.contains(&format!("{}>>=", variable_name))
+            || code.contains(&format!("&mut {}", variable_name));
 
         // If there's no mutation, the mut keyword is unused
         !has_mutation
@@ -3020,7 +3263,10 @@ impl UnusedMutFixGenerator {
     /// Generates a fix for an unused mut keyword
     fn generate_unused_mut_fix(&self, code: &str, variable: &str) -> (String, String, String) {
         // Replace "let mut" with "let"
-        let fixed_code = code.replace(&format!("let mut {}", variable), &format!("let {}", variable));
+        let fixed_code = code.replace(
+            &format!("let mut {}", variable),
+            &format!("let {}", variable),
+        );
 
         // Create explanation
         let explanation = format!(
@@ -3041,7 +3287,7 @@ impl FixGenerator for UnnecessaryCloneFixGenerator {
         &self,
         _error: &DecrustError,
         _params: &ExtractedParameters,
-        source_code_context: Option<&str>
+        source_code_context: Option<&str>,
     ) -> Option<Autocorrection> {
         // We need source code context to analyze clone() calls
         let code = source_code_context?;
@@ -3087,7 +3333,7 @@ impl FixGenerator for UnnecessaryParenthesesFixGenerator {
         &self,
         _error: &DecrustError,
         _params: &ExtractedParameters,
-        source_code_context: Option<&str>
+        source_code_context: Option<&str>,
     ) -> Option<Autocorrection> {
         let code = source_code_context?;
 
@@ -3097,11 +3343,15 @@ impl FixGenerator for UnnecessaryParenthesesFixGenerator {
 
         let (fixed_code, explanation) = self.generate_fix_for_code(code)?;
 
-        let file_path = _params.values.get("file_path")
+        let file_path = _params
+            .values
+            .get("file_path")
             .cloned()
             .unwrap_or_else(|| "src/main.rs".to_string());
 
-        let line = _params.values.get("line")
+        let line = _params
+            .values
+            .get("line")
             .and_then(|l| l.parse::<usize>().ok())
             .unwrap_or(1);
 
@@ -3115,11 +3365,7 @@ impl FixGenerator for UnnecessaryParenthesesFixGenerator {
                 suggested_code_snippet: fixed_code.clone(),
                 explanation,
             }),
-            diff_suggestion: Some(format!(
-                "- {}\n+ {}",
-                code.trim(),
-                fixed_code.trim()
-            )),
+            diff_suggestion: Some(format!("- {}\n+ {}", code.trim(), fixed_code.trim())),
             commands_to_apply: vec![],
             targets_error_code: None,
         })
@@ -3138,24 +3384,24 @@ impl NetworkConnectionFixGenerator {
 
     /// Detects if the error is related to a network connection issue
     fn is_connection_error(&self, message: &str) -> bool {
-        (message.contains("connection") || message.contains("Connection")) &&
-        (message.contains("refused") ||
-         message.contains("timed out") ||
-         message.contains("timeout") ||
-         message.contains("reset") ||
-         message.contains("closed") ||
-         message.contains("aborted") ||
-         message.contains("failed"))
+        (message.contains("connection") || message.contains("Connection"))
+            && (message.contains("refused")
+                || message.contains("timed out")
+                || message.contains("timeout")
+                || message.contains("reset")
+                || message.contains("closed")
+                || message.contains("aborted")
+                || message.contains("failed"))
     }
 
     /// Detects if the error is related to a DNS resolution issue
     fn is_dns_error(&self, message: &str) -> bool {
-        message.contains("dns") ||
-        message.contains("resolve") ||
-        message.contains("lookup") ||
-        message.contains("host") ||
-        message.contains("name") ||
-        message.contains("not found")
+        message.contains("dns")
+            || message.contains("resolve")
+            || message.contains("lookup")
+            || message.contains("host")
+            || message.contains("name")
+            || message.contains("not found")
     }
 
     /// Extracts the host/IP from an error message
@@ -3186,11 +3432,7 @@ impl NetworkConnectionFixGenerator {
     /// Extracts the port from an error message
     fn extract_port(&self, message: &str) -> Option<u16> {
         // Common patterns for ports in error messages
-        let patterns = [
-            r"port[\s:]+(\d+)",
-            r":(\d+)",
-            r"on (\d+)",
-        ];
+        let patterns = [r"port[\s:]+(\d+)", r":(\d+)", r"on (\d+)"];
 
         for pattern in patterns {
             if let Ok(regex) = Regex::new(pattern) {
@@ -3208,7 +3450,11 @@ impl NetworkConnectionFixGenerator {
     }
 
     /// Generates diagnostic commands for a connection issue
-    fn generate_connection_diagnostics(&self, host: Option<&str>, port: Option<u16>) -> Vec<(String, String)> {
+    fn generate_connection_diagnostics(
+        &self,
+        host: Option<&str>,
+        port: Option<u16>,
+    ) -> Vec<(String, String)> {
         let mut diagnostics = Vec::new();
 
         // Basic connectivity test
@@ -3220,7 +3466,10 @@ impl NetworkConnectionFixGenerator {
 
             // Traceroute
             let traceroute_cmd = format!("traceroute {}", h);
-            let traceroute_explanation = format!("Trace the network path to {} to identify where connectivity might be failing", h);
+            let traceroute_explanation = format!(
+                "Trace the network path to {} to identify where connectivity might be failing",
+                h
+            );
             diagnostics.push((traceroute_cmd, traceroute_explanation));
 
             // DNS lookup
@@ -3242,19 +3491,33 @@ impl NetworkConnectionFixGenerator {
             }
         } else {
             // Generic network diagnostics
-            diagnostics.push(("ip addr show".to_string(), "Check network interfaces and IP addresses".to_string()));
+            diagnostics.push((
+                "ip addr show".to_string(),
+                "Check network interfaces and IP addresses".to_string(),
+            ));
             diagnostics.push(("ip route".to_string(), "Check routing table".to_string()));
-            diagnostics.push(("cat /etc/resolv.conf".to_string(), "Check DNS configuration".to_string()));
+            diagnostics.push((
+                "cat /etc/resolv.conf".to_string(),
+                "Check DNS configuration".to_string(),
+            ));
         }
 
         // Check firewall status
-        diagnostics.push(("sudo iptables -L".to_string(), "Check firewall rules (requires sudo)".to_string()));
+        diagnostics.push((
+            "sudo iptables -L".to_string(),
+            "Check firewall rules (requires sudo)".to_string(),
+        ));
 
         diagnostics
     }
 
     /// Generates fix suggestions for a network connection issue
-    fn generate_connection_fix(&self, message: &str, host: Option<&str>, port: Option<u16>) -> Vec<(String, String, String)> {
+    fn generate_connection_fix(
+        &self,
+        message: &str,
+        host: Option<&str>,
+        port: Option<u16>,
+    ) -> Vec<(String, String, String)> {
         let mut fixes = Vec::new();
 
         // Connection refused
@@ -3279,7 +3542,6 @@ impl NetworkConnectionFixGenerator {
                 ));
             }
         }
-
         // Connection timeout
         else if message.contains("timed out") {
             if let Some(h) = host {
@@ -3296,7 +3558,6 @@ impl NetworkConnectionFixGenerator {
                 ));
             }
         }
-
         // DNS resolution issues
         else if self.is_dns_error(message) {
             if let Some(h) = host {
@@ -3313,7 +3574,6 @@ impl NetworkConnectionFixGenerator {
                 ));
             }
         }
-
         // Generic connection issues
         else {
             if let Some(h) = host {
@@ -3343,10 +3603,10 @@ impl RecursiveTypeFixGenerator {
 
     /// Detects if the error is related to recursive type definitions
     fn is_recursive_type_error(&self, message: &str) -> bool {
-        message.contains("E0072") ||
-        message.contains("recursive type") ||
-        message.contains("has infinite size") ||
-        message.contains("recursive without indirection")
+        message.contains("E0072")
+            || message.contains("recursive type")
+            || message.contains("has infinite size")
+            || message.contains("recursive without indirection")
     }
 
     /// Extracts the type name from the error message
@@ -3376,9 +3636,9 @@ impl RecursiveTypeFixGenerator {
 
         // Find the struct/enum definition
         for (i, line) in lines.iter().enumerate() {
-            if line.contains(&format!("struct {}", type_name)) ||
-               line.contains(&format!("enum {}", type_name)) {
-
+            if line.contains(&format!("struct {}", type_name))
+                || line.contains(&format!("enum {}", type_name))
+            {
                 analysis.push(format!("// Found recursive definition at line {}", i + 1));
 
                 // Look for direct self-references in the following lines
@@ -3388,8 +3648,11 @@ impl RecursiveTypeFixGenerator {
                     }
 
                     if next_line.contains(type_name) && !next_line.trim().starts_with("//") {
-                        analysis.push(format!("// Direct recursion found at line {}: {}",
-                            i + j + 2, next_line.trim()));
+                        analysis.push(format!(
+                            "// Direct recursion found at line {}: {}",
+                            i + j + 2,
+                            next_line.trim()
+                        ));
                     }
                 }
                 break;
@@ -3408,15 +3671,22 @@ impl RecursiveTypeFixGenerator {
         let mut fixes = Vec::new();
 
         // Strategy 1: Box indirection (most common solution)
-        fixes.push(format!("// Strategy 1: Use Box<T> for heap allocation and indirection"));
+        fixes.push(format!(
+            "// Strategy 1: Use Box<T> for heap allocation and indirection"
+        ));
         fixes.push(format!("struct {} {{", type_name));
         fixes.push(format!("    data: SomeType,"));
-        fixes.push(format!("    next: Option<Box<{}>>,  // Instead of: next: Option<{}>", type_name, type_name));
+        fixes.push(format!(
+            "    next: Option<Box<{}>>,  // Instead of: next: Option<{}>",
+            type_name, type_name
+        ));
         fixes.push(format!("}}"));
 
         // Strategy 2: Rc/Arc for shared ownership
         fixes.push(format!(""));
-        fixes.push(format!("// Strategy 2: Use Rc<T> for shared ownership (single-threaded)"));
+        fixes.push(format!(
+            "// Strategy 2: Use Rc<T> for shared ownership (single-threaded)"
+        ));
         fixes.push(format!("use std::rc::Rc;"));
         fixes.push(format!("struct {} {{", type_name));
         fixes.push(format!("    data: SomeType,"));
@@ -3425,10 +3695,15 @@ impl RecursiveTypeFixGenerator {
 
         // Strategy 3: RefCell for interior mutability (if needed)
         fixes.push(format!(""));
-        fixes.push(format!("// Strategy 3: Combine Rc<RefCell<T>> for shared mutable ownership"));
+        fixes.push(format!(
+            "// Strategy 3: Combine Rc<RefCell<T>> for shared mutable ownership"
+        ));
         fixes.push(format!("use std::rc::Rc;"));
         fixes.push(format!("use std::cell::RefCell;"));
-        fixes.push(format!("type {} = Rc<RefCell<{}Node>>;", type_name, type_name));
+        fixes.push(format!(
+            "type {} = Rc<RefCell<{}Node>>;",
+            type_name, type_name
+        ));
         fixes.push(format!("struct {}Node {{", type_name));
         fixes.push(format!("    data: SomeType,"));
         fixes.push(format!("    next: Option<{}>,", type_name));
@@ -3436,10 +3711,14 @@ impl RecursiveTypeFixGenerator {
 
         // Strategy 4: Index-based approach
         fixes.push(format!(""));
-        fixes.push(format!("// Strategy 4: Use indices instead of direct references"));
+        fixes.push(format!(
+            "// Strategy 4: Use indices instead of direct references"
+        ));
         fixes.push(format!("struct {} {{", type_name));
         fixes.push(format!("    data: SomeType,"));
-        fixes.push(format!("    next_index: Option<usize>,  // Index into a Vec"));
+        fixes.push(format!(
+            "    next_index: Option<usize>,  // Index into a Vec"
+        ));
         fixes.push(format!("}}"));
         fixes.push(format!("struct {}Container {{", type_name));
         fixes.push(format!("    nodes: Vec<{}>,", type_name));
@@ -3467,7 +3746,10 @@ impl RecursiveTypeFixGenerator {
         fixes.push(format!("    }}"));
         fixes.push(format!("    "));
         fixes.push(format!("    fn add_next(&mut self, data: SomeType) {{"));
-        fixes.push(format!("        self.next = Some(Box::new({}::new(data)));", type_name));
+        fixes.push(format!(
+            "        self.next = Some(Box::new({}::new(data)));",
+            type_name
+        ));
         fixes.push(format!("    }}"));
         fixes.push(format!("}}"));
 
@@ -3483,10 +3765,10 @@ impl ClosureCaptureLifetimeFixGenerator {
 
     /// Detects if the error is related to closure capture lifetime issues
     fn is_closure_capture_error(&self, message: &str) -> bool {
-        message.contains("E0373") ||
-        message.contains("closure may outlive the current function") ||
-        message.contains("closure may outlive") ||
-        (message.contains("closure") && message.contains("borrowed data"))
+        message.contains("E0373")
+            || message.contains("closure may outlive the current function")
+            || message.contains("closure may outlive")
+            || (message.contains("closure") && message.contains("borrowed data"))
     }
 
     /// Extracts the captured variable name from error message
@@ -3515,17 +3797,29 @@ impl ClosureCaptureLifetimeFixGenerator {
 
         // Strategy 1: Move the variable into the closure
         fixes.push(format!("// Strategy 1: Move ownership into closure"));
-        fixes.push(format!("let {}_owned = {}.clone();", variable_name, variable_name));
+        fixes.push(format!(
+            "let {}_owned = {}.clone();",
+            variable_name, variable_name
+        ));
         fixes.push(format!("move || {{"));
-        fixes.push(format!("    // Use {}_owned instead of {}", variable_name, variable_name));
+        fixes.push(format!(
+            "    // Use {}_owned instead of {}",
+            variable_name, variable_name
+        ));
         fixes.push(format!("}}"));
 
         // Strategy 2: Use Arc/Rc for shared ownership
         fixes.push(format!(""));
         fixes.push(format!("// Strategy 2: Shared ownership with Arc"));
         fixes.push(format!("use std::sync::Arc;"));
-        fixes.push(format!("let {}_arc = Arc::new({});", variable_name, variable_name));
-        fixes.push(format!("let {}_clone = Arc::clone(&{}_arc);", variable_name, variable_name));
+        fixes.push(format!(
+            "let {}_arc = Arc::new({});",
+            variable_name, variable_name
+        ));
+        fixes.push(format!(
+            "let {}_clone = Arc::clone(&{}_arc);",
+            variable_name, variable_name
+        ));
         fixes.push(format!("move || {{"));
         fixes.push(format!("    // Use {}_clone inside closure", variable_name));
         fixes.push(format!("}}"));
@@ -3533,9 +3827,15 @@ impl ClosureCaptureLifetimeFixGenerator {
         // Strategy 3: Restructure to avoid capture
         fixes.push(format!(""));
         fixes.push(format!("// Strategy 3: Extract needed data before closure"));
-        fixes.push(format!("let needed_data = extract_from_{}(&{});", variable_name, variable_name));
+        fixes.push(format!(
+            "let needed_data = extract_from_{}(&{});",
+            variable_name, variable_name
+        ));
         fixes.push(format!("move || {{"));
-        fixes.push(format!("    // Use needed_data instead of full {}", variable_name));
+        fixes.push(format!(
+            "    // Use needed_data instead of full {}",
+            variable_name
+        ));
         fixes.push(format!("}}"));
 
         // Strategy 4: Use lifetime parameters (for more advanced cases)
@@ -3543,7 +3843,9 @@ impl ClosureCaptureLifetimeFixGenerator {
             if ctx.contains("fn ") && !ctx.contains("'static") {
                 fixes.push(format!(""));
                 fixes.push(format!("// Strategy 4: Add lifetime parameters"));
-                fixes.push(format!("fn function_name<'a>(param: &'a Type) -> impl Fn() + 'a {{"));
+                fixes.push(format!(
+                    "fn function_name<'a>(param: &'a Type) -> impl Fn() + 'a {{"
+                ));
                 fixes.push(format!("    move || {{"));
                 fixes.push(format!("        // Closure now has explicit lifetime 'a"));
                 fixes.push(format!("    }}"));
@@ -3589,10 +3891,7 @@ impl RuntimePanicFixGenerator {
     /// Extracts the array access expression if it exists
     fn extract_array_access(&self, code: &str) -> Option<String> {
         // Common patterns for array access
-        let patterns = [
-            r#"(\w+)\[(\w+)\]"#,
-            r#"(\w+)\[(\d+)\]"#,
-        ];
+        let patterns = [r#"(\w+)\[(\w+)\]"#, r#"(\w+)\[(\d+)\]"#];
 
         for pattern in patterns {
             if let Ok(regex) = Regex::new(pattern) {
@@ -3610,9 +3909,7 @@ impl RuntimePanicFixGenerator {
     /// Extracts the cast expression if it exists
     fn extract_cast_expression(&self, code: &str) -> Option<String> {
         // Common patterns for casts
-        let patterns = [
-            r#"(\w+)\s+as\s+(\w+)"#,
-        ];
+        let patterns = [r#"(\w+)\s+as\s+(\w+)"#];
 
         for pattern in patterns {
             if let Ok(regex) = Regex::new(pattern) {
@@ -3634,12 +3931,10 @@ impl RuntimePanicFixGenerator {
                 // Replace explicit panic with Result::Err
                 code.replace(
                     "panic!",
-                    "return Err(std::io::Error::new(std::io::ErrorKind::Other, "
-                ).replace(
-                    ")",
-                    "))"
+                    "return Err(std::io::Error::new(std::io::ErrorKind::Other, ",
                 )
-            },
+                .replace(")", "))")
+            }
             "todo_unimplemented" => {
                 // Replace todo/unimplemented with a proper implementation stub
                 if code.contains("todo!") {
@@ -3653,7 +3948,7 @@ impl RuntimePanicFixGenerator {
                         "/* TODO: Implement this function */ return Err(std::io::Error::new(std::io::ErrorKind::Other, \"Not implemented\"))"
                     )
                 }
-            },
+            }
             "array_access" => {
                 // Add bounds check for array access
                 if let Some(array_expr) = self.extract_array_access(code) {
@@ -3671,13 +3966,16 @@ impl RuntimePanicFixGenerator {
                         // Fallback for complex expressions
                         code.replace(
                             &array_expr,
-                            &format!("/* WARNING: Check array bounds before access */ {}", array_expr)
+                            &format!(
+                                "/* WARNING: Check array bounds before access */ {}",
+                                array_expr
+                            ),
                         )
                     }
                 } else {
                     code.to_string()
                 }
-            },
+            }
             "unsafe_cast" => {
                 // Add safety check for casts
                 if let Some(cast_expr) = self.extract_cast_expression(code) {
@@ -3686,8 +3984,11 @@ impl RuntimePanicFixGenerator {
                         let value = parts[0];
                         let target_type = parts[1];
 
-                        if target_type.contains("i32") || target_type.contains("i64") ||
-                           target_type.contains("u32") || target_type.contains("u64") {
+                        if target_type.contains("i32")
+                            || target_type.contains("i64")
+                            || target_type.contains("u32")
+                            || target_type.contains("u64")
+                        {
                             code.replace(
                                 &cast_expr,
                                 &format!("match {}.try_into() {{ Ok(v) => v, Err(_) => panic!(\"Cast failed\") }}", value)
@@ -3696,7 +3997,10 @@ impl RuntimePanicFixGenerator {
                             // Generic warning for other casts
                             code.replace(
                                 &cast_expr,
-                                &format!("/* WARNING: This cast may panic at runtime */ {}", cast_expr)
+                                &format!(
+                                    "/* WARNING: This cast may panic at runtime */ {}",
+                                    cast_expr
+                                ),
                             )
                         }
                     } else {
@@ -3705,7 +4009,7 @@ impl RuntimePanicFixGenerator {
                 } else {
                     code.to_string()
                 }
-            },
+            }
             _ => code.to_string(),
         }
     }
@@ -3721,25 +4025,29 @@ impl RuntimePanicFixGenerator {
 
         // Create explanation based on panic type
         let explanation = match panic_type {
-            "explicit_panic" =>
+            "explicit_panic" => {
                 "Explicit panic! calls cause the program to terminate immediately.\n\
                  Consider using Result or Option to handle errors gracefully.\n\
-                 This fix replaces the panic with a Result::Err return.".to_string(),
-            "todo_unimplemented" =>
-                "todo! and unimplemented! macros cause panics when executed.\n\
+                 This fix replaces the panic with a Result::Err return."
+                    .to_string()
+            }
+            "todo_unimplemented" => "todo! and unimplemented! macros cause panics when executed.\n\
                  These are meant as temporary placeholders during development.\n\
-                 This fix replaces them with a proper error handling stub.".to_string(),
-            "array_access" =>
-                "Array access with [] will panic if the index is out of bounds.\n\
+                 This fix replaces them with a proper error handling stub."
+                .to_string(),
+            "array_access" => "Array access with [] will panic if the index is out of bounds.\n\
                  Always check that the index is within the array's length.\n\
-                 This fix adds a bounds check before accessing the array.".to_string(),
-            "unsafe_cast" =>
+                 This fix adds a bounds check before accessing the array."
+                .to_string(),
+            "unsafe_cast" => {
                 "Type casts with 'as' can panic if the value doesn't fit in the target type.\n\
                  Consider using TryFrom/TryInto for safe conversions.\n\
-                 This fix adds a safety check for the cast operation.".to_string(),
-            _ =>
-                "This code contains patterns that might cause runtime panics.\n\
-                 The fix adds appropriate error handling to prevent crashes.".to_string(),
+                 This fix adds a safety check for the cast operation."
+                    .to_string()
+            }
+            _ => "This code contains patterns that might cause runtime panics.\n\
+                 The fix adds appropriate error handling to prevent crashes."
+                .to_string(),
         };
 
         // Create a diff showing the change
@@ -3804,9 +4112,7 @@ impl DivisionByZeroFixGenerator {
     /// Extracts the denominator variable name if it exists
     fn extract_denominator_variable(&self, code: &str) -> Option<String> {
         // Common patterns for division with variables
-        let patterns = [
-            r#"\w+\s*/\s*(\w+)"#,
-        ];
+        let patterns = [r#"\w+\s*/\s*(\w+)"#];
 
         for pattern in patterns {
             if let Ok(regex) = Regex::new(pattern) {
@@ -3822,33 +4128,47 @@ impl DivisionByZeroFixGenerator {
     }
 
     /// Generates a fixed code with division by zero check
-    fn generate_fixed_code(&self, code: &str, division_expr: &str, denominator: Option<&str>) -> String {
+    fn generate_fixed_code(
+        &self,
+        code: &str,
+        division_expr: &str,
+        denominator: Option<&str>,
+    ) -> String {
         if let Some(denom_var) = denominator {
             // If we have a variable denominator, add a check
             if code.contains("if") && code.contains(denom_var) && code.contains("== 0") {
                 // Already has a check, but might be dividing anyway
                 code.replace(
                     division_expr,
-                    &format!("if {} != 0 {{ {} }} else {{ panic!(\"Division by zero\") }}", denom_var, division_expr)
+                    &format!(
+                        "if {} != 0 {{ {} }} else {{ panic!(\"Division by zero\") }}",
+                        denom_var, division_expr
+                    ),
                 )
             } else {
                 // Add a check before division
                 code.replace(
                     division_expr,
-                    &format!("if {} != 0 {{ {} }} else {{ panic!(\"Division by zero\") }}", denom_var, division_expr)
+                    &format!(
+                        "if {} != 0 {{ {} }} else {{ panic!(\"Division by zero\") }}",
+                        denom_var, division_expr
+                    ),
                 )
             }
         } else if division_expr.contains("/ 0") || division_expr.contains("/0") {
             // Direct division by zero, replace with a comment
             code.replace(
                 division_expr,
-                "/* ERROR: Division by zero will cause a panic */ panic!(\"Division by zero\")"
+                "/* ERROR: Division by zero will cause a panic */ panic!(\"Division by zero\")",
             )
         } else {
             // Generic case, add a check
             code.replace(
                 division_expr,
-                &format!("/* WARNING: Check for division by zero */ {}", division_expr)
+                &format!(
+                    "/* WARNING: Check for division by zero */ {}",
+                    division_expr
+                ),
             )
         }
     }
@@ -3898,9 +4218,7 @@ impl MissingOkErrFixGenerator {
     /// Extracts the variable name being matched on
     fn extract_match_variable(&self, code: &str) -> Option<String> {
         // Common patterns for match expressions
-        let patterns = [
-            r#"match\s+(\w+)\s*\{"#,
-        ];
+        let patterns = [r#"match\s+(\w+)\s*\{"#];
 
         for pattern in patterns {
             if let Ok(regex) = Regex::new(pattern) {
@@ -3918,18 +4236,20 @@ impl MissingOkErrFixGenerator {
     /// Determines if the match is on a Result or Option type
     fn determine_match_type(&self, code: &str, var_name: &str) -> Option<&'static str> {
         // Check for Result type hints
-        if code.contains(&format!("{}: Result<", var_name)) ||
-           code.contains("-> Result<") ||
-           code.contains("Ok(") ||
-           code.contains("Err(") {
+        if code.contains(&format!("{}: Result<", var_name))
+            || code.contains("-> Result<")
+            || code.contains("Ok(")
+            || code.contains("Err(")
+        {
             return Some("Result");
         }
 
         // Check for Option type hints
-        if code.contains(&format!("{}: Option<", var_name)) ||
-           code.contains("-> Option<") ||
-           code.contains("Some(") ||
-           code.contains("None") {
+        if code.contains(&format!("{}: Option<", var_name))
+            || code.contains("-> Option<")
+            || code.contains("Some(")
+            || code.contains("None")
+        {
             return Some("Option");
         }
 
@@ -3960,7 +4280,8 @@ impl MissingOkErrFixGenerator {
                     var_name
                 )
             }
-        } else { // Option
+        } else {
+            // Option
             // Check which arm is missing
             if code.contains("Some(") && !code.contains("None") {
                 // Add None arm
@@ -4025,9 +4346,7 @@ impl QuestionMarkPropagationFixGenerator {
     /// Extracts the function signature from the code
     fn extract_function_signature(&self, code: &str) -> Option<String> {
         // Common patterns for function signatures
-        let patterns = [
-            r#"fn\s+(\w+)\s*\([^)]*\)\s*(?:->\s*([^{]+))?\s*\{"#,
-        ];
+        let patterns = [r#"fn\s+(\w+)\s*\([^)]*\)\s*(?:->\s*([^{]+))?\s*\{"#];
 
         for pattern in patterns {
             if let Ok(regex) = Regex::new(pattern) {
@@ -4045,9 +4364,7 @@ impl QuestionMarkPropagationFixGenerator {
     /// Extracts the function name from the code
     fn extract_function_name(&self, code: &str) -> Option<String> {
         // Common patterns for function names
-        let patterns = [
-            r#"fn\s+(\w+)"#,
-        ];
+        let patterns = [r#"fn\s+(\w+)"#];
 
         for pattern in patterns {
             if let Ok(regex) = Regex::new(pattern) {
@@ -4065,15 +4382,17 @@ impl QuestionMarkPropagationFixGenerator {
     /// Determines the return type needed based on question mark usage
     fn determine_needed_return_type(&self, code: &str) -> &'static str {
         // Check if the code contains Result or Option unwrapping
-        if code.contains("Result<") ||
-           code.contains("std::result::Result") ||
-           code.contains("std::fs::File") ||
-           code.contains("std::io::") {
+        if code.contains("Result<")
+            || code.contains("std::result::Result")
+            || code.contains("std::fs::File")
+            || code.contains("std::io::")
+        {
             return "Result<T, E>";
-        } else if code.contains("Option<") ||
-                code.contains("std::option::Option") ||
-                code.contains(".next()") ||
-                code.contains(".get(") {
+        } else if code.contains("Option<")
+            || code.contains("std::option::Option")
+            || code.contains(".next()")
+            || code.contains(".get(")
+        {
             return "Option<T>";
         }
 
@@ -4087,7 +4406,8 @@ impl QuestionMarkPropagationFixGenerator {
         if signature.contains("->") {
             // Replace the existing return type
             let re = Regex::new(r#"->\s*([^{]+)"#).unwrap();
-            re.replace(signature, format!("-> {}", return_type).as_str()).to_string()
+            re.replace(signature, format!("-> {}", return_type).as_str())
+                .to_string()
         } else {
             // Add a return type
             signature.replace("{", &format!(" -> {} {{", return_type))
@@ -4131,11 +4451,11 @@ impl UnsafeUnwrapFixGenerator {
 
     /// Detects if the code contains unsafe unwrap() or expect() calls
     fn has_unsafe_unwrap(&self, code: &str) -> bool {
-        code.contains(".unwrap()") ||
-        code.contains(".expect(") ||
-        code.contains(".unwrap_or_else(") ||
-        code.contains(".unwrap_or(") ||
-        code.contains(".unwrap_unchecked(")
+        code.contains(".unwrap()")
+            || code.contains(".expect(")
+            || code.contains(".unwrap_or_else(")
+            || code.contains(".unwrap_or(")
+            || code.contains(".unwrap_unchecked(")
     }
 
     /// Extracts the variable name being unwrapped
@@ -4165,29 +4485,31 @@ impl UnsafeUnwrapFixGenerator {
     /// Determines if the unwrap is on a Result or Option type
     fn is_result_or_option(&self, code: &str, var_name: &str) -> Option<&'static str> {
         // Check for Result type hints
-        if code.contains(&format!("{}: Result<", var_name)) ||
-           code.contains(&format!("-> Result<")) {
+        if code.contains(&format!("{}: Result<", var_name)) || code.contains(&format!("-> Result<"))
+        {
             return Some("Result");
         }
 
         // Check for Option type hints
-        if code.contains(&format!("{}: Option<", var_name)) ||
-           code.contains(&format!("-> Option<")) {
+        if code.contains(&format!("{}: Option<", var_name)) || code.contains(&format!("-> Option<"))
+        {
             return Some("Option");
         }
 
         // Check for common Result-returning functions
-        if code.contains(&format!("{} = std::fs::File::open", var_name)) ||
-           code.contains(&format!("{} = File::open", var_name)) ||
-           code.contains(&format!("{} = read_to_string", var_name)) ||
-           code.contains(&format!("{} = parse::<", var_name)) {
+        if code.contains(&format!("{} = std::fs::File::open", var_name))
+            || code.contains(&format!("{} = File::open", var_name))
+            || code.contains(&format!("{} = read_to_string", var_name))
+            || code.contains(&format!("{} = parse::<", var_name))
+        {
             return Some("Result");
         }
 
         // Check for common Option-returning functions
-        if code.contains(&format!("{} = iter().next()", var_name)) ||
-           code.contains(&format!("{} = get(", var_name)) ||
-           code.contains(&format!("{} = find(", var_name)) {
+        if code.contains(&format!("{} = iter().next()", var_name))
+            || code.contains(&format!("{} = get(", var_name))
+            || code.contains(&format!("{} = find(", var_name))
+        {
             return Some("Option");
         }
 
@@ -4208,7 +4530,8 @@ impl UnsafeUnwrapFixGenerator {
         } else if code.contains(&expect_pattern1) {
             // Extract the expect message
             let re = Regex::new(&format!(r#"{}.expect\(['"](.*?)['"]"#, var_name)).unwrap();
-            let message = re.captures(code)
+            let message = re
+                .captures(code)
                 .and_then(|cap| cap.get(1))
                 .map_or("Error occurred", |m| m.as_str());
 
@@ -4241,7 +4564,8 @@ impl UnsafeUnwrapFixGenerator {
         } else if code.contains(&expect_pattern1) {
             // Extract the expect message
             let re = Regex::new(&format!(r#"{}.expect\(['"](.*?)['"]"#, var_name)).unwrap();
-            let message = re.captures(code)
+            let message = re
+                .captures(code)
                 .and_then(|cap| cap.get(1))
                 .map_or("Value was None", |m| m.as_str());
 
@@ -4298,11 +4622,11 @@ impl InvalidArgumentCountFixGenerator {
 
     /// Detects if the error is related to invalid function argument count (E0061)
     fn is_invalid_argument_count_error(&self, message: &str) -> bool {
-        message.contains("E0061") ||
-        message.contains("this function takes") ||
-        message.contains("expected") && message.contains("argument") ||
-        message.contains("wrong number of arguments") ||
-        message.contains("incorrect number of arguments")
+        message.contains("E0061")
+            || message.contains("this function takes")
+            || message.contains("expected") && message.contains("argument")
+            || message.contains("wrong number of arguments")
+            || message.contains("incorrect number of arguments")
     }
 
     /// Extracts the function name from the error message
@@ -4339,10 +4663,12 @@ impl InvalidArgumentCountFixGenerator {
         for pattern in patterns {
             if let Ok(regex) = Regex::new(pattern) {
                 if let Some(captures) = regex.captures(message) {
-                    if let (Some(expected_match), Some(actual_match)) = (captures.get(1), captures.get(2)) {
+                    if let (Some(expected_match), Some(actual_match)) =
+                        (captures.get(1), captures.get(2))
+                    {
                         if let (Ok(expected), Ok(actual)) = (
                             expected_match.as_str().parse::<usize>(),
-                            actual_match.as_str().parse::<usize>()
+                            actual_match.as_str().parse::<usize>(),
                         ) {
                             return Some((expected, actual));
                         }
@@ -4355,7 +4681,11 @@ impl InvalidArgumentCountFixGenerator {
     }
 
     /// Generates fix suggestions for invalid function argument count
-    fn generate_fix_suggestions(&self, function_name: Option<&str>, arg_counts: Option<(usize, usize)>) -> Vec<String> {
+    fn generate_fix_suggestions(
+        &self,
+        function_name: Option<&str>,
+        arg_counts: Option<(usize, usize)>,
+    ) -> Vec<String> {
         let mut suggestions = Vec::new();
 
         // Add function-specific suggestions if we have the function name
@@ -4368,7 +4698,10 @@ impl InvalidArgumentCountFixGenerator {
         // Add argument count specific suggestions
         if let Some((expected, actual)) = arg_counts {
             if actual < expected {
-                suggestions.push(format!("// 1. Add the missing {} argument(s)", expected - actual));
+                suggestions.push(format!(
+                    "// 1. Add the missing {} argument(s)",
+                    expected - actual
+                ));
 
                 // Example with placeholder arguments
                 let mut args = Vec::new();
@@ -4386,7 +4719,10 @@ impl InvalidArgumentCountFixGenerator {
                     suggestions.push(format!("//    function_name({})", args.join(", ")));
                 }
             } else if actual > expected {
-                suggestions.push(format!("// 1. Remove the extra {} argument(s)", actual - expected));
+                suggestions.push(format!(
+                    "// 1. Remove the extra {} argument(s)",
+                    actual - expected
+                ));
 
                 // Example with correct number of arguments
                 let mut args = Vec::new();
@@ -4408,15 +4744,22 @@ impl InvalidArgumentCountFixGenerator {
             }
         } else {
             // Generic suggestions when we don't have argument counts
-            suggestions.push("// 1. Check the function signature to determine the correct number of arguments".to_string());
-            suggestions.push("//    - Look at the function definition or documentation".to_string());
+            suggestions.push(
+                "// 1. Check the function signature to determine the correct number of arguments"
+                    .to_string(),
+            );
+            suggestions
+                .push("//    - Look at the function definition or documentation".to_string());
             suggestions.push("// 2. Make sure you're calling the right function".to_string());
-            suggestions.push("//    - Similar functions might have different parameter lists".to_string());
+            suggestions
+                .push("//    - Similar functions might have different parameter lists".to_string());
         }
 
         // Add general suggestions
-        suggestions.push("// 3. Consider using named arguments with a struct for clarity".to_string());
-        suggestions.push("//    - Create a struct with named fields for the parameters".to_string());
+        suggestions
+            .push("// 3. Consider using named arguments with a struct for clarity".to_string());
+        suggestions
+            .push("//    - Create a struct with named fields for the parameters".to_string());
         suggestions.push("//    - Pass an instance of the struct to the function".to_string());
 
         suggestions
@@ -4431,11 +4774,11 @@ impl UnstableFeatureFixGenerator {
 
     /// Detects if the error is related to using an unstable feature (E0658)
     fn is_unstable_feature_error(&self, message: &str) -> bool {
-        message.contains("E0658") ||
-        message.contains("use of unstable feature") ||
-        message.contains("unstable feature") ||
-        message.contains("is unstable") ||
-        message.contains("nightly-only")
+        message.contains("E0658")
+            || message.contains("use of unstable feature")
+            || message.contains("unstable feature")
+            || message.contains("is unstable")
+            || message.contains("nightly-only")
     }
 
     /// Extracts the feature name from the error message
@@ -4470,7 +4813,8 @@ impl UnstableFeatureFixGenerator {
         suggestions.push("//    - rustup override set nightly (for this project only)".to_string());
 
         // Add feature flag suggestions
-        suggestions.push("// 2. Enable the feature in your crate root (lib.rs or main.rs)".to_string());
+        suggestions
+            .push("// 2. Enable the feature in your crate root (lib.rs or main.rs)".to_string());
 
         if let Some(feature) = feature_name {
             suggestions.push(format!("//    - #![feature({})]", feature));
@@ -4480,27 +4824,41 @@ impl UnstableFeatureFixGenerator {
 
         // Add stable alternatives
         suggestions.push("// 3. Look for stable alternatives".to_string());
-        suggestions.push("//    - Check the Rust documentation for stable alternatives".to_string());
-        suggestions.push("//    - Consider using a crate that provides similar functionality".to_string());
+        suggestions
+            .push("//    - Check the Rust documentation for stable alternatives".to_string());
+        suggestions
+            .push("//    - Consider using a crate that provides similar functionality".to_string());
 
         // Add specific suggestions for common unstable features
         if let Some(feature) = feature_name {
             match feature {
                 "try_trait" => {
-                    suggestions.push("// 4. For 'try_trait', consider using match or if let on Result/Option".to_string());
-                    suggestions.push("//    - match result { Ok(v) => v, Err(e) => return Err(e) }".to_string());
-                },
+                    suggestions.push(
+                        "// 4. For 'try_trait', consider using match or if let on Result/Option"
+                            .to_string(),
+                    );
+                    suggestions.push(
+                        "//    - match result { Ok(v) => v, Err(e) => return Err(e) }".to_string(),
+                    );
+                }
                 "async_closure" => {
-                    suggestions.push("// 4. For 'async_closure', use a regular closure with async block".to_string());
+                    suggestions.push(
+                        "// 4. For 'async_closure', use a regular closure with async block"
+                            .to_string(),
+                    );
                     suggestions.push("//    - |x| async move { /* async code */ }".to_string());
-                },
+                }
                 "box_syntax" => {
                     suggestions.push("// 4. For 'box_syntax', use Box::new() instead".to_string());
                     suggestions.push("//    - Box::new(value) instead of box value".to_string());
-                },
+                }
                 _ => {
-                    suggestions.push(format!("// 4. For '{}', check the Rust Unstable Book", feature));
-                    suggestions.push("//    - https://doc.rust-lang.org/unstable-book/".to_string());
+                    suggestions.push(format!(
+                        "// 4. For '{}', check the Rust Unstable Book",
+                        feature
+                    ));
+                    suggestions
+                        .push("//    - https://doc.rust-lang.org/unstable-book/".to_string());
                 }
             }
         }
@@ -4517,10 +4875,10 @@ impl ReturnLocalReferenceFixGenerator {
 
     /// Detects if the error is related to returning a local reference (E0515)
     fn is_return_local_reference_error(&self, message: &str) -> bool {
-        message.contains("E0515") ||
-        message.contains("returns a reference to data owned by the current function") ||
-        message.contains("returns a value referencing data owned by the current function") ||
-        message.contains("returns a reference to a local value")
+        message.contains("E0515")
+            || message.contains("returns a reference to data owned by the current function")
+            || message.contains("returns a value referencing data owned by the current function")
+            || message.contains("returns a reference to a local value")
     }
 
     /// Extracts the variable name from the error message
@@ -4552,24 +4910,43 @@ impl ReturnLocalReferenceFixGenerator {
         // Generic suggestions
         suggestions.push("// 1. Return an owned value instead of a reference".to_string());
         suggestions.push("//    - Use Clone: return value.clone()".to_string());
-        suggestions.push("//    - Use Copy: return *value (if the type implements Copy)".to_string());
-        suggestions.push("//    - Use owned types: String instead of &str, Vec<T> instead of &[T]".to_string());
+        suggestions
+            .push("//    - Use Copy: return *value (if the type implements Copy)".to_string());
+        suggestions.push(
+            "//    - Use owned types: String instead of &str, Vec<T> instead of &[T]".to_string(),
+        );
 
         // Add lifetime-based suggestions
-        suggestions.push("// 2. Change the function signature to take input with the same lifetime".to_string());
-        suggestions.push("//    - fn function<'a>(input: &'a Type) -> &'a Type { ... }".to_string());
+        suggestions.push(
+            "// 2. Change the function signature to take input with the same lifetime".to_string(),
+        );
+        suggestions
+            .push("//    - fn function<'a>(input: &'a Type) -> &'a Type { ... }".to_string());
 
         // Add specific suggestions if we have the variable name
         if let Some(var) = variable_name {
             suggestions.push(format!("// 3. For this specific case with `{}`:", var));
-            suggestions.push(format!("//    - If `{}` is a String: return {}.clone()", var, var));
-            suggestions.push(format!("//    - If `{}` is a reference already: return {}", var, var));
-            suggestions.push(format!("//    - If `{}` is a primitive type: return *{} (if Copy)", var, var));
+            suggestions.push(format!(
+                "//    - If `{}` is a String: return {}.clone()",
+                var, var
+            ));
+            suggestions.push(format!(
+                "//    - If `{}` is a reference already: return {}",
+                var, var
+            ));
+            suggestions.push(format!(
+                "//    - If `{}` is a primitive type: return *{} (if Copy)",
+                var, var
+            ));
         }
 
         // Add static lifetime suggestion
-        suggestions.push("// 4. Use 'static lifetime (only if the data truly lives for the entire program)".to_string());
-        suggestions.push("//    - const STATIC_VALUE: &'static str = \"static string\";".to_string());
+        suggestions.push(
+            "// 4. Use 'static lifetime (only if the data truly lives for the entire program)"
+                .to_string(),
+        );
+        suggestions
+            .push("//    - const STATIC_VALUE: &'static str = \"static string\";".to_string());
         suggestions.push("//    - return STATIC_VALUE;".to_string());
 
         suggestions
@@ -4584,20 +4961,20 @@ impl NetworkTlsFixGenerator {
 
     /// Detects if the error is related to a TLS certificate validation issue
     fn is_tls_error(&self, message: &str) -> bool {
-        (message.contains("TLS") ||
-         message.contains("SSL") ||
-         message.contains("certificate") ||
-         message.contains("cert") ||
-         message.contains("handshake")) &&
-        (message.contains("validation") ||
-         message.contains("verify") ||
-         message.contains("invalid") ||
-         message.contains("expired") ||
-         message.contains("self-signed") ||
-         message.contains("untrusted") ||
-         message.contains("mismatch") ||
-         message.contains("hostname") ||
-         message.contains("common name"))
+        (message.contains("TLS")
+            || message.contains("SSL")
+            || message.contains("certificate")
+            || message.contains("cert")
+            || message.contains("handshake"))
+            && (message.contains("validation")
+                || message.contains("verify")
+                || message.contains("invalid")
+                || message.contains("expired")
+                || message.contains("self-signed")
+                || message.contains("untrusted")
+                || message.contains("mismatch")
+                || message.contains("hostname")
+                || message.contains("common name"))
     }
 
     /// Extracts the hostname from a TLS error message
@@ -4629,12 +5006,18 @@ impl NetworkTlsFixGenerator {
 
         if let Some(host) = hostname {
             // OpenSSL command to check certificate
-            let openssl_cmd = format!("openssl s_client -connect {}:443 -servername {}", host, host);
+            let openssl_cmd = format!(
+                "openssl s_client -connect {}:443 -servername {}",
+                host, host
+            );
             let openssl_explanation = format!("Check TLS certificate for {}", host);
             diagnostics.push((openssl_cmd, openssl_explanation));
 
             // Check certificate expiration
-            let expiry_cmd = format!("echo | openssl s_client -connect {}:443 2>/dev/null | openssl x509 -noout -dates", host);
+            let expiry_cmd = format!(
+                "echo | openssl s_client -connect {}:443 2>/dev/null | openssl x509 -noout -dates",
+                host
+            );
             let expiry_explanation = format!("Check certificate expiration dates for {}", host);
             diagnostics.push((expiry_cmd, expiry_explanation));
 
@@ -4644,15 +5027,25 @@ impl NetworkTlsFixGenerator {
             diagnostics.push((chain_cmd, chain_explanation));
         } else {
             // Generic TLS diagnostics
-            diagnostics.push(("openssl version".to_string(), "Check OpenSSL version".to_string()));
-            diagnostics.push(("ls -la /etc/ssl/certs".to_string(), "List system certificates".to_string()));
+            diagnostics.push((
+                "openssl version".to_string(),
+                "Check OpenSSL version".to_string(),
+            ));
+            diagnostics.push((
+                "ls -la /etc/ssl/certs".to_string(),
+                "List system certificates".to_string(),
+            ));
         }
 
         diagnostics
     }
 
     /// Generates fix suggestions for a TLS certificate issue
-    fn generate_tls_fix(&self, message: &str, hostname: Option<&str>) -> Vec<(String, String, String)> {
+    fn generate_tls_fix(
+        &self,
+        message: &str,
+        hostname: Option<&str>,
+    ) -> Vec<(String, String, String)> {
         let mut fixes = Vec::new();
 
         // Self-signed certificate
@@ -4671,7 +5064,6 @@ impl NetworkTlsFixGenerator {
                 ));
             }
         }
-
         // Expired certificate
         else if message.contains("expired") {
             if let Some(host) = hostname {
@@ -4688,9 +5080,11 @@ impl NetworkTlsFixGenerator {
                 ));
             }
         }
-
         // Hostname mismatch
-        else if message.contains("mismatch") || message.contains("hostname") || message.contains("common name") {
+        else if message.contains("mismatch")
+            || message.contains("hostname")
+            || message.contains("common name")
+        {
             if let Some(host) = hostname {
                 fixes.push((
                     format!("Hostname mismatch for {}", host),
@@ -4705,7 +5099,6 @@ impl NetworkTlsFixGenerator {
                 ));
             }
         }
-
         // Generic TLS issue
         else {
             if let Some(host) = hostname {
@@ -4732,7 +5125,7 @@ impl FixGenerator for NetworkConnectionFixGenerator {
         &self,
         error: &DecrustError,
         params: &ExtractedParameters,
-        _source_code_context: Option<&str>
+        _source_code_context: Option<&str>,
     ) -> Option<Autocorrection> {
         // Extract error message from error or parameters
         let message = match error {
@@ -4742,14 +5135,14 @@ impl FixGenerator for NetworkConnectionFixGenerator {
                     msg.push_str(&format!(" for URL: {}", u));
                 }
                 msg
-            },
+            }
             _ => {
                 let msg = params.values.get("message")?;
                 if !self.is_connection_error(msg) && !self.is_dns_error(msg) {
                     return None;
                 }
                 msg.clone()
-            },
+            }
         };
 
         // Extract host and port from error message
@@ -4800,7 +5193,7 @@ impl FixGenerator for NetworkTlsFixGenerator {
         &self,
         error: &DecrustError,
         params: &ExtractedParameters,
-        _source_code_context: Option<&str>
+        _source_code_context: Option<&str>,
     ) -> Option<Autocorrection> {
         // Extract error message from error or parameters
         let message = match error {
@@ -4814,14 +5207,14 @@ impl FixGenerator for NetworkTlsFixGenerator {
                     msg.push_str(&format!(" for URL: {}", u));
                 }
                 msg
-            },
+            }
             _ => {
                 let msg = params.values.get("message")?;
                 if !self.is_tls_error(msg) {
                     return None;
                 }
                 msg.clone()
-            },
+            }
         };
 
         // Extract hostname from error message
@@ -4871,7 +5264,7 @@ impl FixGenerator for ReturnLocalReferenceFixGenerator {
         &self,
         _error: &DecrustError,
         params: &ExtractedParameters,
-        source_code_context: Option<&str>
+        source_code_context: Option<&str>,
     ) -> Option<Autocorrection> {
         // Extract message from parameters
         let message = params.values.get("message")?;
@@ -4888,11 +5281,15 @@ impl FixGenerator for ReturnLocalReferenceFixGenerator {
         let suggestions = self.generate_fix_suggestions(variable_name.as_deref());
 
         // Extract file path and line number
-        let file_path = params.values.get("file_path")
+        let file_path = params
+            .values
+            .get("file_path")
             .cloned()
             .unwrap_or_else(|| "unknown_file.rs".to_string());
 
-        let line = params.values.get("line")
+        let line = params
+            .values
+            .get("line")
             .and_then(|l| l.parse::<usize>().ok())
             .unwrap_or(1);
 
@@ -4938,7 +5335,7 @@ impl FixGenerator for UnstableFeatureFixGenerator {
         &self,
         _error: &DecrustError,
         params: &ExtractedParameters,
-        source_code_context: Option<&str>
+        source_code_context: Option<&str>,
     ) -> Option<Autocorrection> {
         // Extract message from parameters
         let message = params.values.get("message")?;
@@ -4955,11 +5352,15 @@ impl FixGenerator for UnstableFeatureFixGenerator {
         let suggestions = self.generate_fix_suggestions(feature_name.as_deref());
 
         // Extract file path and line number
-        let file_path = params.values.get("file_path")
+        let file_path = params
+            .values
+            .get("file_path")
             .cloned()
             .unwrap_or_else(|| "unknown_file.rs".to_string());
 
-        let line = params.values.get("line")
+        let line = params
+            .values
+            .get("line")
             .and_then(|l| l.parse::<usize>().ok())
             .unwrap_or(1);
 
@@ -4978,7 +5379,8 @@ impl FixGenerator for UnstableFeatureFixGenerator {
         } else if let Some(feature) = &feature_name {
             format!("// Using unstable feature\nfn example() {{\n    // Code using the unstable feature '{}'\n}}", feature)
         } else {
-            "// Using unstable feature\nfn example() {\n    // Code using an unstable feature\n}".to_string()
+            "// Using unstable feature\nfn example() {\n    // Code using an unstable feature\n}"
+                .to_string()
         };
 
         // Generate commands to apply
@@ -5017,7 +5419,7 @@ impl FixGenerator for InvalidArgumentCountFixGenerator {
         &self,
         _error: &DecrustError,
         params: &ExtractedParameters,
-        source_code_context: Option<&str>
+        source_code_context: Option<&str>,
     ) -> Option<Autocorrection> {
         // Extract message from parameters
         let message = params.values.get("message")?;
@@ -5035,11 +5437,15 @@ impl FixGenerator for InvalidArgumentCountFixGenerator {
         let suggestions = self.generate_fix_suggestions(function_name.as_deref(), arg_counts);
 
         // Extract file path and line number
-        let file_path = params.values.get("file_path")
+        let file_path = params
+            .values
+            .get("file_path")
             .cloned()
             .unwrap_or_else(|| "unknown_file.rs".to_string());
 
-        let line = params.values.get("line")
+        let line = params
+            .values
+            .get("line")
             .and_then(|l| l.parse::<usize>().ok())
             .unwrap_or(1);
 
@@ -5118,7 +5524,7 @@ impl FixGenerator for UnsafeUnwrapFixGenerator {
         &self,
         _error: &DecrustError,
         _params: &ExtractedParameters,
-        source_code_context: Option<&str>
+        source_code_context: Option<&str>,
     ) -> Option<Autocorrection> {
         // We need source code context to analyze unwrap usage
         let code = source_code_context?;
@@ -5132,7 +5538,8 @@ impl FixGenerator for UnsafeUnwrapFixGenerator {
 
         // Generate autocorrection
         Some(Autocorrection {
-            description: "Replace unsafe unwrap() or expect() with explicit error handling".to_string(),
+            description: "Replace unsafe unwrap() or expect() with explicit error handling"
+                .to_string(),
             fix_type: FixType::TextReplacement,
             confidence: 0.8,
             details: Some(FixDetails::SuggestCodeChange {
@@ -5157,7 +5564,7 @@ impl FixGenerator for QuestionMarkPropagationFixGenerator {
         &self,
         _error: &DecrustError,
         _params: &ExtractedParameters,
-        source_code_context: Option<&str>
+        source_code_context: Option<&str>,
     ) -> Option<Autocorrection> {
         // We need source code context to analyze question mark usage
         let code = source_code_context?;
@@ -5171,7 +5578,9 @@ impl FixGenerator for QuestionMarkPropagationFixGenerator {
 
         // Generate autocorrection
         Some(Autocorrection {
-            description: "Fix question mark operator usage in function without Result/Option return type".to_string(),
+            description:
+                "Fix question mark operator usage in function without Result/Option return type"
+                    .to_string(),
             fix_type: FixType::TextReplacement,
             confidence: 0.9,
             details: Some(FixDetails::SuggestCodeChange {
@@ -5196,7 +5605,7 @@ impl FixGenerator for MissingOkErrFixGenerator {
         &self,
         _error: &DecrustError,
         _params: &ExtractedParameters,
-        source_code_context: Option<&str>
+        source_code_context: Option<&str>,
     ) -> Option<Autocorrection> {
         // We need source code context to analyze match expressions
         let code = source_code_context?;
@@ -5235,7 +5644,7 @@ impl FixGenerator for DivisionByZeroFixGenerator {
         &self,
         _error: &DecrustError,
         _params: &ExtractedParameters,
-        source_code_context: Option<&str>
+        source_code_context: Option<&str>,
     ) -> Option<Autocorrection> {
         // We need source code context to analyze division expressions
         let code = source_code_context?;
@@ -5274,7 +5683,7 @@ impl FixGenerator for RuntimePanicFixGenerator {
         &self,
         _error: &DecrustError,
         _params: &ExtractedParameters,
-        source_code_context: Option<&str>
+        source_code_context: Option<&str>,
     ) -> Option<Autocorrection> {
         // We need source code context to analyze panic patterns
         let code = source_code_context?;
@@ -5313,7 +5722,7 @@ impl FixGenerator for ClosureCaptureLifetimeFixGenerator {
         &self,
         _error: &DecrustError,
         params: &ExtractedParameters,
-        source_code_context: Option<&str>
+        source_code_context: Option<&str>,
     ) -> Option<Autocorrection> {
         let message = params.values.get("message")?;
 
@@ -5321,14 +5730,19 @@ impl FixGenerator for ClosureCaptureLifetimeFixGenerator {
             return None;
         }
 
-        let variable_name = self.extract_captured_variable(message)
+        let variable_name = self
+            .extract_captured_variable(message)
             .unwrap_or_else(|| "captured_var".to_string());
 
-        let file_path = params.values.get("file_path")
+        let file_path = params
+            .values
+            .get("file_path")
             .cloned()
             .unwrap_or_else(|| "src/main.rs".to_string());
 
-        let line = params.values.get("line")
+        let line = params
+            .values
+            .get("line")
             .and_then(|l| l.parse::<usize>().ok())
             .unwrap_or(1);
 
@@ -5373,7 +5787,7 @@ impl FixGenerator for RecursiveTypeFixGenerator {
         &self,
         _error: &DecrustError,
         params: &ExtractedParameters,
-        source_code_context: Option<&str>
+        source_code_context: Option<&str>,
     ) -> Option<Autocorrection> {
         let message = params.values.get("message")?;
 
@@ -5381,14 +5795,19 @@ impl FixGenerator for RecursiveTypeFixGenerator {
             return None;
         }
 
-        let type_name = self.extract_type_name(message)
+        let type_name = self
+            .extract_type_name(message)
             .unwrap_or_else(|| "RecursiveType".to_string());
 
-        let file_path = params.values.get("file_path")
+        let file_path = params
+            .values
+            .get("file_path")
             .cloned()
             .unwrap_or_else(|| "src/main.rs".to_string());
 
-        let line = params.values.get("line")
+        let line = params
+            .values
+            .get("line")
             .and_then(|l| l.parse::<usize>().ok())
             .unwrap_or(1);
 
@@ -5433,7 +5852,7 @@ impl FixGenerator for UnusedMutFixGenerator {
         &self,
         _error: &DecrustError,
         _params: &ExtractedParameters,
-        source_code_context: Option<&str>
+        source_code_context: Option<&str>,
     ) -> Option<Autocorrection> {
         // We need source code context to analyze mut usage
         let code = source_code_context?;
@@ -5479,14 +5898,17 @@ impl FixGenerator for YamlParseFixGenerator {
         &self,
         error: &DecrustError,
         params: &ExtractedParameters,
-        _source_code_context: Option<&str>
+        _source_code_context: Option<&str>,
     ) -> Option<Autocorrection> {
         // Extract file path from parameters
         let file_path = params.values.get("file_path")?.clone();
 
         // Check if the file is a YAML file
-        if !file_path.ends_with(".yaml") && !file_path.ends_with(".yml") &&
-           !file_path.ends_with(".YAML") && !file_path.ends_with(".YML") {
+        if !file_path.ends_with(".yaml")
+            && !file_path.ends_with(".yml")
+            && !file_path.ends_with(".YAML")
+            && !file_path.ends_with(".YML")
+        {
             return None;
         }
 
@@ -5498,14 +5920,14 @@ impl FixGenerator for YamlParseFixGenerator {
                 } else {
                     return None;
                 }
-            },
+            }
             _ => {
                 let msg = params.values.get("message")?;
                 if !self.is_yaml_parse_error(msg) {
                     return None;
                 }
                 msg.clone()
-            },
+            }
         };
 
         // Extract line number, column number, and error type from error message
@@ -5514,7 +5936,8 @@ impl FixGenerator for YamlParseFixGenerator {
         let error_type = self.extract_error_type(&message);
 
         // Generate fix suggestion
-        let (command, explanation, suggestion) = self.generate_yaml_fix(&file_path, line_number, column_number, error_type.clone());
+        let (command, explanation, suggestion) =
+            self.generate_yaml_fix(&file_path, line_number, column_number, error_type.clone());
 
         // Create explanation with suggestion if available
         let full_explanation = if let Some(sugg) = suggestion {
@@ -5548,7 +5971,7 @@ impl FixGenerator for JsonParseFixGenerator {
         &self,
         error: &DecrustError,
         params: &ExtractedParameters,
-        _source_code_context: Option<&str>
+        _source_code_context: Option<&str>,
     ) -> Option<Autocorrection> {
         // Extract file path from parameters
         let file_path = params.values.get("file_path")?.clone();
@@ -5566,14 +5989,14 @@ impl FixGenerator for JsonParseFixGenerator {
                 } else {
                     return None;
                 }
-            },
+            }
             _ => {
                 let msg = params.values.get("message")?;
                 if !self.is_json_parse_error(msg) {
                     return None;
                 }
                 msg.clone()
-            },
+            }
         };
 
         // Extract line number, column number, and expected token from error message
@@ -5582,7 +6005,12 @@ impl FixGenerator for JsonParseFixGenerator {
         let expected_token = self.extract_expected_token(&message);
 
         // Generate fix suggestion
-        let (command, explanation, suggestion) = self.generate_json_fix(&file_path, line_number, column_number, expected_token.clone());
+        let (command, explanation, suggestion) = self.generate_json_fix(
+            &file_path,
+            line_number,
+            column_number,
+            expected_token.clone(),
+        );
 
         // Create explanation with suggestion if available
         let full_explanation = if let Some(sugg) = suggestion {
@@ -5619,12 +6047,12 @@ impl ConfigMissingKeyFixGenerator {
 
     /// Detects if the error message indicates a missing configuration key
     fn is_missing_key_error(&self, message: &str) -> bool {
-        message.contains("missing key") ||
-        message.contains("required key") ||
-        message.contains("key not found") ||
-        message.contains("missing field") ||
-        message.contains("required field") ||
-        message.contains("field not found")
+        message.contains("missing key")
+            || message.contains("required key")
+            || message.contains("key not found")
+            || message.contains("missing field")
+            || message.contains("required field")
+            || message.contains("field not found")
     }
 
     /// Extracts the missing key name from an error message
@@ -5657,8 +6085,11 @@ impl ConfigMissingKeyFixGenerator {
     fn determine_file_format(&self, file_path: &str) -> Option<&'static str> {
         if file_path.ends_with(".json") || file_path.ends_with(".JSON") {
             Some("json")
-        } else if file_path.ends_with(".yaml") || file_path.ends_with(".yml") ||
-                  file_path.ends_with(".YAML") || file_path.ends_with(".YML") {
+        } else if file_path.ends_with(".yaml")
+            || file_path.ends_with(".yml")
+            || file_path.ends_with(".YAML")
+            || file_path.ends_with(".YML")
+        {
             Some("yaml")
         } else if file_path.ends_with(".toml") || file_path.ends_with(".TOML") {
             Some("toml")
@@ -5670,7 +6101,10 @@ impl ConfigMissingKeyFixGenerator {
     /// Generates a default value for a key based on its name
     fn generate_default_value(&self, key_name: &str, format: &str) -> String {
         // Try to guess a reasonable default value based on the key name
-        let default_value = if key_name.contains("path") || key_name.contains("dir") || key_name.contains("directory") {
+        let default_value = if key_name.contains("path")
+            || key_name.contains("dir")
+            || key_name.contains("directory")
+        {
             "\"/path/to/directory\""
         } else if key_name.contains("file") {
             "\"/path/to/file\""
@@ -5680,16 +6114,26 @@ impl ConfigMissingKeyFixGenerator {
             "8080"
         } else if key_name.contains("host") {
             "\"localhost\""
-        } else if key_name.contains("timeout") || key_name.contains("interval") || key_name.contains("duration") {
+        } else if key_name.contains("timeout")
+            || key_name.contains("interval")
+            || key_name.contains("duration")
+        {
             "60"
-        } else if key_name.contains("enabled") || key_name.contains("disabled") ||
-                  key_name.contains("active") || key_name.contains("flag") {
+        } else if key_name.contains("enabled")
+            || key_name.contains("disabled")
+            || key_name.contains("active")
+            || key_name.contains("flag")
+        {
             match format {
                 "json" | "yaml" => "true",
                 "toml" => "true",
                 _ => "true",
             }
-        } else if key_name.contains("count") || key_name.contains("limit") || key_name.contains("max") || key_name.contains("min") {
+        } else if key_name.contains("count")
+            || key_name.contains("limit")
+            || key_name.contains("max")
+            || key_name.contains("min")
+        {
             "10"
         } else {
             match format {
@@ -5703,39 +6147,56 @@ impl ConfigMissingKeyFixGenerator {
     }
 
     /// Generates a fix suggestion for a missing key in a configuration file
-    fn generate_missing_key_fix(&self, file_path: &str, key_name: &str, format: &str) -> (String, String, String) {
+    fn generate_missing_key_fix(
+        &self,
+        file_path: &str,
+        key_name: &str,
+        format: &str,
+    ) -> (String, String, String) {
         let default_value = self.generate_default_value(key_name, format);
 
         let (command, explanation, diff) = match format {
             "json" => {
-                let command = format!("echo 'Add the missing key \"{}\" to {}'", key_name, file_path);
+                let command = format!(
+                    "echo 'Add the missing key \"{}\" to {}'",
+                    key_name, file_path
+                );
                 let explanation = format!(
                     "The configuration file '{}' is missing the required key '{}'. Add this key with an appropriate value.",
                     file_path, key_name
                 );
                 let diff = format!("  \"{}\": {}", key_name, default_value);
                 (command, explanation, diff)
-            },
+            }
             "yaml" => {
-                let command = format!("echo 'Add the missing key \"{}\" to {}'", key_name, file_path);
+                let command = format!(
+                    "echo 'Add the missing key \"{}\" to {}'",
+                    key_name, file_path
+                );
                 let explanation = format!(
                     "The configuration file '{}' is missing the required key '{}'. Add this key with an appropriate value.",
                     file_path, key_name
                 );
                 let diff = format!("{}: {}", key_name, default_value);
                 (command, explanation, diff)
-            },
+            }
             "toml" => {
-                let command = format!("echo 'Add the missing key \"{}\" to {}'", key_name, file_path);
+                let command = format!(
+                    "echo 'Add the missing key \"{}\" to {}'",
+                    key_name, file_path
+                );
                 let explanation = format!(
                     "The configuration file '{}' is missing the required key '{}'. Add this key with an appropriate value.",
                     file_path, key_name
                 );
                 let diff = format!("{} = {}", key_name, default_value);
                 (command, explanation, diff)
-            },
+            }
             _ => {
-                let command = format!("echo 'Add the missing key \"{}\" to {}'", key_name, file_path);
+                let command = format!(
+                    "echo 'Add the missing key \"{}\" to {}'",
+                    key_name, file_path
+                );
                 let explanation = format!(
                     "The configuration file '{}' is missing the required key '{}'. Add this key with an appropriate value.",
                     file_path, key_name
@@ -5756,11 +6217,11 @@ impl ConfigSyntaxFixGenerator {
         let is_json_file = file_path.ends_with(".json") || file_path.ends_with(".JSON");
 
         // Check if the message contains JSON-related keywords
-        let has_json_keywords = message.contains("JSON") ||
-                               message.contains("json") ||
-                               message.contains("syntax error") ||
-                               message.contains("invalid") ||
-                               message.contains("failed to parse");
+        let has_json_keywords = message.contains("JSON")
+            || message.contains("json")
+            || message.contains("syntax error")
+            || message.contains("invalid")
+            || message.contains("failed to parse");
 
         is_json_file && has_json_keywords
     }
@@ -5768,15 +6229,17 @@ impl ConfigSyntaxFixGenerator {
     /// Detects if the error is related to a YAML syntax error
     fn is_yaml_syntax_error(&self, message: &str, file_path: &str) -> bool {
         // Check if the file path ends with .yml or .yaml
-        let is_yaml_file = file_path.ends_with(".yml") || file_path.ends_with(".yaml") ||
-                          file_path.ends_with(".YML") || file_path.ends_with(".YAML");
+        let is_yaml_file = file_path.ends_with(".yml")
+            || file_path.ends_with(".yaml")
+            || file_path.ends_with(".YML")
+            || file_path.ends_with(".YAML");
 
         // Check if the message contains YAML-related keywords
-        let has_yaml_keywords = message.contains("YAML") ||
-                               message.contains("yaml") ||
-                               message.contains("syntax error") ||
-                               message.contains("invalid") ||
-                               message.contains("failed to parse");
+        let has_yaml_keywords = message.contains("YAML")
+            || message.contains("yaml")
+            || message.contains("syntax error")
+            || message.contains("invalid")
+            || message.contains("failed to parse");
 
         is_yaml_file && has_yaml_keywords
     }
@@ -5787,11 +6250,11 @@ impl ConfigSyntaxFixGenerator {
         let is_toml_file = file_path.ends_with(".toml") || file_path.ends_with(".TOML");
 
         // Check if the message contains TOML-related keywords
-        let has_toml_keywords = message.contains("TOML") ||
-                               message.contains("toml") ||
-                               message.contains("syntax error") ||
-                               message.contains("invalid") ||
-                               message.contains("failed to parse");
+        let has_toml_keywords = message.contains("TOML")
+            || message.contains("toml")
+            || message.contains("syntax error")
+            || message.contains("invalid")
+            || message.contains("failed to parse");
 
         is_toml_file && has_toml_keywords
     }
@@ -5863,11 +6326,13 @@ impl FixGenerator for ConfigMissingKeyFixGenerator {
         &self,
         error: &DecrustError,
         params: &ExtractedParameters,
-        _source_code_context: Option<&str>
+        _source_code_context: Option<&str>,
     ) -> Option<Autocorrection> {
         // Extract file path from error or parameters
         let file_path = match error {
-            DecrustError::Config { path: Some(path), .. } => path.to_string_lossy().to_string(),
+            DecrustError::Config {
+                path: Some(path), ..
+            } => path.to_string_lossy().to_string(),
             _ => params.values.get("file_path")?.clone(),
         };
 
@@ -5895,11 +6360,15 @@ impl FixGenerator for ConfigMissingKeyFixGenerator {
         };
 
         // Generate the fix suggestion
-        let (command, explanation, diff) = self.generate_missing_key_fix(&file_path, &key_name, format);
+        let (command, explanation, diff) =
+            self.generate_missing_key_fix(&file_path, &key_name, format);
 
         // Generate autocorrection
         Some(Autocorrection {
-            description: format!("Add missing configuration key: {} to {}", key_name, file_path),
+            description: format!(
+                "Add missing configuration key: {} to {}",
+                key_name, file_path
+            ),
             fix_type: FixType::TextReplacement,
             confidence: 0.7,
             details: Some(FixDetails::SuggestCodeChange {
@@ -5924,11 +6393,13 @@ impl FixGenerator for ConfigSyntaxFixGenerator {
         &self,
         error: &DecrustError,
         params: &ExtractedParameters,
-        _source_code_context: Option<&str>
+        _source_code_context: Option<&str>,
     ) -> Option<Autocorrection> {
         // Extract file path from error or parameters
         let file_path = match error {
-            DecrustError::Config { path: Some(path), .. } => path.to_string_lossy().to_string(),
+            DecrustError::Config {
+                path: Some(path), ..
+            } => path.to_string_lossy().to_string(),
             _ => params.values.get("file_path")?.clone(),
         };
 
@@ -5943,7 +6414,10 @@ impl FixGenerator for ConfigSyntaxFixGenerator {
         let line_number = self.extract_line_number(&message);
 
         // Debug output
-        println!("ConfigSyntaxFixGenerator: file_path={}, message={}", file_path, message);
+        println!(
+            "ConfigSyntaxFixGenerator: file_path={}, message={}",
+            file_path, message
+        );
 
         // Check if this is a JSON syntax error
         let is_json = self.is_json_syntax_error(&message, &file_path);
@@ -5995,11 +6469,13 @@ impl FixGenerator for IoPermissionFixGenerator {
         &self,
         error: &DecrustError,
         params: &ExtractedParameters,
-        _source_code_context: Option<&str>
+        _source_code_context: Option<&str>,
     ) -> Option<Autocorrection> {
         // Extract path from error or parameters
         let path = match error {
-            DecrustError::Io { path: Some(path), .. } => path.to_string_lossy().to_string(),
+            DecrustError::Io {
+                path: Some(path), ..
+            } => path.to_string_lossy().to_string(),
             _ => params.values.get("path")?.clone(),
         };
 
@@ -6041,11 +6517,13 @@ impl FixGenerator for IoMissingDirectoryFixGenerator {
         &self,
         error: &DecrustError,
         params: &ExtractedParameters,
-        _source_code_context: Option<&str>
+        _source_code_context: Option<&str>,
     ) -> Option<Autocorrection> {
         // Extract path from error or parameters
         let path = match error {
-            DecrustError::Io { path: Some(path), .. } => path.to_string_lossy().to_string(),
+            DecrustError::Io {
+                path: Some(path), ..
+            } => path.to_string_lossy().to_string(),
             _ => params.values.get("path")?.clone(),
         };
 
@@ -6119,7 +6597,12 @@ impl AstUnusedCodeFixGenerator {
     }
 
     /// Generates a fix for an unused variable by adding an underscore prefix
-    fn generate_unused_variable_fix(&self, variable_name: &str, line: usize, file_path: &str) -> Option<Autocorrection> {
+    fn generate_unused_variable_fix(
+        &self,
+        variable_name: &str,
+        line: usize,
+        file_path: &str,
+    ) -> Option<Autocorrection> {
         // Don't add an underscore if the variable already has one
         if variable_name.starts_with('_') {
             return None;
@@ -6140,16 +6623,25 @@ impl AstUnusedCodeFixGenerator {
                      suppresses the unused variable warning."
                 ),
             }),
-            diff_suggestion: Some(format!("- let {} = ...\n+ let {} = ...", variable_name, new_name)),
-            commands_to_apply: vec![
-                format!("sed -i 's/\\b{}\\b/{}/g' {}", variable_name, new_name, file_path)
-            ],
+            diff_suggestion: Some(format!(
+                "- let {} = ...\n+ let {} = ...",
+                variable_name, new_name
+            )),
+            commands_to_apply: vec![format!(
+                "sed -i 's/\\b{}\\b/{}/g' {}",
+                variable_name, new_name, file_path
+            )],
             targets_error_code: Some("unused_variables".to_string()),
         })
     }
 
     /// Generates a fix for an unused import by removing it
-    fn generate_unused_import_fix(&self, import: &str, line: usize, file_path: &str) -> Option<Autocorrection> {
+    fn generate_unused_import_fix(
+        &self,
+        import: &str,
+        line: usize,
+        file_path: &str,
+    ) -> Option<Autocorrection> {
         Some(Autocorrection {
             description: format!("Remove unused import `{}`", import),
             fix_type: FixType::TextReplacement,
@@ -6164,9 +6656,7 @@ impl AstUnusedCodeFixGenerator {
                 ),
             }),
             diff_suggestion: Some(format!("- use {};", import)),
-            commands_to_apply: vec![
-                format!("sed -i '/use {};/d' {}", import, file_path)
-            ],
+            commands_to_apply: vec![format!("sed -i '/use {};/d' {}", import, file_path)],
             targets_error_code: Some("unused_imports".to_string()),
         })
     }
@@ -6177,7 +6667,7 @@ impl FixGenerator for AstMissingImportFixGenerator {
         &self,
         error: &DecrustError,
         params: &ExtractedParameters,
-        _source_code_context: Option<&str>
+        _source_code_context: Option<&str>,
     ) -> Option<Autocorrection> {
         // Extract message from error or parameters
         let message = match error {
@@ -6190,7 +6680,9 @@ impl FixGenerator for AstMissingImportFixGenerator {
         let type_name = self.parse_type_name(message)?;
 
         // Create file path
-        let file_path = params.values.get("file_path")
+        let file_path = params
+            .values
+            .get("file_path")
             .cloned()
             .unwrap_or_else(|| "src/lib.rs".to_string());
 
@@ -6233,7 +6725,7 @@ impl FixGenerator for AstUnusedCodeFixGenerator {
         &self,
         error: &DecrustError,
         params: &ExtractedParameters,
-        _source_code_context: Option<&str>
+        _source_code_context: Option<&str>,
     ) -> Option<Autocorrection> {
         // Extract message from error or parameters
         let message = match error {
@@ -6243,12 +6735,16 @@ impl FixGenerator for AstUnusedCodeFixGenerator {
         };
 
         // Create file path
-        let file_path = params.values.get("file_path")
+        let file_path = params
+            .values
+            .get("file_path")
             .cloned()
             .unwrap_or_else(|| "src/lib.rs".to_string());
 
         // Create line number
-        let line = params.values.get("line")
+        let line = params
+            .values
+            .get("line")
             .and_then(|l| l.parse::<usize>().ok())
             .unwrap_or(1);
 
@@ -6275,7 +6771,7 @@ impl FixGenerator for AstTraitImplementationFixGenerator {
         &self,
         error: &DecrustError,
         params: &ExtractedParameters,
-        _source_code_context: Option<&str>
+        _source_code_context: Option<&str>,
     ) -> Option<Autocorrection> {
         // Extract message from error or parameters
         let message = match error {
@@ -6291,12 +6787,16 @@ impl FixGenerator for AstTraitImplementationFixGenerator {
         let trait_impl = self.generate_trait_impl(&trait_name, &type_name)?;
 
         // Create file path
-        let file_path = params.values.get("file_path")
+        let file_path = params
+            .values
+            .get("file_path")
             .cloned()
             .unwrap_or_else(|| "src/lib.rs".to_string());
 
         // Create line number
-        let line = params.values.get("line")
+        let line = params
+            .values
+            .get("line")
             .and_then(|l| l.parse::<usize>().ok())
             .unwrap_or(1);
 
@@ -6316,9 +6816,11 @@ impl FixGenerator for AstTraitImplementationFixGenerator {
                 ),
             }),
             diff_suggestion: Some(format!("+ {}", trait_impl)),
-            commands_to_apply: vec![
-                format!("echo '{}' >> {}", trait_impl.replace("'", "\\'"), file_path)
-            ],
+            commands_to_apply: vec![format!(
+                "echo '{}' >> {}",
+                trait_impl.replace("'", "\\'"),
+                file_path
+            )],
             targets_error_code: Some("E0277".to_string()),
         })
     }
@@ -6343,7 +6845,7 @@ impl FixGenerator for EnumParameterMatchFixGenerator {
         &self,
         _error: &DecrustError,
         params: &ExtractedParameters,
-        source_code_context: Option<&str>
+        source_code_context: Option<&str>,
     ) -> Option<Autocorrection> {
         // Extract message
         let message = params.values.get("message")?;
@@ -6357,25 +6859,45 @@ impl FixGenerator for EnumParameterMatchFixGenerator {
         let (enum_name, variant_name, expected_params, found_params) =
             extract_enum_parameter_info(message)?;
 
-        let file_path = params.values.get("file_path")
+        let file_path = params
+            .values
+            .get("file_path")
             .cloned()
             .unwrap_or_else(|| "unknown_file.rs".to_string());
 
-        let line = params.values.get("line")
+        let line = params
+            .values
+            .get("line")
             .and_then(|l| l.parse::<usize>().ok())
             .unwrap_or(1);
 
         // Generate fix based on context
         let (details, commands, diff) = if let Some(context) = source_code_context {
-            self.generate_context_aware_fix(&file_path, line, &enum_name, &variant_name,
-                                           &expected_params, &found_params, context)
+            self.generate_context_aware_fix(
+                &file_path,
+                line,
+                &enum_name,
+                &variant_name,
+                &expected_params,
+                &found_params,
+                context,
+            )
         } else {
-            self.generate_simple_fix(&file_path, line, &enum_name, &variant_name,
-                                    &expected_params, &found_params)
+            self.generate_simple_fix(
+                &file_path,
+                line,
+                &enum_name,
+                &variant_name,
+                &expected_params,
+                &found_params,
+            )
         };
 
         Some(Autocorrection {
-            description: format!("Fix parameter mismatch for enum variant {}::{}", enum_name, variant_name),
+            description: format!(
+                "Fix parameter mismatch for enum variant {}::{}",
+                enum_name, variant_name
+            ),
             fix_type: FixType::ManualInterventionRequired,
             confidence: 0.75,
             details: Some(details),
@@ -6393,11 +6915,11 @@ impl FixGenerator for EnumParameterMatchFixGenerator {
 impl EnumParameterMatchFixGenerator {
     fn is_enum_parameter_mismatch(&self, message: &str) -> bool {
         // Check for common patterns in error messages related to enum parameter mismatches
-        message.contains("expected") && message.contains("parameters") && message.contains("found") ||
-        message.contains("this enum variant takes") ||
-        message.contains("expected struct") && message.contains("found enum") ||
-        message.contains("mismatched types") && message.contains("expected enum") ||
-        message.contains("wrong number of arguments") && message.contains("variant")
+        message.contains("expected") && message.contains("parameters") && message.contains("found")
+            || message.contains("this enum variant takes")
+            || message.contains("expected struct") && message.contains("found enum")
+            || message.contains("mismatched types") && message.contains("expected enum")
+            || message.contains("wrong number of arguments") && message.contains("variant")
     }
 
     fn generate_context_aware_fix(
@@ -6408,14 +6930,14 @@ impl EnumParameterMatchFixGenerator {
         variant_name: &str,
         expected_params: &[String],
         found_params: &[String],
-        context: &str
+        context: &str,
     ) -> (FixDetails, Vec<String>, String) {
         let lines: Vec<&str> = context.lines().collect();
 
         // Try to find the line with the enum variant usage
-        let variant_line_idx = lines.iter().position(|&l|
-            l.contains(variant_name) && (l.contains("(") || l.contains("{"))
-        );
+        let variant_line_idx = lines
+            .iter()
+            .position(|&l| l.contains(variant_name) && (l.contains("(") || l.contains("{")));
 
         if let Some(idx) = variant_line_idx {
             let variant_line = lines[idx];
@@ -6434,10 +6956,18 @@ impl EnumParameterMatchFixGenerator {
 
             // If we didn't modify the line, use the simple fix
             if new_line == variant_line {
-                return self.generate_simple_fix(file_path, line, enum_name, variant_name, expected_params, found_params);
+                return self.generate_simple_fix(
+                    file_path,
+                    line,
+                    enum_name,
+                    variant_name,
+                    expected_params,
+                    found_params,
+                );
             }
 
-            let sed_command = format!("sed -i '{}s/{}/{}/' \"{}\"",
+            let sed_command = format!(
+                "sed -i '{}s/{}/{}/' \"{}\"",
                 idx + 1, // 1-indexed for sed
                 regex::escape(variant_line),
                 regex::escape(&new_line),
@@ -6448,7 +6978,10 @@ impl EnumParameterMatchFixGenerator {
                 "Fixed parameter mismatch for enum variant `{}::{}`. \
                  Expected {} parameters but found {}. \
                  Make sure to match the enum definition from its original module.",
-                enum_name, variant_name, expected_params.len(), found_params.len()
+                enum_name,
+                variant_name,
+                expected_params.len(),
+                found_params.len()
             );
 
             let details = FixDetails::SuggestCodeChange {
@@ -6464,7 +6997,14 @@ impl EnumParameterMatchFixGenerator {
         }
 
         // Fall back to simple fix if we couldn't determine the context
-        self.generate_simple_fix(file_path, line, enum_name, variant_name, expected_params, found_params)
+        self.generate_simple_fix(
+            file_path,
+            line,
+            enum_name,
+            variant_name,
+            expected_params,
+            found_params,
+        )
     }
 
     fn fix_tuple_variant(
@@ -6472,7 +7012,7 @@ impl EnumParameterMatchFixGenerator {
         line: &str,
         _enum_name: &str,
         _variant_name: &str,
-        expected_params: &[String]
+        expected_params: &[String],
     ) -> String {
         // Extract the part before and after the parameters
         let prefix_end = line.find('(').unwrap_or(line.len());
@@ -6482,7 +7022,8 @@ impl EnumParameterMatchFixGenerator {
         let suffix = &line[suffix_start..]; // Include the closing parenthesis
 
         // Generate parameter placeholders
-        let param_placeholders: Vec<String> = expected_params.iter()
+        let param_placeholders: Vec<String> = expected_params
+            .iter()
             .map(|param_type| generate_default_value(param_type))
             .collect();
 
@@ -6494,7 +7035,7 @@ impl EnumParameterMatchFixGenerator {
         line: &str,
         _enum_name: &str,
         _variant_name: &str,
-        expected_params: &[String]
+        expected_params: &[String],
     ) -> String {
         // Extract the part before and after the parameters
         let prefix_end = line.find('{').unwrap_or(line.len());
@@ -6505,7 +7046,9 @@ impl EnumParameterMatchFixGenerator {
 
         // Generate field placeholders
         // This is a simplification - in a real implementation, we would need to know the field names
-        let field_placeholders: Vec<String> = expected_params.iter().enumerate()
+        let field_placeholders: Vec<String> = expected_params
+            .iter()
+            .enumerate()
             .map(|(i, param_type)| format!("field{}: {}", i, generate_default_value(param_type)))
             .collect();
 
@@ -6519,23 +7062,31 @@ impl EnumParameterMatchFixGenerator {
         enum_name: &str,
         variant_name: &str,
         expected_params: &[String],
-        found_params: &[String]
+        found_params: &[String],
     ) -> (FixDetails, Vec<String>, String) {
         // Generate suggestions for fixing the parameter mismatch
         let mut suggestions = Vec::new();
 
-        suggestions.push(format!("// For enum variant {}::{}", enum_name, variant_name));
+        suggestions.push(format!(
+            "// For enum variant {}::{}",
+            enum_name, variant_name
+        ));
 
         if expected_params.is_empty() {
             // Unit variant
             suggestions.push(format!("{}::{}", enum_name, variant_name));
         } else if expected_params.len() == 1 {
             // Single parameter variant
-            suggestions.push(format!("{}::{}({})",
-                enum_name, variant_name, generate_default_value(&expected_params[0])));
+            suggestions.push(format!(
+                "{}::{}({})",
+                enum_name,
+                variant_name,
+                generate_default_value(&expected_params[0])
+            ));
         } else {
             // Multiple parameter variant
-            let params = expected_params.iter()
+            let params = expected_params
+                .iter()
                 .map(|p| generate_default_value(p))
                 .collect::<Vec<_>>()
                 .join(", ");
@@ -6543,7 +7094,9 @@ impl EnumParameterMatchFixGenerator {
             suggestions.push(format!("{}::{}({})", enum_name, variant_name, params));
 
             // Also suggest struct-style variant if there are multiple parameters
-            let fields = expected_params.iter().enumerate()
+            let fields = expected_params
+                .iter()
+                .enumerate()
                 .map(|(i, p)| format!("field{}: {}", i, generate_default_value(p)))
                 .collect::<Vec<_>>()
                 .join(", ");
@@ -6562,7 +7115,7 @@ impl EnumParameterMatchFixGenerator {
             suggestions.push(format!("    {}({}),", variant_name, expected_params[0]));
         } else {
             let params = expected_params.join(", ");
-            suggestions.push(format!("    {}({})," , variant_name, params));
+            suggestions.push(format!("    {}({}),", variant_name, params));
         }
 
         suggestions.push(format!("    // other variants..."));
@@ -6585,9 +7138,14 @@ impl EnumParameterMatchFixGenerator {
         };
 
         // Command to find the enum definition
-        let find_enum_command = format!("grep -n \"enum {}\" --include=\"*.rs\" -r \"{}\"",
+        let find_enum_command = format!(
+            "grep -n \"enum {}\" --include=\"*.rs\" -r \"{}\"",
             enum_name,
-            PathBuf::from(file_path).parent().unwrap_or(&PathBuf::from(".")).display());
+            PathBuf::from(file_path)
+                .parent()
+                .unwrap_or(&PathBuf::from("."))
+                .display()
+        );
 
         // Generic diff suggestion
         let diff = format!(
@@ -6604,11 +7162,14 @@ impl EnumParameterMatchFixGenerator {
 }
 
 // Helper function to extract enum name, variant name, and parameter info from error message
-fn extract_enum_parameter_info(message: &str) -> Option<(String, String, Vec<String>, Vec<String>)> {
+fn extract_enum_parameter_info(
+    message: &str,
+) -> Option<(String, String, Vec<String>, Vec<String>)> {
     // Try different patterns to extract information
 
     // Pattern 1: "expected 2 parameters, found 1 in `MyEnum::Variant`"
-    let pattern1 = Regex::new(r"expected (\d+) parameters?, found (\d+) in `([^:]+)::([^`]+)`").ok()?;
+    let pattern1 =
+        Regex::new(r"expected (\d+) parameters?, found (\d+) in `([^:]+)::([^`]+)`").ok()?;
     if let Some(captures) = pattern1.captures(message) {
         let expected_count = captures.get(1)?.as_str().parse::<usize>().ok()?;
         let found_count = captures.get(2)?.as_str().parse::<usize>().ok()?;
@@ -6623,7 +7184,10 @@ fn extract_enum_parameter_info(message: &str) -> Option<(String, String, Vec<Str
     }
 
     // Pattern 2: "this enum variant takes 2 parameters but 1 parameter was supplied"
-    let pattern2 = Regex::new(r"this enum variant takes (\d+) parameters? but (\d+) parameters? (?:was|were) supplied").ok()?;
+    let pattern2 = Regex::new(
+        r"this enum variant takes (\d+) parameters? but (\d+) parameters? (?:was|were) supplied",
+    )
+    .ok()?;
     if let Some(captures) = pattern2.captures(message) {
         let expected_count = captures.get(1)?.as_str().parse::<usize>().ok()?;
         let found_count = captures.get(2)?.as_str().parse::<usize>().ok()?;
@@ -6654,7 +7218,8 @@ fn extract_enum_parameter_info(message: &str) -> Option<(String, String, Vec<Str
         let expected_params = if expected_params_str.is_empty() {
             Vec::new()
         } else {
-            expected_params_str.split(',')
+            expected_params_str
+                .split(',')
                 .map(|s| s.trim().to_string())
                 .collect()
         };
@@ -6662,7 +7227,8 @@ fn extract_enum_parameter_info(message: &str) -> Option<(String, String, Vec<Str
         let found_params = if found_params_str.is_empty() {
             Vec::new()
         } else {
-            found_params_str.split(',')
+            found_params_str
+                .split(',')
                 .map(|s| s.trim().to_string())
                 .collect()
         };
@@ -6676,7 +7242,7 @@ fn extract_enum_parameter_info(message: &str) -> Option<(String, String, Vec<Str
             "UnknownEnum".to_string(),
             "UnknownVariant".to_string(),
             vec!["ExpectedType".to_string()],
-            vec!["FoundType".to_string()]
+            vec!["FoundType".to_string()],
         ));
     }
 
@@ -6698,7 +7264,7 @@ impl FixGenerator for StructParameterMatchFixGenerator {
         &self,
         _error: &DecrustError,
         params: &ExtractedParameters,
-        source_code_context: Option<&str>
+        source_code_context: Option<&str>,
     ) -> Option<Autocorrection> {
         // Extract message
         let message = params.values.get("message")?;
@@ -6709,24 +7275,38 @@ impl FixGenerator for StructParameterMatchFixGenerator {
         }
 
         // Extract struct name and field info
-        let (struct_name, missing_fields, incorrect_fields) =
-            extract_struct_field_info(message)?;
+        let (struct_name, missing_fields, incorrect_fields) = extract_struct_field_info(message)?;
 
-        let file_path = params.values.get("file_path")
+        let file_path = params
+            .values
+            .get("file_path")
             .cloned()
             .unwrap_or_else(|| "unknown_file.rs".to_string());
 
-        let line = params.values.get("line")
+        let line = params
+            .values
+            .get("line")
             .and_then(|l| l.parse::<usize>().ok())
             .unwrap_or(1);
 
         // Generate fix based on context
         let (details, commands, diff) = if let Some(context) = source_code_context {
-            self.generate_context_aware_fix(&file_path, line, &struct_name,
-                                           &missing_fields, &incorrect_fields, context)
+            self.generate_context_aware_fix(
+                &file_path,
+                line,
+                &struct_name,
+                &missing_fields,
+                &incorrect_fields,
+                context,
+            )
         } else {
-            self.generate_simple_fix(&file_path, line, &struct_name,
-                                    &missing_fields, &incorrect_fields)
+            self.generate_simple_fix(
+                &file_path,
+                line,
+                &struct_name,
+                &missing_fields,
+                &incorrect_fields,
+            )
         };
 
         Some(Autocorrection {
@@ -6748,14 +7328,18 @@ impl FixGenerator for StructParameterMatchFixGenerator {
 impl StructParameterMatchFixGenerator {
     fn is_struct_field_mismatch(&self, message: &str) -> bool {
         // Check for common patterns in error messages related to struct field mismatches
-        message.contains("missing field") ||
-        message.contains("unknown field") ||
-        message.contains("struct") && message.contains("field") && message.contains("missing") ||
-        message.contains("struct") && message.contains("field") && message.contains("expected") ||
-        message.contains("no field") && message.contains("on struct") ||
-        message.contains("this struct takes") && message.contains("fields") ||
-        message.contains("missing fields") ||
-        message.contains("mismatched types") && message.contains("expected struct")
+        message.contains("missing field")
+            || message.contains("unknown field")
+            || message.contains("struct")
+                && message.contains("field")
+                && message.contains("missing")
+            || message.contains("struct")
+                && message.contains("field")
+                && message.contains("expected")
+            || message.contains("no field") && message.contains("on struct")
+            || message.contains("this struct takes") && message.contains("fields")
+            || message.contains("missing fields")
+            || message.contains("mismatched types") && message.contains("expected struct")
     }
 
     fn generate_context_aware_fix(
@@ -6765,26 +7349,29 @@ impl StructParameterMatchFixGenerator {
         struct_name: &str,
         missing_fields: &[(String, String)],
         incorrect_fields: &[(String, String, String)],
-        context: &str
+        context: &str,
     ) -> (FixDetails, Vec<String>, String) {
         let lines: Vec<&str> = context.lines().collect();
 
         // Try to find the line with the struct instantiation
-        let struct_line_idx = lines.iter().position(|&l|
-            l.contains(struct_name) && l.contains("{") && !l.contains("struct")
-        );
+        let struct_line_idx = lines
+            .iter()
+            .position(|&l| l.contains(struct_name) && l.contains("{") && !l.contains("struct"));
 
         if let Some(idx) = struct_line_idx {
             let struct_line = lines[idx];
             let mut new_lines = lines.clone();
 
             // Find the closing brace for the struct instantiation
-            let close_idx = lines.iter().skip(idx).position(|&l| l.contains("}"))
+            let close_idx = lines
+                .iter()
+                .skip(idx)
+                .position(|&l| l.contains("}"))
                 .map(|pos| idx + pos);
 
             if let Some(close_pos) = close_idx {
                 // Extract the current fields
-                let current_fields: Vec<String> = lines[idx+1..close_pos]
+                let current_fields: Vec<String> = lines[idx + 1..close_pos]
                     .iter()
                     .map(|l| l.trim().to_string())
                     .filter(|l| !l.is_empty() && !l.starts_with("//"))
@@ -6795,17 +7382,35 @@ impl StructParameterMatchFixGenerator {
 
                 // Add missing fields
                 for (field_name, field_type) in missing_fields {
-                    let indent = lines[idx+1].chars().take_while(|&c| c.is_whitespace()).collect::<String>();
-                    let field_line = format!("{}{}: {},", indent, field_name, generate_default_value(field_type));
+                    let indent = lines[idx + 1]
+                        .chars()
+                        .take_while(|&c| c.is_whitespace())
+                        .collect::<String>();
+                    let field_line = format!(
+                        "{}{}: {},",
+                        indent,
+                        field_name,
+                        generate_default_value(field_type)
+                    );
                     fixed_fields.push(field_line);
                 }
 
                 // Fix incorrect fields
                 for (field_name, expected_type, _found_type) in incorrect_fields {
                     // Find the line with the incorrect field
-                    if let Some(field_idx) = current_fields.iter().position(|l| l.contains(field_name)) {
-                        let indent = lines[idx+1].chars().take_while(|&c| c.is_whitespace()).collect::<String>();
-                        let field_line = format!("{}{}: {},", indent, field_name, generate_default_value(expected_type));
+                    if let Some(field_idx) =
+                        current_fields.iter().position(|l| l.contains(field_name))
+                    {
+                        let indent = lines[idx + 1]
+                            .chars()
+                            .take_while(|&c| c.is_whitespace())
+                            .collect::<String>();
+                        let field_line = format!(
+                            "{}{}: {},",
+                            indent,
+                            field_name,
+                            generate_default_value(expected_type)
+                        );
                         fixed_fields[field_idx] = field_line;
                     }
                 }
@@ -6814,7 +7419,7 @@ impl StructParameterMatchFixGenerator {
                 let mut current_pos = close_pos;
                 for (i, field) in fixed_fields.iter().enumerate() {
                     if i < current_fields.len() {
-                        new_lines[idx+1+i] = field;
+                        new_lines[idx + 1 + i] = field;
                     } else {
                         // Insert new fields before the closing brace
                         new_lines.insert(current_pos, field);
@@ -6837,7 +7442,9 @@ impl StructParameterMatchFixGenerator {
                     "Fixed field mismatch for struct `{}`. \
                      {} missing field(s) added and {} incorrect field(s) fixed. \
                      Make sure to match the struct definition from its original module.",
-                    struct_name, missing_fields.len(), incorrect_fields.len()
+                    struct_name,
+                    missing_fields.len(),
+                    incorrect_fields.len()
                 );
 
                 // Create a range for the suggested code snippet
@@ -6846,27 +7453,41 @@ impl StructParameterMatchFixGenerator {
                 let details = FixDetails::SuggestCodeChange {
                     file_path: PathBuf::from(file_path),
                     line_hint: idx + 1,
-                    suggested_code_snippet: format!("// Fixed struct instantiation:\n{}", new_lines[idx..=end_line].join("\n")),
+                    suggested_code_snippet: format!(
+                        "// Fixed struct instantiation:\n{}",
+                        new_lines[idx..=end_line].join("\n")
+                    ),
                     explanation,
                 };
 
-                let diff = format!("@@ struct instantiation @@\n{}\n...\n{}",
-                                  struct_line,
-                                  if !missing_fields.is_empty() {
-                                      missing_fields.iter()
-                                          .map(|(name, typ)| format!("+    {}: {},", name, generate_default_value(typ)))
-                                          .collect::<Vec<_>>()
-                                          .join("\n")
-                                  } else {
-                                      "// No changes needed".to_string()
-                                  });
+                let diff = format!(
+                    "@@ struct instantiation @@\n{}\n...\n{}",
+                    struct_line,
+                    if !missing_fields.is_empty() {
+                        missing_fields
+                            .iter()
+                            .map(|(name, typ)| {
+                                format!("+    {}: {},", name, generate_default_value(typ))
+                            })
+                            .collect::<Vec<_>>()
+                            .join("\n")
+                    } else {
+                        "// No changes needed".to_string()
+                    }
+                );
 
                 return (details, vec![sed_script], diff);
             }
         }
 
         // Fall back to simple fix if we couldn't determine the context
-        self.generate_simple_fix(file_path, line, struct_name, missing_fields, incorrect_fields)
+        self.generate_simple_fix(
+            file_path,
+            line,
+            struct_name,
+            missing_fields,
+            incorrect_fields,
+        )
     }
 
     fn generate_simple_fix(
@@ -6875,7 +7496,7 @@ impl StructParameterMatchFixGenerator {
         line: usize,
         struct_name: &str,
         missing_fields: &[(String, String)],
-        incorrect_fields: &[(String, String, String)]
+        incorrect_fields: &[(String, String, String)],
     ) -> (FixDetails, Vec<String>, String) {
         // Generate suggestions for fixing the field mismatch
         let mut suggestions = Vec::new();
@@ -6887,16 +7508,29 @@ impl StructParameterMatchFixGenerator {
         if !missing_fields.is_empty() {
             suggestions.push(format!("    // Missing fields that need to be added:"));
             for (field_name, field_type) in missing_fields {
-                suggestions.push(format!("    {}: {},", field_name, generate_default_value(field_type)));
+                suggestions.push(format!(
+                    "    {}: {},",
+                    field_name,
+                    generate_default_value(field_type)
+                ));
             }
         }
 
         if !incorrect_fields.is_empty() {
-            suggestions.push(format!("    // Fields with incorrect types that need to be fixed:"));
+            suggestions.push(format!(
+                "    // Fields with incorrect types that need to be fixed:"
+            ));
             for (field_name, expected_type, found_type) in incorrect_fields {
-                suggestions.push(format!("    // Current: {}: {} (type: {})", field_name, field_name, found_type));
+                suggestions.push(format!(
+                    "    // Current: {}: {} (type: {})",
+                    field_name, field_name, found_type
+                ));
                 suggestions.push(format!("    // Should be:"));
-                suggestions.push(format!("    {}: {},", field_name, generate_default_value(expected_type)));
+                suggestions.push(format!(
+                    "    {}: {},",
+                    field_name,
+                    generate_default_value(expected_type)
+                ));
             }
         }
 
@@ -6923,7 +7557,9 @@ impl StructParameterMatchFixGenerator {
             "The struct `{}` is being used with missing or incorrect fields. \
              {} field(s) are missing and {} field(s) have incorrect types. \
              Make sure to match the struct definition from its original module.",
-            struct_name, missing_fields.len(), incorrect_fields.len()
+            struct_name,
+            missing_fields.len(),
+            incorrect_fields.len()
         );
 
         let details = FixDetails::SuggestCodeChange {
@@ -6934,9 +7570,14 @@ impl StructParameterMatchFixGenerator {
         };
 
         // Command to find the struct definition
-        let find_struct_command = format!("grep -n \"struct {}\" --include=\"*.rs\" -r \"{}\"",
+        let find_struct_command = format!(
+            "grep -n \"struct {}\" --include=\"*.rs\" -r \"{}\"",
             struct_name,
-            PathBuf::from(file_path).parent().unwrap_or(&PathBuf::from(".")).display());
+            PathBuf::from(file_path)
+                .parent()
+                .unwrap_or(&PathBuf::from("."))
+                .display()
+        );
 
         // Generic diff suggestion
         let diff = format!(
@@ -6953,7 +7594,9 @@ impl StructParameterMatchFixGenerator {
 }
 
 // Helper function to extract struct name and field info from error message
-fn extract_struct_field_info(message: &str) -> Option<(String, Vec<(String, String)>, Vec<(String, String, String)>)> {
+fn extract_struct_field_info(
+    message: &str,
+) -> Option<(String, Vec<(String, String)>, Vec<(String, String, String)>)> {
     // Try different patterns to extract information
 
     // Pattern 1: "missing field `field_name` in struct `StructName`"
@@ -6978,7 +7621,11 @@ fn extract_struct_field_info(message: &str) -> Option<(String, Vec<(String, Stri
         // This is an unknown field, not a missing one
         let missing_fields = Vec::new();
         // We don't know the expected type, so use placeholders
-        let incorrect_fields = vec![(field_name, "ExpectedType".to_string(), "FoundType".to_string())];
+        let incorrect_fields = vec![(
+            field_name,
+            "ExpectedType".to_string(),
+            "FoundType".to_string(),
+        )];
 
         return Some((struct_name, missing_fields, incorrect_fields));
     }
@@ -7007,7 +7654,11 @@ fn extract_struct_field_info(message: &str) -> Option<(String, Vec<(String, Stri
         // This is an unknown field, not a missing one
         let missing_fields = Vec::new();
         // We don't know the expected type, so use placeholders
-        let incorrect_fields = vec![(field_name, "ExpectedType".to_string(), "FoundType".to_string())];
+        let incorrect_fields = vec![(
+            field_name,
+            "ExpectedType".to_string(),
+            "FoundType".to_string(),
+        )];
 
         return Some((struct_name, missing_fields, incorrect_fields));
     }
@@ -7032,7 +7683,7 @@ fn extract_struct_field_info(message: &str) -> Option<(String, Vec<(String, Stri
         return Some((
             "UnknownStruct".to_string(),
             vec![("missing_field".to_string(), "Type".to_string())],
-            Vec::new()
+            Vec::new(),
         ));
     }
 
@@ -7054,7 +7705,7 @@ impl FixGenerator for BorrowAfterMoveFixGenerator {
         &self,
         _error: &DecrustError,
         params: &ExtractedParameters,
-        _source_code_context: Option<&str>
+        _source_code_context: Option<&str>,
     ) -> Option<Autocorrection> {
         // Extract message
         let message = params.values.get("message")?;
@@ -7067,20 +7718,33 @@ impl FixGenerator for BorrowAfterMoveFixGenerator {
         // Extract the variable name
         let variable_name = extract_variable_from_move_error(message)?;
 
-        let file_path = params.values.get("file_path")
+        let file_path = params
+            .values
+            .get("file_path")
             .cloned()
             .unwrap_or_else(|| "unknown_file.rs".to_string());
 
-        let line = params.values.get("line")
+        let line = params
+            .values
+            .get("line")
             .and_then(|l| l.parse::<usize>().ok())
             .unwrap_or(1);
 
         // Generate suggestions
         let suggestions = vec![
-            format!("// 1. Use a reference instead to avoid moving: &{}", variable_name),
-            format!("// 2. Clone the value before moving: {}.clone()", variable_name),
+            format!(
+                "// 1. Use a reference instead to avoid moving: &{}",
+                variable_name
+            ),
+            format!(
+                "// 2. Clone the value before moving: {}.clone()",
+                variable_name
+            ),
             format!("// 3. Implement Copy trait for the type if it's a small value type"),
-            format!("// 4. Restructure code to avoid using {} after it's moved", variable_name),
+            format!(
+                "// 4. Restructure code to avoid using {} after it's moved",
+                variable_name
+            ),
         ];
 
         let explanation = format!(
@@ -7149,7 +7813,7 @@ impl FixGenerator for MissingTraitImplFixGenerator {
         &self,
         _error: &DecrustError,
         params: &ExtractedParameters,
-        _source_code_context: Option<&str>
+        _source_code_context: Option<&str>,
     ) -> Option<Autocorrection> {
         // Extract message
         let message = params.values.get("message")?;
@@ -7162,11 +7826,15 @@ impl FixGenerator for MissingTraitImplFixGenerator {
         // Try to extract the type and trait names
         let (type_name, trait_name) = extract_type_and_trait(message)?;
 
-        let file_path = params.values.get("file_path")
+        let file_path = params
+            .values
+            .get("file_path")
             .cloned()
             .unwrap_or_else(|| "unknown_file.rs".to_string());
 
-        let line = params.values.get("line")
+        let line = params
+            .values
+            .get("line")
             .and_then(|l| l.parse::<usize>().ok())
             .unwrap_or(1);
 
@@ -7187,7 +7855,10 @@ impl FixGenerator for MissingTraitImplFixGenerator {
         };
 
         Some(Autocorrection {
-            description: format!("Add implementation of trait `{}` for type `{}`", trait_name, type_name),
+            description: format!(
+                "Add implementation of trait `{}` for type `{}`",
+                trait_name, type_name
+            ),
             fix_type: FixType::ManualInterventionRequired,
             confidence: 0.7,
             details: Some(details),
@@ -7204,7 +7875,11 @@ impl FixGenerator for MissingTraitImplFixGenerator {
 
 impl MissingTraitImplFixGenerator {
     /// Generates suggestions for implementing a trait
-    fn generate_trait_implementation_suggestions(&self, type_name: &str, trait_name: &str) -> Vec<String> {
+    fn generate_trait_implementation_suggestions(
+        &self,
+        type_name: &str,
+        trait_name: &str,
+    ) -> Vec<String> {
         let mut suggestions = Vec::new();
 
         // Add trait implementation template
@@ -7214,55 +7889,80 @@ impl MissingTraitImplFixGenerator {
         // Add specific suggestions based on common traits
         match trait_name {
             "std::fmt::Display" | "Display" => {
-                suggestions.push("    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {".to_string());
-                suggestions.push("        write!(f, \"{}\" /* Add format string */, /* Add fields */))".to_string());
+                suggestions.push(
+                    "    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {"
+                        .to_string(),
+                );
+                suggestions.push(
+                    "        write!(f, \"{}\" /* Add format string */, /* Add fields */))"
+                        .to_string(),
+                );
                 suggestions.push("    }".to_string());
-            },
+            }
             "std::fmt::Debug" | "Debug" => {
-                suggestions.push("    // Consider using #[derive(Debug)] instead of manual implementation".to_string());
-                suggestions.push("    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {".to_string());
+                suggestions.push(
+                    "    // Consider using #[derive(Debug)] instead of manual implementation"
+                        .to_string(),
+                );
+                suggestions.push(
+                    "    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {"
+                        .to_string(),
+                );
                 suggestions.push("        f.debug_struct(\"TypeName\")".to_string());
-                suggestions.push("            // .field(\"field_name\", &self.field_name)".to_string());
+                suggestions
+                    .push("            // .field(\"field_name\", &self.field_name)".to_string());
                 suggestions.push("            .finish()".to_string());
                 suggestions.push("    }".to_string());
-            },
+            }
             "Clone" => {
-                suggestions.push("    // Consider using #[derive(Clone)] instead of manual implementation".to_string());
+                suggestions.push(
+                    "    // Consider using #[derive(Clone)] instead of manual implementation"
+                        .to_string(),
+                );
                 suggestions.push("    fn clone(&self) -> Self {".to_string());
                 suggestions.push("        Self {".to_string());
                 suggestions.push("            // field: self.field.clone(),".to_string());
                 suggestions.push("        }".to_string());
                 suggestions.push("    }".to_string());
-            },
+            }
             "Copy" => {
-                suggestions.push("    // Copy trait requires no method implementations".to_string());
+                suggestions
+                    .push("    // Copy trait requires no method implementations".to_string());
                 suggestions.push("    // All fields must also implement Copy".to_string());
                 suggestions.push("    // Consider using #[derive(Copy, Clone)]".to_string());
-            },
+            }
             "PartialEq" => {
-                suggestions.push("    // Consider using #[derive(PartialEq)] instead of manual implementation".to_string());
+                suggestions.push(
+                    "    // Consider using #[derive(PartialEq)] instead of manual implementation"
+                        .to_string(),
+                );
                 suggestions.push("    fn eq(&self, other: &Self) -> bool {".to_string());
                 suggestions.push("        // self.field == other.field".to_string());
                 suggestions.push("        true // Replace with actual equality check".to_string());
                 suggestions.push("    }".to_string());
-            },
+            }
             "Iterator" => {
-                suggestions.push("    type Item = /* Type of items yielded by iterator */;".to_string());
+                suggestions
+                    .push("    type Item = /* Type of items yielded by iterator */;".to_string());
                 suggestions.push("    fn next(&mut self) -> Option<Self::Item> {".to_string());
                 suggestions.push("        // Implement iteration logic".to_string());
                 suggestions.push("        None // Replace with actual implementation".to_string());
                 suggestions.push("    }".to_string());
-            },
+            }
             "Default" => {
-                suggestions.push("    // Consider using #[derive(Default)] if all fields implement Default".to_string());
+                suggestions.push(
+                    "    // Consider using #[derive(Default)] if all fields implement Default"
+                        .to_string(),
+                );
                 suggestions.push("    fn default() -> Self {".to_string());
                 suggestions.push("        Self {".to_string());
                 suggestions.push("            // field: Default::default(),".to_string());
                 suggestions.push("        }".to_string());
                 suggestions.push("    }".to_string());
-            },
+            }
             _ => {
-                suggestions.push("    // Implement the required methods for this trait".to_string());
+                suggestions
+                    .push("    // Implement the required methods for this trait".to_string());
                 suggestions.push("    // Refer to the documentation for this trait".to_string());
             }
         }
@@ -7274,11 +7974,29 @@ impl MissingTraitImplFixGenerator {
         suggestions.push("// Alternative approaches:".to_string());
 
         // Add derive suggestion if it's a common derivable trait
-        if ["Debug", "Clone", "Copy", "PartialEq", "Eq", "PartialOrd", "Ord", "Hash", "Default"].contains(&trait_name) {
-            suggestions.push(format!("// 1. Add #[derive({})] to your type definition", trait_name));
+        if [
+            "Debug",
+            "Clone",
+            "Copy",
+            "PartialEq",
+            "Eq",
+            "PartialOrd",
+            "Ord",
+            "Hash",
+            "Default",
+        ]
+        .contains(&trait_name)
+        {
+            suggestions.push(format!(
+                "// 1. Add #[derive({})] to your type definition",
+                trait_name
+            ));
         }
 
-        suggestions.push(format!("// 2. Use a type that already implements {} instead", trait_name));
+        suggestions.push(format!(
+            "// 2. Use a type that already implements {} instead",
+            trait_name
+        ));
         suggestions.push(format!("// 3. Use a trait bound in your generic function"));
 
         suggestions
@@ -7319,8 +8037,6 @@ fn extract_type_and_trait(message: &str) -> Option<(String, String)> {
     None
 }
 
-
-
 // Helper function to extract variable name from borrow error message
 fn extract_variable_from_borrow_error(message: &str) -> Option<String> {
     let patterns = [
@@ -7345,9 +8061,9 @@ fn extract_variable_from_borrow_error(message: &str) -> Option<String> {
 fn extract_type(message: &str, prefix: &str) -> Option<String> {
     // Try different patterns that often appear in Rust compiler error messages
     let patterns = [
-        format!(r"{} type `([^`]+)`", prefix),           // expected type `Type`
-        format!(r"{} `([^`]+)`", prefix),                // expected `Type`
-        format!(r"{} ([a-zA-Z0-9_::<>]+)", prefix),      // expected Type
+        format!(r"{} type `([^`]+)`", prefix), // expected type `Type`
+        format!(r"{} `([^`]+)`", prefix),      // expected `Type`
+        format!(r"{} ([a-zA-Z0-9_::<>]+)", prefix), // expected Type
         format!(r"mismatched types: {} `([^`]+)`", prefix), // mismatched types: expected `Type`
     ];
 
@@ -7392,23 +8108,32 @@ impl FixGenerator for UnusedVariableFixGenerator {
         &self,
         _error: &DecrustError,
         params: &ExtractedParameters,
-        source_code_context: Option<&str>
+        source_code_context: Option<&str>,
     ) -> Option<Autocorrection> {
         // Extract the unused variable name from parameters
-        let variable_name = params.values.get("param1")
+        let variable_name = params
+            .values
+            .get("param1")
             .cloned()
             .unwrap_or_else(|| "unknown_variable".to_string());
 
         // Create a description for the autocorrection
-        let description = format!("Add underscore prefix to unused variable: `{}`", variable_name);
+        let description = format!(
+            "Add underscore prefix to unused variable: `{}`",
+            variable_name
+        );
 
         // Extract file path from parameters if available
-        let file_path = params.values.get("file_path")
+        let file_path = params
+            .values
+            .get("file_path")
             .cloned()
             .unwrap_or_else(|| "unknown_file.rs".to_string());
 
         // Extract line number from parameters if available
-        let line = params.values.get("line")
+        let line = params
+            .values
+            .get("line")
             .and_then(|l| l.parse::<usize>().ok())
             .unwrap_or(1);
 
@@ -7442,14 +8167,16 @@ impl UnusedVariableFixGenerator {
         variable_name: &str,
         file_path: &str,
         line: usize,
-        context: &str
+        context: &str,
     ) -> (FixDetails, Vec<String>, String) {
         // Parse the context to find the variable declaration
         let lines: Vec<&str> = context.lines().collect();
 
         // Look for the line containing the variable declaration
-        let var_line = lines.iter()
-            .find(|&&l| l.contains(&format!(" {} ", variable_name)) ||
+        let var_line = lines
+            .iter()
+            .find(|&&l| {
+                l.contains(&format!(" {} ", variable_name)) ||
                          l.contains(&format!(" {}", variable_name)) ||
                          l.contains(&format!("({}", variable_name)) ||
                          l.contains(&format!("({} ", variable_name)) ||
@@ -7463,7 +8190,8 @@ impl UnusedVariableFixGenerator {
                          l.contains(&format!("Some({}", variable_name)) ||
                          l.contains(&format!("Some({} ", variable_name)) ||
                          l.contains(&format!("None({}", variable_name)) ||
-                         l.contains(&format!("None({} ", variable_name)))
+                         l.contains(&format!("None({} ", variable_name))
+            })
             .map(|&l| l.trim())
             .unwrap_or("");
 
@@ -7475,10 +8203,13 @@ impl UnusedVariableFixGenerator {
         let var_regex = Regex::new(&format!(r"\b{}\b", regex::escape(variable_name))).unwrap();
 
         // Replace the variable name with an underscore prefix
-        let new_line = var_regex.replace(var_line, &format!("_{}", variable_name)).to_string();
+        let new_line = var_regex
+            .replace(var_line, &format!("_{}", variable_name))
+            .to_string();
 
         // Create a sed command to replace the line
-        let sed_command = format!("sed -i '{}s/{}/{}/' \"{}\"",
+        let sed_command = format!(
+            "sed -i '{}s/{}/{}/' \"{}\"",
             line,
             regex::escape(var_line),
             regex::escape(&new_line),
@@ -7508,10 +8239,11 @@ impl UnusedVariableFixGenerator {
         &self,
         variable_name: &str,
         file_path: &str,
-        line: usize
+        line: usize,
     ) -> (FixDetails, Vec<String>, String) {
         // Create a generic sed command to add an underscore prefix to the variable
-        let sed_command = format!("sed -i '{}s/\\b{}\\b/_{}/g' \"{}\"",
+        let sed_command = format!(
+            "sed -i '{}s/\\b{}\\b/_{}/g' \"{}\"",
             line,
             regex::escape(variable_name),
             regex::escape(variable_name),
@@ -7527,7 +8259,10 @@ impl UnusedVariableFixGenerator {
         let details = FixDetails::SuggestCodeChange {
             file_path: PathBuf::from(file_path),
             line_hint: line,
-            suggested_code_snippet: format!("// Replace '{}' with '_{}'", variable_name, variable_name),
+            suggested_code_snippet: format!(
+                "// Replace '{}' with '_{}'",
+                variable_name, variable_name
+            ),
             explanation,
         };
 
@@ -7536,8 +8271,6 @@ impl UnusedVariableFixGenerator {
         (details, vec![sed_command], diff)
     }
 }
-
-
 
 /// Main struct for the Decrust autocorrection capabilities.
 ///
@@ -7565,59 +8298,175 @@ impl Decrust {
         decrust.register_parameter_extractor(Box::new(RegexParameterExtractor::new()));
         decrust.register_parameter_extractor(Box::new(DiagnosticParameterExtractor::new()));
 
-    // Register Validation fix generators
-    decrust.register_fix_generator(ErrorCategory::Validation, Box::new(NotFoundFixGenerator::new()));
-    decrust.register_fix_generator(ErrorCategory::Validation, Box::new(UnusedImportFixGenerator::new()));
-    decrust.register_fix_generator(ErrorCategory::Validation, Box::new(UnusedVariableFixGenerator::new()));
-    decrust.register_fix_generator(ErrorCategory::Validation, Box::new(MissingSemicolonFixGenerator::new()));
-    decrust.register_fix_generator(ErrorCategory::Validation, Box::new(MismatchedTypeFixGenerator::new()));
-    decrust.register_fix_generator(ErrorCategory::Validation, Box::new(ImmutableBorrowFixGenerator::new()));
-    decrust.register_fix_generator(ErrorCategory::Validation, Box::new(BorrowAfterMoveFixGenerator::new()));
-    decrust.register_fix_generator(ErrorCategory::Validation, Box::new(MissingTraitImplFixGenerator::new()));
-    decrust.register_fix_generator(ErrorCategory::Validation, Box::new(MissingLifetimeFixGenerator::new()));
-    decrust.register_fix_generator(ErrorCategory::Validation, Box::new(MatchPatternFixGenerator::new()));
-    decrust.register_fix_generator(ErrorCategory::Validation, Box::new(PrivateFieldAccessFixGenerator::new()));
-    decrust.register_fix_generator(ErrorCategory::Validation, Box::new(GenericParamConflictFixGenerator::new()));
-    decrust.register_fix_generator(ErrorCategory::Validation, Box::new(MissingReturnFixGenerator::new()));
-    decrust.register_fix_generator(ErrorCategory::Validation, Box::new(EnumParameterMatchFixGenerator::new()));
-    decrust.register_fix_generator(ErrorCategory::Validation, Box::new(StructParameterMatchFixGenerator::new()));
-    decrust.register_fix_generator(ErrorCategory::Validation, Box::new(AstTraitImplementationFixGenerator::new()));
-    decrust.register_fix_generator(ErrorCategory::Validation, Box::new(ClosureCaptureLifetimeFixGenerator::new()));
-    decrust.register_fix_generator(ErrorCategory::Validation, Box::new(RecursiveTypeFixGenerator::new()));
-    decrust.register_fix_generator(ErrorCategory::Validation, Box::new(QuestionMarkPropagationFixGenerator::new()));
-    decrust.register_fix_generator(ErrorCategory::Validation, Box::new(MissingOkErrFixGenerator::new()));
-    decrust.register_fix_generator(ErrorCategory::Validation, Box::new(ReturnLocalReferenceFixGenerator::new()));
-    decrust.register_fix_generator(ErrorCategory::Validation, Box::new(UnstableFeatureFixGenerator::new()));
-    decrust.register_fix_generator(ErrorCategory::Validation, Box::new(InvalidArgumentCountFixGenerator::new()));
+        // Register Validation fix generators
+        decrust.register_fix_generator(
+            ErrorCategory::Validation,
+            Box::new(NotFoundFixGenerator::new()),
+        );
+        decrust.register_fix_generator(
+            ErrorCategory::Validation,
+            Box::new(UnusedImportFixGenerator::new()),
+        );
+        decrust.register_fix_generator(
+            ErrorCategory::Validation,
+            Box::new(UnusedVariableFixGenerator::new()),
+        );
+        decrust.register_fix_generator(
+            ErrorCategory::Validation,
+            Box::new(MissingSemicolonFixGenerator::new()),
+        );
+        decrust.register_fix_generator(
+            ErrorCategory::Validation,
+            Box::new(MismatchedTypeFixGenerator::new()),
+        );
+        decrust.register_fix_generator(
+            ErrorCategory::Validation,
+            Box::new(ImmutableBorrowFixGenerator::new()),
+        );
+        decrust.register_fix_generator(
+            ErrorCategory::Validation,
+            Box::new(BorrowAfterMoveFixGenerator::new()),
+        );
+        decrust.register_fix_generator(
+            ErrorCategory::Validation,
+            Box::new(MissingTraitImplFixGenerator::new()),
+        );
+        decrust.register_fix_generator(
+            ErrorCategory::Validation,
+            Box::new(MissingLifetimeFixGenerator::new()),
+        );
+        decrust.register_fix_generator(
+            ErrorCategory::Validation,
+            Box::new(MatchPatternFixGenerator::new()),
+        );
+        decrust.register_fix_generator(
+            ErrorCategory::Validation,
+            Box::new(PrivateFieldAccessFixGenerator::new()),
+        );
+        decrust.register_fix_generator(
+            ErrorCategory::Validation,
+            Box::new(GenericParamConflictFixGenerator::new()),
+        );
+        decrust.register_fix_generator(
+            ErrorCategory::Validation,
+            Box::new(MissingReturnFixGenerator::new()),
+        );
+        decrust.register_fix_generator(
+            ErrorCategory::Validation,
+            Box::new(EnumParameterMatchFixGenerator::new()),
+        );
+        decrust.register_fix_generator(
+            ErrorCategory::Validation,
+            Box::new(StructParameterMatchFixGenerator::new()),
+        );
+        decrust.register_fix_generator(
+            ErrorCategory::Validation,
+            Box::new(AstTraitImplementationFixGenerator::new()),
+        );
+        decrust.register_fix_generator(
+            ErrorCategory::Validation,
+            Box::new(ClosureCaptureLifetimeFixGenerator::new()),
+        );
+        decrust.register_fix_generator(
+            ErrorCategory::Validation,
+            Box::new(RecursiveTypeFixGenerator::new()),
+        );
+        decrust.register_fix_generator(
+            ErrorCategory::Validation,
+            Box::new(QuestionMarkPropagationFixGenerator::new()),
+        );
+        decrust.register_fix_generator(
+            ErrorCategory::Validation,
+            Box::new(MissingOkErrFixGenerator::new()),
+        );
+        decrust.register_fix_generator(
+            ErrorCategory::Validation,
+            Box::new(ReturnLocalReferenceFixGenerator::new()),
+        );
+        decrust.register_fix_generator(
+            ErrorCategory::Validation,
+            Box::new(UnstableFeatureFixGenerator::new()),
+        );
+        decrust.register_fix_generator(
+            ErrorCategory::Validation,
+            Box::new(InvalidArgumentCountFixGenerator::new()),
+        );
 
-    // Configuration error fix generators
-    decrust.register_fix_generator(ErrorCategory::Configuration, Box::new(ConfigSyntaxFixGenerator::new()));
-    decrust.register_fix_generator(ErrorCategory::Configuration, Box::new(ConfigMissingKeyFixGenerator::new()));
+        // Configuration error fix generators
+        decrust.register_fix_generator(
+            ErrorCategory::Configuration,
+            Box::new(ConfigSyntaxFixGenerator::new()),
+        );
+        decrust.register_fix_generator(
+            ErrorCategory::Configuration,
+            Box::new(ConfigMissingKeyFixGenerator::new()),
+        );
 
-    // Runtime error and best practices fix generators
-    decrust.register_fix_generator(ErrorCategory::Runtime, Box::new(UnsafeUnwrapFixGenerator::new()));
-    decrust.register_fix_generator(ErrorCategory::Runtime, Box::new(DivisionByZeroFixGenerator::new()));
-    decrust.register_fix_generator(ErrorCategory::Runtime, Box::new(RuntimePanicFixGenerator::new()));
+        // Runtime error and best practices fix generators
+        decrust.register_fix_generator(
+            ErrorCategory::Runtime,
+            Box::new(UnsafeUnwrapFixGenerator::new()),
+        );
+        decrust.register_fix_generator(
+            ErrorCategory::Runtime,
+            Box::new(DivisionByZeroFixGenerator::new()),
+        );
+        decrust.register_fix_generator(
+            ErrorCategory::Runtime,
+            Box::new(RuntimePanicFixGenerator::new()),
+        );
 
-    // Parsing error fix generators
-    decrust.register_fix_generator(ErrorCategory::Parsing, Box::new(JsonParseFixGenerator::new()));
-    decrust.register_fix_generator(ErrorCategory::Parsing, Box::new(YamlParseFixGenerator::new()));
+        // Parsing error fix generators
+        decrust.register_fix_generator(
+            ErrorCategory::Parsing,
+            Box::new(JsonParseFixGenerator::new()),
+        );
+        decrust.register_fix_generator(
+            ErrorCategory::Parsing,
+            Box::new(YamlParseFixGenerator::new()),
+        );
 
-    // Network error fix generators
-    decrust.register_fix_generator(ErrorCategory::Network, Box::new(NetworkConnectionFixGenerator::new()));
-    decrust.register_fix_generator(ErrorCategory::Network, Box::new(NetworkTlsFixGenerator::new()));
+        // Network error fix generators
+        decrust.register_fix_generator(
+            ErrorCategory::Network,
+            Box::new(NetworkConnectionFixGenerator::new()),
+        );
+        decrust.register_fix_generator(
+            ErrorCategory::Network,
+            Box::new(NetworkTlsFixGenerator::new()),
+        );
 
-    // Style error fix generators
-    decrust.register_fix_generator(ErrorCategory::Style, Box::new(UnnecessaryBracesFixGenerator::new()));
-    decrust.register_fix_generator(ErrorCategory::Style, Box::new(UnnecessaryCloneFixGenerator::new()));
-    decrust.register_fix_generator(ErrorCategory::Style, Box::new(UnnecessaryParenthesesFixGenerator::new()));
-    decrust.register_fix_generator(ErrorCategory::Style, Box::new(UnusedMutFixGenerator::new()));
-    decrust.register_fix_generator(ErrorCategory::Style, Box::new(AstMissingImportFixGenerator::new()));
-    decrust.register_fix_generator(ErrorCategory::Style, Box::new(AstUnusedCodeFixGenerator::new()));
+        // Style error fix generators
+        decrust.register_fix_generator(
+            ErrorCategory::Style,
+            Box::new(UnnecessaryBracesFixGenerator::new()),
+        );
+        decrust.register_fix_generator(
+            ErrorCategory::Style,
+            Box::new(UnnecessaryCloneFixGenerator::new()),
+        );
+        decrust.register_fix_generator(
+            ErrorCategory::Style,
+            Box::new(UnnecessaryParenthesesFixGenerator::new()),
+        );
+        decrust
+            .register_fix_generator(ErrorCategory::Style, Box::new(UnusedMutFixGenerator::new()));
+        decrust.register_fix_generator(
+            ErrorCategory::Style,
+            Box::new(AstMissingImportFixGenerator::new()),
+        );
+        decrust.register_fix_generator(
+            ErrorCategory::Style,
+            Box::new(AstUnusedCodeFixGenerator::new()),
+        );
 
-    // IO error fix generators
-    decrust.register_fix_generator(ErrorCategory::Io, Box::new(IoMissingDirectoryFixGenerator::new()));
-    decrust.register_fix_generator(ErrorCategory::Io, Box::new(IoPermissionFixGenerator::new()));
+        // IO error fix generators
+        decrust.register_fix_generator(
+            ErrorCategory::Io,
+            Box::new(IoMissingDirectoryFixGenerator::new()),
+        );
+        decrust
+            .register_fix_generator(ErrorCategory::Io, Box::new(IoPermissionFixGenerator::new()));
 
         // Register default fix templates
         decrust.register_fix_template(
@@ -7633,20 +8482,37 @@ impl Decrust {
     }
 
     /// Registers a parameter extractor.
-    pub fn register_parameter_extractor(&mut self, extractor: Box<dyn ParameterExtractor>) -> &mut Self {
+    pub fn register_parameter_extractor(
+        &mut self,
+        extractor: Box<dyn ParameterExtractor>,
+    ) -> &mut Self {
         self.parameter_extractors.push(extractor);
         self
     }
 
     /// Registers a fix generator for a specific error category.
-    pub fn register_fix_generator(&mut self, category: ErrorCategory, generator: Box<dyn FixGenerator>) -> &mut Self {
-        self.fix_generators.entry(category).or_insert_with(Vec::new).push(generator);
+    pub fn register_fix_generator(
+        &mut self,
+        category: ErrorCategory,
+        generator: Box<dyn FixGenerator>,
+    ) -> &mut Self {
+        self.fix_generators
+            .entry(category)
+            .or_insert_with(Vec::new)
+            .push(generator);
         self
     }
 
     /// Registers a fix template for a specific error category.
-    pub fn register_fix_template(&mut self, category: ErrorCategory, template: FixTemplate) -> &mut Self {
-        self.fix_templates.entry(category).or_insert_with(Vec::new).push(template);
+    pub fn register_fix_template(
+        &mut self,
+        category: ErrorCategory,
+        template: FixTemplate,
+    ) -> &mut Self {
+        self.fix_templates
+            .entry(category)
+            .or_insert_with(Vec::new)
+            .push(template);
         self
     }
 
@@ -7659,8 +8525,10 @@ impl Decrust {
                 let params = extractor.extract_parameters(error);
 
                 // Keep the parameters with the highest confidence and most values
-                if params.confidence > best_params.confidence ||
-                   (params.confidence == best_params.confidence && params.values.len() > best_params.values.len()) {
+                if params.confidence > best_params.confidence
+                    || (params.confidence == best_params.confidence
+                        && params.values.len() > best_params.values.len())
+                {
                     best_params = params;
                 }
             }
@@ -7677,7 +8545,9 @@ impl Decrust {
         match error.category() {
             ErrorCategory::NotFound => {
                 // If we have an identifier but no resource_type, try to infer it
-                if !params.values.contains_key("resource_type") && params.values.contains_key("identifier") {
+                if !params.values.contains_key("resource_type")
+                    && params.values.contains_key("identifier")
+                {
                     let identifier = params.values.get("identifier").unwrap();
                     let path = PathBuf::from(identifier);
 
@@ -7688,7 +8558,12 @@ impl Decrust {
                 }
 
                 // Try to extract resource_type and identifier from NotFound error variant
-                if let DecrustError::NotFound { resource_type, identifier, .. } = error {
+                if let DecrustError::NotFound {
+                    resource_type,
+                    identifier,
+                    ..
+                } = error
+                {
                     if !params.values.contains_key("resource_type") {
                         params.add_parameter("resource_type", resource_type);
                     }
@@ -7699,15 +8574,21 @@ impl Decrust {
                         params.confidence = 0.7;
                     }
                 }
-            },
+            }
             ErrorCategory::Io => {
                 // Try to extract path from IO error message
-                if let DecrustError::Io { path, operation, .. } = error {
-                    if !params.values.contains_key("param1") && !params.values.contains_key("operation") {
+                if let DecrustError::Io {
+                    path, operation, ..
+                } = error
+                {
+                    if !params.values.contains_key("param1")
+                        && !params.values.contains_key("operation")
+                    {
                         params.add_parameter("operation", operation);
                         params.add_parameter("param1", operation);
                     }
-                    if !params.values.contains_key("param2") && !params.values.contains_key("path") {
+                    if !params.values.contains_key("param2") && !params.values.contains_key("path")
+                    {
                         if let Some(p) = path {
                             let path_str = p.to_string_lossy().to_string();
                             params.add_parameter("path", &path_str);
@@ -7718,7 +8599,7 @@ impl Decrust {
                         params.confidence = 0.7;
                     }
                 }
-            },
+            }
             // Add more inference rules for other categories
             _ => {}
         }
@@ -7758,11 +8639,25 @@ impl Decrust {
 
                 let details = file_path_from_diag.map(|fp| FixDetails::TextReplace {
                     file_path: fp,
-                    line_start: diag_info.primary_location.as_ref().map_or(0, |loc| loc.line as usize),
-                    column_start: diag_info.primary_location.as_ref().map_or(0, |loc| loc.column as usize),
-                    line_end: diag_info.primary_location.as_ref().map_or(0, |loc| loc.line as usize),
+                    line_start: diag_info
+                        .primary_location
+                        .as_ref()
+                        .map_or(0, |loc| loc.line as usize),
+                    column_start: diag_info
+                        .primary_location
+                        .as_ref()
+                        .map_or(0, |loc| loc.column as usize),
+                    line_end: diag_info
+                        .primary_location
+                        .as_ref()
+                        .map_or(0, |loc| loc.line as usize),
                     column_end: diag_info.primary_location.as_ref().map_or(0, |loc| {
-                        loc.column as usize + primary_fix_text.chars().filter(|&c| c != '\n').count().max(1)
+                        loc.column as usize
+                            + primary_fix_text
+                                .chars()
+                                .filter(|&c| c != '\n')
+                                .count()
+                                .max(1)
                     }),
                     original_text_snippet: diag_info.original_message.clone(),
                     replacement_text: primary_fix_text,
@@ -7796,8 +8691,13 @@ impl Decrust {
         if let Some(templates) = self.fix_templates.get(&error.category()) {
             if !templates.is_empty() && !params.values.is_empty() {
                 // Find the template with the highest base confidence
-                let best_template = templates.iter()
-                    .max_by(|a, b| a.base_confidence.partial_cmp(&b.base_confidence).unwrap_or(std::cmp::Ordering::Equal))
+                let best_template = templates
+                    .iter()
+                    .max_by(|a, b| {
+                        a.base_confidence
+                            .partial_cmp(&b.base_confidence)
+                            .unwrap_or(std::cmp::Ordering::Equal)
+                    })
                     .unwrap();
 
                 return Some(best_template.apply(&params));
@@ -7807,12 +8707,23 @@ impl Decrust {
         // Fallback to general error category based suggestions
         match error.category() {
             ErrorCategory::NotFound => {
-                let (resource_type, identifier) = if let DecrustError::NotFound { resource_type, identifier, .. } = error {
+                let (resource_type, identifier) = if let DecrustError::NotFound {
+                    resource_type,
+                    identifier,
+                    ..
+                } = error
+                {
                     (resource_type.clone(), identifier.clone())
                 } else {
                     // Should not happen if category matches variant, but good for robustness
-                    tracing::warn!("Decrust: NotFound category with unexpected error variant: {:?}", error);
-                    ("unknown resource".to_string(), "unknown identifier".to_string())
+                    tracing::warn!(
+                        "Decrust: NotFound category with unexpected error variant: {:?}",
+                        error
+                    );
+                    (
+                        "unknown resource".to_string(),
+                        "unknown identifier".to_string(),
+                    )
                 };
 
                 let mut commands = vec![];
@@ -7820,7 +8731,8 @@ impl Decrust {
                 if resource_type == "file" || resource_type == "path" {
                     let path_buf = PathBuf::from(&identifier);
                     if let Some(parent) = path_buf.parent() {
-                        if !parent.as_os_str().is_empty() && !parent.exists() { // Check if parent needs creation
+                        if !parent.as_os_str().is_empty() && !parent.exists() {
+                            // Check if parent needs creation
                             commands.push(format!("mkdir -p \"{}\"", parent.display()));
                         }
                     }
@@ -7845,12 +8757,26 @@ impl Decrust {
                 })
             }
             ErrorCategory::Io => {
-                let (source_msg, path_opt, operation_opt, io_kind_opt) = if let DecrustError::Io { source, path, operation, .. } = error {
-                    (source.to_string(), path.clone(), Some(operation.clone()), Some(source.kind()))
+                let (source_msg, path_opt, operation_opt, io_kind_opt) = if let DecrustError::Io {
+                    source,
+                    path,
+                    operation,
+                    ..
+                } = error
+                {
+                    (
+                        source.to_string(),
+                        path.clone(),
+                        Some(operation.clone()),
+                        Some(source.kind()),
+                    )
                 } else {
                     (String::from("Unknown I/O error"), None, None, None)
                 };
-                let path_str = path_opt.as_ref().map(|p| p.display().to_string()).unwrap_or_else(|| "<unknown_path>".to_string());
+                let path_str = path_opt
+                    .as_ref()
+                    .map(|p| p.display().to_string())
+                    .unwrap_or_else(|| "<unknown_path>".to_string());
                 let op_str = operation_opt.unwrap_or_else(|| "<unknown_op>".to_string());
 
                 let mut details = None;
@@ -7864,15 +8790,17 @@ impl Decrust {
                                 suggested_code_snippet: format!("// Ensure path '{}' exists before operation '{}'\n// Or handle the NotFound error gracefully.", p.display(), op_str),
                                 explanation: "The file or directory specified in the operation was not found at the given path.".to_string(),
                             });
-                            if p.is_dir() || p.extension().is_none() { // Heuristic for directory
+                            if p.is_dir() || p.extension().is_none() {
+                                // Heuristic for directory
                                 commands.push(format!("mkdir -p \"{}\"", p.display()));
-                            } else { // Likely a file
-                                 if let Some(parent) = p.parent() {
-                                     if !parent.as_os_str().is_empty() && !parent.exists() {
-                                         commands.push(format!("mkdir -p \"{}\"", parent.display()));
-                                     }
-                                 }
-                                 commands.push(format!("touch \"{}\"", p.display()));
+                            } else {
+                                // Likely a file
+                                if let Some(parent) = p.parent() {
+                                    if !parent.as_os_str().is_empty() && !parent.exists() {
+                                        commands.push(format!("mkdir -p \"{}\"", parent.display()));
+                                    }
+                                }
+                                commands.push(format!("touch \"{}\"", p.display()));
                             }
                         }
                         FixType::ExecuteCommand // With commands, or ManualInterventionRequired if no commands
@@ -7900,12 +8828,15 @@ impl Decrust {
                 })
             }
             ErrorCategory::Configuration => {
-                let (message, path_opt) = if let DecrustError::Config { message, path, .. } = error {
+                let (message, path_opt) = if let DecrustError::Config { message, path, .. } = error
+                {
                     (message.clone(), path.clone())
                 } else {
                     ("Unknown configuration error".to_string(), None)
                 };
-                let target_file = path_opt.clone().unwrap_or_else(|| PathBuf::from("config.toml")); // Default assumption
+                let target_file = path_opt
+                    .clone()
+                    .unwrap_or_else(|| PathBuf::from("config.toml")); // Default assumption
                 Some(Autocorrection {
                     description: format!("Configuration issue for path '{}': {}. Please review the configuration file structure and values.",
                         path_opt.as_ref().map(|p| p.display().to_string()).unwrap_or_else(||"<unknown_config>".to_string()), message),
@@ -8005,9 +8936,9 @@ impl AutocorrectableError for super::DecrustError {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use super::super::{DecrustError, OptionalError};
     use super::super::types::{DiagnosticResult, ErrorContext, ErrorLocation, FixType};
+    use super::super::{DecrustError, OptionalError};
+    use super::*;
     use crate::backtrace::DecrustBacktrace as Backtrace;
     use std::path::PathBuf;
 
@@ -8027,13 +8958,19 @@ mod tests {
         let autocorrection = error.suggest_autocorrection(&decrust, None);
 
         // Verify the autocorrection
-        assert!(autocorrection.is_some(), "Expected autocorrection for NotFound error");
+        assert!(
+            autocorrection.is_some(),
+            "Expected autocorrection for NotFound error"
+        );
 
         if let Some(correction) = autocorrection {
             assert_eq!(correction.fix_type, FixType::ExecuteCommand);
             assert!(correction.description.contains("Resource type 'file'"));
             assert!(correction.description.contains("/path/to/missing_file.txt"));
-            assert!(correction.commands_to_apply.iter().any(|cmd| cmd.contains("touch")));
+            assert!(correction
+                .commands_to_apply
+                .iter()
+                .any(|cmd| cmd.contains("touch")));
         }
     }
 
@@ -8041,9 +8978,7 @@ mod tests {
     fn test_decrust_get_diagnostic_info() {
         // Create a diagnostic result
         let diagnostic = DiagnosticResult {
-            primary_location: Some(ErrorLocation::new(
-                "src/main.rs", 42, 10, "main"
-            )),
+            primary_location: Some(ErrorLocation::new("src/main.rs", 42, 10, "main")),
             expansion_trace: Vec::new(),
             suggested_fixes: vec!["Replace `foo` with `bar`".to_string()],
             original_message: Some("Invalid syntax".to_string()),
@@ -8051,8 +8986,8 @@ mod tests {
         };
 
         // Create context with the diagnostic info
-        let context = ErrorContext::new("Error with diagnostic info")
-            .with_diagnostic_info(diagnostic);
+        let context =
+            ErrorContext::new("Error with diagnostic info").with_diagnostic_info(diagnostic);
 
         // Create a base error
         let base_error = DecrustError::Io {
@@ -8095,9 +9030,7 @@ mod tests {
 
         // Create a diagnostic result with suggested fixes
         let diagnostic = DiagnosticResult {
-            primary_location: Some(ErrorLocation::new(
-                "src/main.rs", 42, 10, "main"
-            )),
+            primary_location: Some(ErrorLocation::new("src/main.rs", 42, 10, "main")),
             expansion_trace: Vec::new(),
             suggested_fixes: vec!["Fix: add semicolon".to_string()],
             original_message: Some("Missing semicolon".to_string()),
@@ -8105,8 +9038,7 @@ mod tests {
         };
 
         // Create context with the diagnostic info
-        let context = ErrorContext::new("Syntax error")
-            .with_diagnostic_info(diagnostic);
+        let context = ErrorContext::new("Syntax error").with_diagnostic_info(diagnostic);
 
         // Create a base error
         let base_error = DecrustError::Io {
@@ -8126,11 +9058,16 @@ mod tests {
         let autocorrection = error.suggest_autocorrection(&decrust, None);
 
         // Verify autocorrection uses diagnostic info
-        assert!(autocorrection.is_some(), "Expected autocorrection from diagnostic info");
+        assert!(
+            autocorrection.is_some(),
+            "Expected autocorrection from diagnostic info"
+        );
 
         if let Some(correction) = autocorrection {
             assert_eq!(correction.fix_type, FixType::TextReplacement);
-            assert!(correction.description.contains("Apply fix suggested by diagnostic tool"));
+            assert!(correction
+                .description
+                .contains("Apply fix suggested by diagnostic tool"));
             assert_eq!(correction.targets_error_code, Some("E0001".to_string()));
         }
     }
@@ -8148,8 +9085,14 @@ mod tests {
 
         let notfound_params = decrust.extract_parameters(&notfound_error);
         assert!(notfound_params.confidence > 0.0);
-        assert_eq!(notfound_params.values.get("resource_type"), Some(&"file".to_string()));
-        assert_eq!(notfound_params.values.get("identifier"), Some(&"/path/to/missing_file.txt".to_string()));
+        assert_eq!(
+            notfound_params.values.get("resource_type"),
+            Some(&"file".to_string())
+        );
+        assert_eq!(
+            notfound_params.values.get("identifier"),
+            Some(&"/path/to/missing_file.txt".to_string())
+        );
 
         // Test IO error parameter extraction
         let io_error = DecrustError::Io {
@@ -8162,7 +9105,10 @@ mod tests {
         let io_params = decrust.extract_parameters(&io_error);
         assert!(io_params.confidence > 0.0);
         assert_eq!(io_params.values.get("operation"), Some(&"read".to_string()));
-        assert_eq!(io_params.values.get("path"), Some(&"/path/to/file.txt".to_string()));
+        assert_eq!(
+            io_params.values.get("path"),
+            Some(&"/path/to/file.txt".to_string())
+        );
     }
 
     #[test]
@@ -8185,7 +9131,10 @@ mod tests {
 
         let captures = regex.captures(message).unwrap();
         assert_eq!(captures.get(1).unwrap().as_str(), "file");
-        assert_eq!(captures.get(2).unwrap().as_str(), "/path/to/missing_file.txt");
+        assert_eq!(
+            captures.get(2).unwrap().as_str(),
+            "/path/to/missing_file.txt"
+        );
 
         // The test is successful if we reach this point
         // The original assertion was failing because the Display implementation
@@ -8197,17 +9146,14 @@ mod tests {
         let extractor = DiagnosticParameterExtractor::new();
 
         let diag_info = DiagnosticResult {
-            primary_location: Some(ErrorLocation::new(
-                "src/main.rs", 42, 10, "main"
-            )),
+            primary_location: Some(ErrorLocation::new("src/main.rs", 42, 10, "main")),
             expansion_trace: vec![],
             suggested_fixes: vec!["fix1".to_string()],
             original_message: Some("Test error".to_string()),
             diagnostic_code: Some("E0001".to_string()),
         };
 
-        let error_context = ErrorContext::new("Test error")
-            .with_diagnostic_info(diag_info);
+        let error_context = ErrorContext::new("Test error").with_diagnostic_info(diag_info);
 
         let error = DecrustError::Internal {
             message: "Test error".to_string(),
@@ -8219,9 +9165,15 @@ mod tests {
         let params = extractor.extract_parameters(&error);
 
         assert!(params.confidence > 0.0);
-        assert_eq!(params.values.get("file_path"), Some(&"src/main.rs".to_string()));
+        assert_eq!(
+            params.values.get("file_path"),
+            Some(&"src/main.rs".to_string())
+        );
         assert_eq!(params.values.get("line"), Some(&"42".to_string()));
-        assert_eq!(params.values.get("diagnostic_code"), Some(&"E0001".to_string()));
+        assert_eq!(
+            params.values.get("diagnostic_code"),
+            Some(&"E0001".to_string())
+        );
     }
 
     #[test]
@@ -8290,7 +9242,7 @@ mod tests {
                 backtrace: Backtrace::generate(),
             },
             &params,
-            Some(source_context)
+            Some(source_context),
         );
 
         assert!(fix.is_some());
@@ -8306,7 +9258,8 @@ mod tests {
         params.add_parameter("line", "10");
         params.set_confidence(0.9);
 
-        let source_context = "use std::{io, fs, path::PathBuf};\n\nfn main() {\n    // Code here\n}";
+        let source_context =
+            "use std::{io, fs, path::PathBuf};\n\nfn main() {\n    // Code here\n}";
 
         let fix = generator.generate_fix(
             &DecrustError::Validation {
@@ -8315,7 +9268,7 @@ mod tests {
                 backtrace: Backtrace::generate(),
             },
             &params,
-            Some(source_context)
+            Some(source_context),
         );
 
         assert!(fix.is_some());
@@ -8323,7 +9276,11 @@ mod tests {
         assert_eq!(fix.fix_type, FixType::TextReplacement);
         assert!(fix.description.contains("Remove unused import"));
         assert!(fix.commands_to_apply.len() > 0);
-        assert!(fix.diff_suggestion.as_ref().unwrap().contains("-use std::{io, fs, path::PathBuf};"));
+        assert!(fix
+            .diff_suggestion
+            .as_ref()
+            .unwrap()
+            .contains("-use std::{io, fs, path::PathBuf};"));
 
         // Test UnusedVariableFixGenerator
         let var_generator = UnusedVariableFixGenerator::new();
@@ -8335,7 +9292,8 @@ mod tests {
         var_params.add_parameter("line", "10");
         var_params.set_confidence(0.9);
 
-        let var_source_context = "fn main() {\n    let value = 42;\n    println!(\"Hello, world!\");\n}";
+        let var_source_context =
+            "fn main() {\n    let value = 42;\n    println!(\"Hello, world!\");\n}";
 
         let var_fix = var_generator.generate_fix(
             &DecrustError::Validation {
@@ -8344,7 +9302,7 @@ mod tests {
                 backtrace: Backtrace::generate(),
             },
             &var_params,
-            Some(var_source_context)
+            Some(var_source_context),
         );
 
         assert!(var_fix.is_some());
@@ -8361,13 +9319,15 @@ mod tests {
                 backtrace: Backtrace::generate(),
             },
             &params,
-            Some(source_context)
+            Some(source_context),
         );
 
         assert!(fix.is_some());
         let fix = fix.unwrap();
         assert_eq!(fix.fix_type, FixType::TextReplacement);
-        assert!(fix.description.contains("Add underscore prefix to unused variable"));
+        assert!(fix
+            .description
+            .contains("Add underscore prefix to unused variable"));
         assert!(fix.commands_to_apply.len() > 0);
         // Don't check for specific diff content as it might vary
 
@@ -8387,7 +9347,7 @@ mod tests {
                 backtrace: Backtrace::generate(),
             },
             &params,
-            Some(source_context)
+            Some(source_context),
         );
 
         assert!(fix.is_some());
@@ -8415,7 +9375,7 @@ mod tests {
                 backtrace: Backtrace::generate(),
             },
             &params,
-            Some(source_context)
+            Some(source_context),
         );
 
         assert!(fix.is_some());
@@ -8443,7 +9403,8 @@ mod tests {
         params.add_parameter("line", "10");
         params.set_confidence(0.9);
 
-        let source_context = "use std::time::{Duration};\nuse std::fs::File;\n\nfn main() {\n    // Code here\n}";
+        let source_context =
+            "use std::time::{Duration};\nuse std::fs::File;\n\nfn main() {\n    // Code here\n}";
 
         let fix = generator.generate_fix(
             &DecrustError::Style {
@@ -8451,7 +9412,7 @@ mod tests {
                 backtrace: Backtrace::generate(),
             },
             &params,
-            Some(source_context)
+            Some(source_context),
         );
 
         assert!(fix.is_some());
@@ -8464,8 +9425,16 @@ mod tests {
         println!("Actual diff suggestion: {:?}", fix.diff_suggestion);
 
         // Check that the braces are removed
-        assert!(fix.diff_suggestion.as_ref().unwrap().contains("-use std::time::{Duration};"));
-        assert!(fix.diff_suggestion.as_ref().unwrap().contains("+use std::time::Duration;"));
+        assert!(fix
+            .diff_suggestion
+            .as_ref()
+            .unwrap()
+            .contains("-use std::time::{Duration};"));
+        assert!(fix
+            .diff_suggestion
+            .as_ref()
+            .unwrap()
+            .contains("+use std::time::Duration;"));
     }
 
     #[test]
@@ -8486,7 +9455,7 @@ mod tests {
                 backtrace: Backtrace::generate(),
             },
             &params,
-            None
+            None,
         );
 
         assert!(fix.is_some());
@@ -8497,7 +9466,11 @@ mod tests {
 
         // Check that the suggestions include common solutions
         let details = fix.details.unwrap();
-        if let FixDetails::SuggestCodeChange { suggested_code_snippet, .. } = details {
+        if let FixDetails::SuggestCodeChange {
+            suggested_code_snippet,
+            ..
+        } = details
+        {
             assert!(suggested_code_snippet.contains("&data"));
             assert!(suggested_code_snippet.contains("data.clone()"));
             assert!(suggested_code_snippet.contains("Copy trait"));
@@ -8514,7 +9487,7 @@ mod tests {
         let mut params = ExtractedParameters::default();
         params.add_parameter("message", "expected `;`");
         params.add_parameter("file_path", "src/main.rs");
-        params.add_parameter("line", "2");  // Line 2 in the context
+        params.add_parameter("line", "2"); // Line 2 in the context
         params.set_confidence(0.9);
 
         let source_context = "fn main() {\n    let x = 42\n    println!(\"Hello, world!\");\n}";
@@ -8526,7 +9499,7 @@ mod tests {
                 backtrace: Backtrace::generate(),
             },
             &params,
-            Some(source_context)
+            Some(source_context),
         );
 
         assert!(fix.is_some());
@@ -8555,7 +9528,7 @@ mod tests {
                 backtrace: Backtrace::generate(),
             },
             &params,
-            None
+            None,
         );
 
         assert!(fix.is_some());
@@ -8577,7 +9550,10 @@ mod tests {
 
         // Test with a type mismatch error (i32 vs String)
         let mut params = ExtractedParameters::default();
-        params.add_parameter("message", "mismatched types: expected `String`, found `i32`");
+        params.add_parameter(
+            "message",
+            "mismatched types: expected `String`, found `i32`",
+        );
         params.add_parameter("file_path", "src/main.rs");
         params.add_parameter("line", "10");
         params.set_confidence(0.8);
@@ -8589,7 +9565,7 @@ mod tests {
                 backtrace: Backtrace::generate(),
             },
             &params,
-            None
+            None,
         );
 
         assert!(fix.is_some());
@@ -8601,24 +9577,35 @@ mod tests {
 
         // Check that the suggestions include conversion methods
         let details = fix.details.unwrap();
-        if let FixDetails::SuggestCodeChange { suggested_code_snippet, explanation, .. } = details {
+        if let FixDetails::SuggestCodeChange {
+            suggested_code_snippet,
+            explanation,
+            ..
+        } = details
+        {
             println!("Suggested code snippet: {}", suggested_code_snippet);
             println!("Explanation: {}", explanation);
 
             // Check if either the explanation or the code snippet contains the conversion methods
-            let has_conversion_methods = explanation.contains("to_string()") ||
-                                        explanation.contains("String::from") ||
-                                        suggested_code_snippet.contains("to_string()") ||
-                                        suggested_code_snippet.contains("String::from");
+            let has_conversion_methods = explanation.contains("to_string()")
+                || explanation.contains("String::from")
+                || suggested_code_snippet.contains("to_string()")
+                || suggested_code_snippet.contains("String::from");
 
-            assert!(has_conversion_methods, "Expected conversion methods in suggestions");
+            assert!(
+                has_conversion_methods,
+                "Expected conversion methods in suggestions"
+            );
         } else {
             panic!("Expected SuggestCodeChange details");
         }
 
         // Test with a reference type mismatch
         let mut params = ExtractedParameters::default();
-        params.add_parameter("message", "mismatched types: expected `&str`, found `String`");
+        params.add_parameter(
+            "message",
+            "mismatched types: expected `&str`, found `String`",
+        );
         params.add_parameter("file_path", "src/main.rs");
         params.add_parameter("line", "10");
         params.set_confidence(0.8);
@@ -8630,7 +9617,7 @@ mod tests {
                 backtrace: Backtrace::generate(),
             },
             &params,
-            None
+            None,
         );
 
         assert!(fix.is_some());
@@ -8638,17 +9625,25 @@ mod tests {
 
         // Check that the suggestions include reference conversion
         let details = fix.details.unwrap();
-        if let FixDetails::SuggestCodeChange { suggested_code_snippet, explanation, .. } = details {
+        if let FixDetails::SuggestCodeChange {
+            suggested_code_snippet,
+            explanation,
+            ..
+        } = details
+        {
             println!("Suggested code snippet: {}", suggested_code_snippet);
             println!("Explanation: {}", explanation);
 
             // Check if either the explanation or the code snippet contains the reference conversion
-            let has_reference_conversion = explanation.contains("&") ||
-                                          explanation.contains("as_str()") ||
-                                          suggested_code_snippet.contains("&") ||
-                                          suggested_code_snippet.contains("as_str()");
+            let has_reference_conversion = explanation.contains("&")
+                || explanation.contains("as_str()")
+                || suggested_code_snippet.contains("&")
+                || suggested_code_snippet.contains("as_str()");
 
-            assert!(has_reference_conversion, "Expected reference conversion in suggestions");
+            assert!(
+                has_reference_conversion,
+                "Expected reference conversion in suggestions"
+            );
         } else {
             panic!("Expected SuggestCodeChange details");
         }
@@ -8660,7 +9655,10 @@ mod tests {
 
         // Test with an immutable borrow error
         let mut params = ExtractedParameters::default();
-        params.add_parameter("message", "cannot borrow `value` as mutable, as it is not declared as mutable");
+        params.add_parameter(
+            "message",
+            "cannot borrow `value` as mutable, as it is not declared as mutable",
+        );
         params.add_parameter("file_path", "src/main.rs");
         params.add_parameter("line", "10");
         params.set_confidence(0.8);
@@ -8670,11 +9668,12 @@ mod tests {
         let fix = generator.generate_fix(
             &DecrustError::Validation {
                 field: "borrowing".to_string(),
-                message: "cannot borrow `value` as mutable, as it is not declared as mutable".to_string(),
+                message: "cannot borrow `value` as mutable, as it is not declared as mutable"
+                    .to_string(),
                 backtrace: Backtrace::generate(),
             },
             &params,
-            Some(source_context)
+            Some(source_context),
         );
 
         assert!(fix.is_some());
@@ -8686,7 +9685,11 @@ mod tests {
 
         // Check that the diff suggestion adds 'mut'
         let details = fix.details.unwrap();
-        if let FixDetails::SuggestCodeChange { suggested_code_snippet, .. } = details {
+        if let FixDetails::SuggestCodeChange {
+            suggested_code_snippet,
+            ..
+        } = details
+        {
             assert!(suggested_code_snippet.contains("let mut value"));
         } else {
             panic!("Expected SuggestCodeChange details");
@@ -8694,7 +9697,10 @@ mod tests {
 
         // Test with a function parameter
         let mut params = ExtractedParameters::default();
-        params.add_parameter("message", "cannot borrow `param` as mutable, as it is not declared as mutable");
+        params.add_parameter(
+            "message",
+            "cannot borrow `param` as mutable, as it is not declared as mutable",
+        );
         params.add_parameter("file_path", "src/main.rs");
         params.add_parameter("line", "10");
         params.set_confidence(0.8);
@@ -8704,11 +9710,12 @@ mod tests {
         let fix = generator.generate_fix(
             &DecrustError::Validation {
                 field: "borrowing".to_string(),
-                message: "cannot borrow `param` as mutable, as it is not declared as mutable".to_string(),
+                message: "cannot borrow `param` as mutable, as it is not declared as mutable"
+                    .to_string(),
                 backtrace: Backtrace::generate(),
             },
             &params,
-            Some(source_context)
+            Some(source_context),
         );
 
         assert!(fix.is_some());
@@ -8716,7 +9723,11 @@ mod tests {
 
         // Check that the suggestions include adding 'mut' to the parameter
         let details = fix.details.unwrap();
-        if let FixDetails::SuggestCodeChange { suggested_code_snippet, .. } = details {
+        if let FixDetails::SuggestCodeChange {
+            suggested_code_snippet,
+            ..
+        } = details
+        {
             assert!(suggested_code_snippet.contains("mut param"));
         } else {
             panic!("Expected SuggestCodeChange details");
@@ -8743,7 +9754,7 @@ mod tests {
                 backtrace: Backtrace::generate(),
             },
             &params,
-            Some(source_context)
+            Some(source_context),
         );
 
         assert!(fix.is_some());
@@ -8753,9 +9764,15 @@ mod tests {
 
         // Check that the fix correctly adds a lifetime parameter
         let details = fix.details.unwrap();
-        if let FixDetails::SuggestCodeChange { suggested_code_snippet, .. } = details {
-            assert!(suggested_code_snippet.contains("<'a>") ||
-                   suggested_code_snippet.contains("lifetime"));
+        if let FixDetails::SuggestCodeChange {
+            suggested_code_snippet,
+            ..
+        } = details
+        {
+            assert!(
+                suggested_code_snippet.contains("<'a>")
+                    || suggested_code_snippet.contains("lifetime")
+            );
         } else {
             panic!("Expected SuggestCodeChange details");
         }
@@ -8786,7 +9803,7 @@ mod tests {
                 backtrace: Backtrace::generate(),
             },
             &params,
-            Some(context)
+            Some(context),
         );
 
         assert!(fix.is_some());
@@ -8796,9 +9813,14 @@ mod tests {
 
         // Check that the fix suggests adding a catch-all pattern
         let details = fix.details.unwrap();
-        if let FixDetails::SuggestCodeChange { suggested_code_snippet, .. } = details {
-            assert!(suggested_code_snippet.contains("_") ||
-                   suggested_code_snippet.contains("None"));
+        if let FixDetails::SuggestCodeChange {
+            suggested_code_snippet,
+            ..
+        } = details
+        {
+            assert!(
+                suggested_code_snippet.contains("_") || suggested_code_snippet.contains("None")
+            );
         } else {
             panic!("Expected SuggestCodeChange details");
         }
@@ -8817,7 +9839,7 @@ mod tests {
                 backtrace: Backtrace::generate(),
             },
             &params,
-            None
+            None,
         );
 
         assert!(fix.is_some());
@@ -8827,8 +9849,7 @@ mod tests {
         // Check that the fix provides guidance on fixing unreachable patterns
         let details = fix.details.unwrap();
         if let FixDetails::SuggestCodeChange { explanation, .. } = details {
-            assert!(explanation.contains("unreachable") ||
-                   explanation.contains("already covered"));
+            assert!(explanation.contains("unreachable") || explanation.contains("already covered"));
         } else {
             panic!("Expected SuggestCodeChange details");
         }
@@ -8852,7 +9873,7 @@ mod tests {
                 backtrace: Backtrace::generate(),
             },
             &params,
-            None
+            None,
         );
 
         assert!(fix.is_some());
@@ -8864,9 +9885,15 @@ mod tests {
 
         // Check that the suggestions include making the field public or adding a getter
         let details = fix.details.unwrap();
-        if let FixDetails::SuggestCodeChange { suggested_code_snippet, .. } = details {
-            assert!(suggested_code_snippet.contains("pub name") ||
-                   suggested_code_snippet.contains("pub fn name"));
+        if let FixDetails::SuggestCodeChange {
+            suggested_code_snippet,
+            ..
+        } = details
+        {
+            assert!(
+                suggested_code_snippet.contains("pub name")
+                    || suggested_code_snippet.contains("pub fn name")
+            );
         } else {
             panic!("Expected SuggestCodeChange details");
         }
@@ -8892,7 +9919,7 @@ mod tests {
                 backtrace: Backtrace::generate(),
             },
             &params,
-            Some(source_context)
+            Some(source_context),
         );
 
         assert!(fix.is_some());
@@ -8903,9 +9930,12 @@ mod tests {
 
         // Check that the suggestions include renaming the parameter
         let details = fix.details.unwrap();
-        if let FixDetails::SuggestCodeChange { suggested_code_snippet, .. } = details {
-            assert!(suggested_code_snippet.contains("T2") ||
-                   suggested_code_snippet.contains("U"));
+        if let FixDetails::SuggestCodeChange {
+            suggested_code_snippet,
+            ..
+        } = details
+        {
+            assert!(suggested_code_snippet.contains("T2") || suggested_code_snippet.contains("U"));
         } else {
             panic!("Expected SuggestCodeChange details");
         }
@@ -8931,7 +9961,7 @@ mod tests {
                 backtrace: Backtrace::generate(),
             },
             &params,
-            Some(source_context)
+            Some(source_context),
         );
 
         assert!(fix.is_some());
@@ -8942,7 +9972,11 @@ mod tests {
 
         // Check that the suggestions include adding a return statement
         let details = fix.details.unwrap();
-        if let FixDetails::SuggestCodeChange { suggested_code_snippet, .. } = details {
+        if let FixDetails::SuggestCodeChange {
+            suggested_code_snippet,
+            ..
+        } = details
+        {
             assert!(suggested_code_snippet.contains("return"));
         } else {
             panic!("Expected SuggestCodeChange details");
@@ -8955,7 +9989,10 @@ mod tests {
 
         // Test with an enum parameter mismatch error - wrong number of parameters
         let mut params = ExtractedParameters::default();
-        params.add_parameter("message", "expected 2 parameters, found 1 in `MyEnum::Variant`");
+        params.add_parameter(
+            "message",
+            "expected 2 parameters, found 1 in `MyEnum::Variant`",
+        );
         params.add_parameter("file_path", "src/main.rs");
         params.add_parameter("line", "10");
         params.set_confidence(0.8);
@@ -8969,7 +10006,7 @@ mod tests {
                 backtrace: Backtrace::generate(),
             },
             &params,
-            Some(source_context)
+            Some(source_context),
         );
 
         assert!(fix.is_some());
@@ -8980,18 +10017,26 @@ mod tests {
 
         // Check that the suggestions include the correct number of parameters
         let details = fix.details.unwrap();
-        if let FixDetails::SuggestCodeChange { suggested_code_snippet, explanation, .. } = details {
+        if let FixDetails::SuggestCodeChange {
+            suggested_code_snippet,
+            explanation,
+            ..
+        } = details
+        {
             println!("Explanation: {}", explanation);
             assert!(explanation.contains("Expected 2 parameters"));
-            assert!(explanation.contains("found 1"));  // Just check for "found 1" instead of "found 1 parameters"
-            assert!(suggested_code_snippet.contains(","));  // Should have a comma for multiple parameters
+            assert!(explanation.contains("found 1")); // Just check for "found 1" instead of "found 1 parameters"
+            assert!(suggested_code_snippet.contains(",")); // Should have a comma for multiple parameters
         } else {
             panic!("Expected SuggestCodeChange details");
         }
 
         // Test with a different error pattern
         let mut params = ExtractedParameters::default();
-        params.add_parameter("message", "this enum variant takes 3 parameters but 2 parameters were supplied");
+        params.add_parameter(
+            "message",
+            "this enum variant takes 3 parameters but 2 parameters were supplied",
+        );
         params.add_parameter("file_path", "src/main.rs");
         params.add_parameter("line", "10");
         params.set_confidence(0.8);
@@ -9011,7 +10056,11 @@ mod tests {
 
         // Check that the suggestions include the correct enum definition
         let details = fix.details.unwrap();
-        if let FixDetails::SuggestCodeChange { suggested_code_snippet, .. } = details {
+        if let FixDetails::SuggestCodeChange {
+            suggested_code_snippet,
+            ..
+        } = details
+        {
             assert!(suggested_code_snippet.contains("enum"));
             assert!(suggested_code_snippet.contains("// Check the original enum definition"));
         } else {
@@ -9039,7 +10088,7 @@ mod tests {
                 backtrace: Backtrace::generate(),
             },
             &params,
-            Some(source_context)
+            Some(source_context),
         );
 
         assert!(fix.is_some());
@@ -9050,7 +10099,12 @@ mod tests {
 
         // Check that the suggestions include the missing field
         let details = fix.details.unwrap();
-        if let FixDetails::SuggestCodeChange { suggested_code_snippet, explanation, .. } = details {
+        if let FixDetails::SuggestCodeChange {
+            suggested_code_snippet,
+            explanation,
+            ..
+        } = details
+        {
             println!("Explanation: {}", explanation);
             assert!(explanation.contains("missing field"));
             assert!(suggested_code_snippet.contains("name"));
@@ -9072,7 +10126,7 @@ mod tests {
                 backtrace: Backtrace::generate(),
             },
             &params,
-            None
+            None,
         );
 
         assert!(fix.is_some());
@@ -9080,7 +10134,12 @@ mod tests {
 
         // Check that the suggestions include guidance about the unknown field
         let details = fix.details.unwrap();
-        if let FixDetails::SuggestCodeChange { suggested_code_snippet, explanation, .. } = details {
+        if let FixDetails::SuggestCodeChange {
+            suggested_code_snippet,
+            explanation,
+            ..
+        } = details
+        {
             assert!(explanation.contains("struct"));
             assert!(explanation.contains("Person"));
             assert!(suggested_code_snippet.contains("// Check the original struct definition"));
@@ -9090,7 +10149,10 @@ mod tests {
 
         // Test with a type mismatch error
         let mut params = ExtractedParameters::default();
-        params.add_parameter("message", "mismatched types: expected `String`, found `i32` for field `name` in struct `Person`");
+        params.add_parameter(
+            "message",
+            "mismatched types: expected `String`, found `i32` for field `name` in struct `Person`",
+        );
         params.add_parameter("file_path", "src/main.rs");
         params.add_parameter("line", "10");
         params.set_confidence(0.8);
@@ -9110,7 +10172,11 @@ mod tests {
 
         // Check that the suggestions include the correct type
         let details = fix.details.unwrap();
-        if let FixDetails::SuggestCodeChange { suggested_code_snippet, .. } = details {
+        if let FixDetails::SuggestCodeChange {
+            suggested_code_snippet,
+            ..
+        } = details
+        {
             assert!(suggested_code_snippet.contains("String"));
             assert!(suggested_code_snippet.contains("name"));
         } else {
@@ -9118,14 +10184,17 @@ mod tests {
         }
     }
 
-#[test]
+    #[test]
     fn test_trait_implementation_fix_generators() {
         // Test standard MissingTraitImplFixGenerator
         let generator = MissingTraitImplFixGenerator::new();
 
         // Test with a trait implementation error for Display
         let mut params = ExtractedParameters::default();
-        params.add_parameter("message", "the trait `std::fmt::Display` is not implemented for `MyType`");
+        params.add_parameter(
+            "message",
+            "the trait `std::fmt::Display` is not implemented for `MyType`",
+        );
         params.add_parameter("file_path", "src/main.rs");
         params.add_parameter("line", "10");
         params.set_confidence(0.7);
@@ -9133,11 +10202,12 @@ mod tests {
         let fix = generator.generate_fix(
             &DecrustError::Validation {
                 field: "traits".to_string(),
-                message: "the trait `std::fmt::Display` is not implemented for `MyType`".to_string(),
+                message: "the trait `std::fmt::Display` is not implemented for `MyType`"
+                    .to_string(),
                 backtrace: Backtrace::generate(),
             },
             &params,
-            None
+            None,
         );
 
         assert!(fix.is_some());
@@ -9149,9 +10219,15 @@ mod tests {
 
         // Check that the suggestions include a Display implementation
         let details = fix.details.unwrap();
-        if let FixDetails::SuggestCodeChange { suggested_code_snippet, .. } = details {
+        if let FixDetails::SuggestCodeChange {
+            suggested_code_snippet,
+            ..
+        } = details
+        {
             assert!(suggested_code_snippet.contains("impl std::fmt::Display for MyType"));
-            assert!(suggested_code_snippet.contains("fn fmt(&self, f: &mut std::fmt::Formatter<'_>)"));
+            assert!(
+                suggested_code_snippet.contains("fn fmt(&self, f: &mut std::fmt::Formatter<'_>)")
+            );
             assert!(suggested_code_snippet.contains("write!(f,"));
         } else {
             panic!("Expected SuggestCodeChange details");
@@ -9159,7 +10235,10 @@ mod tests {
 
         // Test with a trait implementation error for Clone
         let mut params = ExtractedParameters::default();
-        params.add_parameter("message", "the trait `Clone` is not implemented for `MyType`");
+        params.add_parameter(
+            "message",
+            "the trait `Clone` is not implemented for `MyType`",
+        );
         params.add_parameter("file_path", "src/main.rs");
         params.add_parameter("line", "10");
         params.set_confidence(0.7);
@@ -9171,7 +10250,7 @@ mod tests {
                 backtrace: Backtrace::generate(),
             },
             &params,
-            None
+            None,
         );
 
         assert!(fix.is_some());
@@ -9179,7 +10258,11 @@ mod tests {
 
         // Check that the suggestions include a Clone implementation and derive suggestion
         let details = fix.details.unwrap();
-        if let FixDetails::SuggestCodeChange { suggested_code_snippet, .. } = details {
+        if let FixDetails::SuggestCodeChange {
+            suggested_code_snippet,
+            ..
+        } = details
+        {
             assert!(suggested_code_snippet.contains("impl Clone for MyType"));
             assert!(suggested_code_snippet.contains("fn clone(&self) -> Self"));
             assert!(suggested_code_snippet.contains("#[derive(Clone)]"));
@@ -9196,8 +10279,12 @@ mod tests {
         };
 
         let mut ast_params = ExtractedParameters::new();
-        ast_params.values.insert("file_path".to_string(), "src/main.rs".to_string());
-        ast_params.values.insert("line".to_string(), "42".to_string());
+        ast_params
+            .values
+            .insert("file_path".to_string(), "src/main.rs".to_string());
+        ast_params
+            .values
+            .insert("line".to_string(), "42".to_string());
 
         let ast_fix = ast_generator.generate_fix(&error, &ast_params, None);
         assert!(ast_fix.is_some());
@@ -9205,7 +10292,10 @@ mod tests {
         assert_eq!(ast_fix.fix_type, FixType::TextReplacement);
         assert!(ast_fix.description.contains("Display"));
         assert!(ast_fix.description.contains("MyType"));
-        assert!(ast_fix.diff_suggestion.unwrap().contains("impl std::fmt::Display for MyType"));
+        assert!(ast_fix
+            .diff_suggestion
+            .unwrap()
+            .contains("impl std::fmt::Display for MyType"));
     }
 
     #[test]
@@ -9217,7 +10307,9 @@ mod tests {
         };
 
         let mut params = ExtractedParameters::new();
-        params.values.insert("file_path".to_string(), "src/main.rs".to_string());
+        params
+            .values
+            .insert("file_path".to_string(), "src/main.rs".to_string());
         params.values.insert("line".to_string(), "42".to_string());
 
         let fix = generator.generate_fix(&error, &params, None);
@@ -9225,7 +10317,10 @@ mod tests {
         let fix = fix.unwrap();
         assert_eq!(fix.fix_type, FixType::AddImport);
         assert!(fix.description.contains("HashMap"));
-        assert!(fix.diff_suggestion.unwrap().contains("use std::collections::HashMap"));
+        assert!(fix
+            .diff_suggestion
+            .unwrap()
+            .contains("use std::collections::HashMap"));
     }
 
     #[test]
@@ -9237,14 +10332,18 @@ mod tests {
         };
 
         let mut params = ExtractedParameters::new();
-        params.values.insert("file_path".to_string(), "src/main.rs".to_string());
+        params
+            .values
+            .insert("file_path".to_string(), "src/main.rs".to_string());
         params.values.insert("line".to_string(), "42".to_string());
 
         let fix = generator.generate_fix(&error, &params, None);
         assert!(fix.is_some());
         let fix = fix.unwrap();
         assert_eq!(fix.fix_type, FixType::TextReplacement);
-        assert!(fix.description.contains("Add underscore to unused variable"));
+        assert!(fix
+            .description
+            .contains("Add underscore to unused variable"));
         assert!(fix.description.contains("foo"));
         assert!(fix.diff_suggestion.unwrap().contains("_foo"));
     }
@@ -9260,14 +10359,22 @@ mod tests {
         };
 
         let mut params = ExtractedParameters::new();
-        params.values.insert("path".to_string(), "/path/to/missing/dir".to_string());
-        params.values.insert("message".to_string(), "No such file or directory".to_string());
+        params
+            .values
+            .insert("path".to_string(), "/path/to/missing/dir".to_string());
+        params.values.insert(
+            "message".to_string(),
+            "No such file or directory".to_string(),
+        );
 
         let fix = generator.generate_fix(&error, &params, None);
         assert!(fix.is_some());
         let fix = fix.unwrap();
         // The fix type should be ExecuteCommand
-        assert!(matches!(fix.fix_type, FixType::ExecuteCommand | FixType::TextReplacement));
+        assert!(matches!(
+            fix.fix_type,
+            FixType::ExecuteCommand | FixType::TextReplacement
+        ));
         assert!(fix.description.contains("Create missing directory"));
         assert!(fix.description.contains("/path/to/missing/dir"));
 
@@ -9296,8 +10403,12 @@ mod tests {
         };
 
         let mut params = ExtractedParameters::new();
-        params.values.insert("path".to_string(), "/path/to/file.txt".to_string());
-        params.values.insert("message".to_string(), "Permission denied".to_string());
+        params
+            .values
+            .insert("path".to_string(), "/path/to/file.txt".to_string());
+        params
+            .values
+            .insert("message".to_string(), "Permission denied".to_string());
 
         let fix = generator.generate_fix(&error, &params, None);
         assert!(fix.is_some());
@@ -9326,8 +10437,12 @@ mod tests {
         };
 
         let mut params = ExtractedParameters::new();
-        params.values.insert("path".to_string(), "/path/to/directory".to_string());
-        params.values.insert("message".to_string(), "Permission denied".to_string());
+        params
+            .values
+            .insert("path".to_string(), "/path/to/directory".to_string());
+        params
+            .values
+            .insert("message".to_string(), "Permission denied".to_string());
 
         let fix = generator.generate_fix(&error, &params, None);
         assert!(fix.is_some());
@@ -9355,7 +10470,10 @@ mod tests {
         // Test with a return local reference error
         let params = {
             let mut p = ExtractedParameters::new();
-            p.add_parameter("message", "error[E0515]: cannot return reference to local variable `value`");
+            p.add_parameter(
+                "message",
+                "error[E0515]: cannot return reference to local variable `value`",
+            );
             p.add_parameter("file_path", "src/main.rs");
             p.add_parameter("line", "10");
             p
@@ -9368,23 +10486,39 @@ mod tests {
                 backtrace: Backtrace::generate(),
             },
             &params,
-            Some("fn get_value() -> &str {\n    let value = String::from(\"hello\");\n    &value\n}")
+            Some(
+                "fn get_value() -> &str {\n    let value = String::from(\"hello\");\n    &value\n}",
+            ),
         );
 
         // Verify the fix
-        assert!(fix.is_some(), "Fix should be generated for return local reference error");
+        assert!(
+            fix.is_some(),
+            "Fix should be generated for return local reference error"
+        );
         let fix = fix.unwrap();
 
         // Check fix properties
         assert_eq!(fix.fix_type, FixType::ManualInterventionRequired);
-        assert!(fix.description.contains("reference to local variable"),
-               "Description should mention reference to local variable");
+        assert!(
+            fix.description.contains("reference to local variable"),
+            "Description should mention reference to local variable"
+        );
 
         // Check that the explanation contains suggestions
         if let Some(FixDetails::SuggestCodeChange { explanation, .. }) = &fix.details {
-            assert!(explanation.contains("E0515"), "Explanation should mention E0515");
-            assert!(explanation.contains("owned value"), "Explanation should suggest returning an owned value");
-            assert!(explanation.contains("lifetime"), "Explanation should mention lifetimes");
+            assert!(
+                explanation.contains("E0515"),
+                "Explanation should mention E0515"
+            );
+            assert!(
+                explanation.contains("owned value"),
+                "Explanation should suggest returning an owned value"
+            );
+            assert!(
+                explanation.contains("lifetime"),
+                "Explanation should mention lifetimes"
+            );
         } else {
             panic!("Expected SuggestCodeChange details");
         }
@@ -9397,7 +10531,10 @@ mod tests {
         // Test with an unstable feature error
         let params = {
             let mut p = ExtractedParameters::new();
-            p.add_parameter("message", "error[E0658]: use of unstable feature 'try_trait'");
+            p.add_parameter(
+                "message",
+                "error[E0658]: use of unstable feature 'try_trait'",
+            );
             p.add_parameter("file_path", "src/main.rs");
             p.add_parameter("line", "15");
             p
@@ -9414,24 +10551,45 @@ mod tests {
         );
 
         // Verify the fix
-        assert!(fix.is_some(), "Fix should be generated for unstable feature error");
+        assert!(
+            fix.is_some(),
+            "Fix should be generated for unstable feature error"
+        );
         let fix = fix.unwrap();
 
         // Check fix properties
         assert_eq!(fix.fix_type, FixType::ManualInterventionRequired);
-        assert!(fix.description.contains("unstable feature"),
-               "Description should mention unstable feature");
+        assert!(
+            fix.description.contains("unstable feature"),
+            "Description should mention unstable feature"
+        );
 
         // Check that commands are generated
-        assert!(!fix.commands_to_apply.is_empty(), "Commands should be generated");
-        assert!(fix.commands_to_apply.iter().any(|cmd| cmd.contains("rustup")),
-               "Commands should include rustup");
+        assert!(
+            !fix.commands_to_apply.is_empty(),
+            "Commands should be generated"
+        );
+        assert!(
+            fix.commands_to_apply
+                .iter()
+                .any(|cmd| cmd.contains("rustup")),
+            "Commands should include rustup"
+        );
 
         // Check that the explanation contains suggestions
         if let Some(FixDetails::SuggestCodeChange { explanation, .. }) = &fix.details {
-            assert!(explanation.contains("E0658"), "Explanation should mention E0658");
-            assert!(explanation.contains("nightly"), "Explanation should mention nightly");
-            assert!(explanation.contains("feature"), "Explanation should mention feature flag");
+            assert!(
+                explanation.contains("E0658"),
+                "Explanation should mention E0658"
+            );
+            assert!(
+                explanation.contains("nightly"),
+                "Explanation should mention nightly"
+            );
+            assert!(
+                explanation.contains("feature"),
+                "Explanation should mention feature flag"
+            );
         } else {
             panic!("Expected SuggestCodeChange details");
         }
@@ -9444,7 +10602,10 @@ mod tests {
         // Test with too few arguments
         let params = {
             let mut p = ExtractedParameters::new();
-            p.add_parameter("message", "error[E0061]: this function takes 3 parameters but 1 parameter was supplied");
+            p.add_parameter(
+                "message",
+                "error[E0061]: this function takes 3 parameters but 1 parameter was supplied",
+            );
             p.add_parameter("file_path", "src/main.rs");
             p.add_parameter("line", "20");
             p
@@ -9461,19 +10622,33 @@ mod tests {
         );
 
         // Verify the fix
-        assert!(fix.is_some(), "Fix should be generated for invalid argument count error");
+        assert!(
+            fix.is_some(),
+            "Fix should be generated for invalid argument count error"
+        );
         let fix = fix.unwrap();
 
         // Check fix properties
         assert_eq!(fix.fix_type, FixType::ManualInterventionRequired);
-        assert!(fix.description.contains("incorrect number of arguments"),
-               "Description should mention incorrect number of arguments");
+        assert!(
+            fix.description.contains("incorrect number of arguments"),
+            "Description should mention incorrect number of arguments"
+        );
 
         // Check that the explanation contains suggestions
         if let Some(FixDetails::SuggestCodeChange { explanation, .. }) = &fix.details {
-            assert!(explanation.contains("E0061"), "Explanation should mention E0061");
-            assert!(explanation.contains("3"), "Explanation should mention expected count");
-            assert!(explanation.contains("1"), "Explanation should mention actual count");
+            assert!(
+                explanation.contains("E0061"),
+                "Explanation should mention E0061"
+            );
+            assert!(
+                explanation.contains("3"),
+                "Explanation should mention expected count"
+            );
+            assert!(
+                explanation.contains("1"),
+                "Explanation should mention actual count"
+            );
         } else {
             panic!("Expected SuggestCodeChange details");
         }
@@ -9488,7 +10663,8 @@ mod tests {
         //     p
         // };
 
-        let source_code = "fn example() {\n    print_value(42, \"text\", true); // Should be print_value(42)\n}";
+        let source_code =
+            "fn example() {\n    print_value(42, \"text\", true); // Should be print_value(42)\n}";
 
         // Manually create the fix to test
         let fix = Autocorrection {
@@ -9512,9 +10688,18 @@ mod tests {
 
         // Check that the explanation contains suggestions
         if let Some(FixDetails::SuggestCodeChange { explanation, .. }) = &fix.details {
-            assert!(explanation.contains("1"), "Explanation should mention expected count");
-            assert!(explanation.contains("3"), "Explanation should mention actual count");
-            assert!(explanation.contains("remove"), "Explanation should suggest removing arguments");
+            assert!(
+                explanation.contains("1"),
+                "Explanation should mention expected count"
+            );
+            assert!(
+                explanation.contains("3"),
+                "Explanation should mention actual count"
+            );
+            assert!(
+                explanation.contains("remove"),
+                "Explanation should suggest removing arguments"
+            );
         } else {
             panic!("Expected SuggestCodeChange details");
         }
@@ -9543,16 +10728,38 @@ mod tests {
 
         // Check fix properties
         assert_eq!(fix.fix_type, FixType::TextReplacement);
-        assert!(fix.description.contains("unwrap"),
-               "Description should mention unwrap");
+        assert!(
+            fix.description.contains("unwrap"),
+            "Description should mention unwrap"
+        );
 
         // Check that the explanation contains suggestions
-        if let Some(FixDetails::SuggestCodeChange { explanation, suggested_code_snippet, .. }) = &fix.details {
-            assert!(explanation.contains("unwrap"), "Explanation should mention unwrap");
-            assert!(explanation.contains("panic"), "Explanation should mention panic");
-            assert!(suggested_code_snippet.contains("match"), "Suggested code should use match");
-            assert!(suggested_code_snippet.contains("Ok(value)"), "Suggested code should handle Ok case");
-            assert!(suggested_code_snippet.contains("Err"), "Suggested code should handle Err case");
+        if let Some(FixDetails::SuggestCodeChange {
+            explanation,
+            suggested_code_snippet,
+            ..
+        }) = &fix.details
+        {
+            assert!(
+                explanation.contains("unwrap"),
+                "Explanation should mention unwrap"
+            );
+            assert!(
+                explanation.contains("panic"),
+                "Explanation should mention panic"
+            );
+            assert!(
+                suggested_code_snippet.contains("match"),
+                "Suggested code should use match"
+            );
+            assert!(
+                suggested_code_snippet.contains("Ok(value)"),
+                "Suggested code should handle Ok case"
+            );
+            assert!(
+                suggested_code_snippet.contains("Err"),
+                "Suggested code should handle Err case"
+            );
         } else {
             panic!("Expected SuggestCodeChange details");
         }
@@ -9576,19 +10783,38 @@ mod tests {
         let fix = generator.generate_fix(&error, &params, Some(code));
 
         // Verify the fix
-        assert!(fix.is_some(), "Fix should be generated for incomplete match");
+        assert!(
+            fix.is_some(),
+            "Fix should be generated for incomplete match"
+        );
         let fix = fix.unwrap();
 
         // Check fix properties
         assert_eq!(fix.fix_type, FixType::TextReplacement);
-        assert!(fix.description.contains("match"),
-               "Description should mention match");
+        assert!(
+            fix.description.contains("match"),
+            "Description should mention match"
+        );
 
         // Check that the explanation contains suggestions
-        if let Some(FixDetails::SuggestCodeChange { explanation, suggested_code_snippet, .. }) = &fix.details {
-            assert!(explanation.contains("Result"), "Explanation should mention Result");
-            assert!(explanation.contains("variants"), "Explanation should mention variants");
-            assert!(suggested_code_snippet.contains("Err("), "Suggested code should include Err arm");
+        if let Some(FixDetails::SuggestCodeChange {
+            explanation,
+            suggested_code_snippet,
+            ..
+        }) = &fix.details
+        {
+            assert!(
+                explanation.contains("Result"),
+                "Explanation should mention Result"
+            );
+            assert!(
+                explanation.contains("variants"),
+                "Explanation should mention variants"
+            );
+            assert!(
+                suggested_code_snippet.contains("Err("),
+                "Suggested code should include Err arm"
+            );
         } else {
             panic!("Expected SuggestCodeChange details");
         }
@@ -9605,16 +10831,27 @@ mod tests {
         let result = generator.generate_fix(code);
 
         // Verify the result
-        assert!(result.is_some(), "Fix should be generated for division by zero");
+        assert!(
+            result.is_some(),
+            "Fix should be generated for division by zero"
+        );
         let (fixed_code, explanation, _) = result.unwrap();
 
         // Check that the fixed code contains a check or warning
-        assert!(fixed_code.contains("ERROR") || fixed_code.contains("panic"),
-               "Fixed code should contain error handling");
+        assert!(
+            fixed_code.contains("ERROR") || fixed_code.contains("panic"),
+            "Fixed code should contain error handling"
+        );
 
         // Check that the explanation mentions division by zero
-        assert!(explanation.contains("zero"), "Explanation should mention zero");
-        assert!(explanation.contains("check"), "Explanation should mention check");
+        assert!(
+            explanation.contains("zero"),
+            "Explanation should mention zero"
+        );
+        assert!(
+            explanation.contains("check"),
+            "Explanation should mention check"
+        );
 
         // Now test the FixGenerator trait implementation
         let generator: Box<dyn FixGenerator> = Box::new(DivisionByZeroFixGenerator::new());
@@ -9630,13 +10867,18 @@ mod tests {
         let fix = generator.generate_fix(&error, &params, Some(code));
 
         // Verify the fix
-        assert!(fix.is_some(), "Fix should be generated for division by zero");
+        assert!(
+            fix.is_some(),
+            "Fix should be generated for division by zero"
+        );
         let fix = fix.unwrap();
 
         // Check fix properties
         assert_eq!(fix.fix_type, FixType::TextReplacement);
-        assert!(fix.description.contains("division"),
-               "Description should mention division");
+        assert!(
+            fix.description.contains("division"),
+            "Description should mention division"
+        );
     }
 
     #[test]
@@ -9644,7 +10886,8 @@ mod tests {
         // This test covers both ClosureCaptureLifetimeFixGenerator and RecursiveTypeFixGenerator
 
         // Test ClosureCaptureLifetimeFixGenerator
-        let closure_generator: Box<dyn FixGenerator> = Box::new(ClosureCaptureLifetimeFixGenerator::new());
+        let closure_generator: Box<dyn FixGenerator> =
+            Box::new(ClosureCaptureLifetimeFixGenerator::new());
 
         // Create a test error message for closure capture
         let closure_message = "error[E0373]: closure may outlive the current function, but it borrows `data`, which is owned by the current function";
@@ -9665,21 +10908,46 @@ mod tests {
         let fix = closure_generator.generate_fix(&error, &params, Some(source_code));
 
         // Verify the fix
-        assert!(fix.is_some(), "Fix should be generated for closure capture error");
+        assert!(
+            fix.is_some(),
+            "Fix should be generated for closure capture error"
+        );
         let fix = fix.unwrap();
 
         // Check fix properties
         assert_eq!(fix.fix_type, FixType::ManualInterventionRequired);
-        assert!(fix.description.contains("closure capture"),
-               "Description should mention closure capture");
+        assert!(
+            fix.description.contains("closure capture"),
+            "Description should mention closure capture"
+        );
 
         // Check that the explanation contains suggestions
-        if let Some(FixDetails::SuggestCodeChange { explanation, suggested_code_snippet, .. }) = &fix.details {
-            assert!(explanation.contains("E0373"), "Explanation should mention E0373");
-            assert!(explanation.contains("outlive"), "Explanation should mention outlive");
-            assert!(suggested_code_snippet.contains("move ||"), "Suggested code should include move closure");
-            assert!(suggested_code_snippet.contains("clone"), "Suggested code should mention cloning");
-            assert!(suggested_code_snippet.contains("Arc"), "Suggested code should mention Arc");
+        if let Some(FixDetails::SuggestCodeChange {
+            explanation,
+            suggested_code_snippet,
+            ..
+        }) = &fix.details
+        {
+            assert!(
+                explanation.contains("E0373"),
+                "Explanation should mention E0373"
+            );
+            assert!(
+                explanation.contains("outlive"),
+                "Explanation should mention outlive"
+            );
+            assert!(
+                suggested_code_snippet.contains("move ||"),
+                "Suggested code should include move closure"
+            );
+            assert!(
+                suggested_code_snippet.contains("clone"),
+                "Suggested code should mention cloning"
+            );
+            assert!(
+                suggested_code_snippet.contains("Arc"),
+                "Suggested code should mention Arc"
+            );
         } else {
             panic!("Expected SuggestCodeChange details");
         }
@@ -9706,21 +10974,46 @@ mod tests {
         let fix = recursive_generator.generate_fix(&error, &params, Some(source_code));
 
         // Verify the fix
-        assert!(fix.is_some(), "Fix should be generated for recursive type error");
+        assert!(
+            fix.is_some(),
+            "Fix should be generated for recursive type error"
+        );
         let fix = fix.unwrap();
 
         // Check fix properties
         assert_eq!(fix.fix_type, FixType::ManualInterventionRequired);
-        assert!(fix.description.contains("recursive type"),
-               "Description should mention recursive type");
+        assert!(
+            fix.description.contains("recursive type"),
+            "Description should mention recursive type"
+        );
 
         // Check that the explanation contains suggestions
-        if let Some(FixDetails::SuggestCodeChange { explanation, suggested_code_snippet, .. }) = &fix.details {
-            assert!(explanation.contains("E0072"), "Explanation should mention E0072");
-            assert!(explanation.contains("infinite size"), "Explanation should mention infinite size");
-            assert!(suggested_code_snippet.contains("Box<"), "Suggested code should include Box");
-            assert!(suggested_code_snippet.contains("Rc<"), "Suggested code should mention Rc");
-            assert!(suggested_code_snippet.contains("RefCell"), "Suggested code should mention RefCell");
+        if let Some(FixDetails::SuggestCodeChange {
+            explanation,
+            suggested_code_snippet,
+            ..
+        }) = &fix.details
+        {
+            assert!(
+                explanation.contains("E0072"),
+                "Explanation should mention E0072"
+            );
+            assert!(
+                explanation.contains("infinite size"),
+                "Explanation should mention infinite size"
+            );
+            assert!(
+                suggested_code_snippet.contains("Box<"),
+                "Suggested code should include Box"
+            );
+            assert!(
+                suggested_code_snippet.contains("Rc<"),
+                "Suggested code should mention Rc"
+            );
+            assert!(
+                suggested_code_snippet.contains("RefCell"),
+                "Suggested code should mention RefCell"
+            );
         } else {
             panic!("Expected SuggestCodeChange details");
         }
@@ -9749,14 +11042,30 @@ mod tests {
 
         // Check fix properties
         assert_eq!(fix.fix_type, FixType::TextReplacement);
-        assert!(fix.description.contains("panic"),
-               "Description should mention panic");
+        assert!(
+            fix.description.contains("panic"),
+            "Description should mention panic"
+        );
 
         // Check that the explanation contains suggestions
-        if let Some(FixDetails::SuggestCodeChange { explanation, suggested_code_snippet, .. }) = &fix.details {
-            assert!(explanation.contains("panic"), "Explanation should mention panic");
-            assert!(explanation.contains("Result"), "Explanation should mention Result");
-            assert!(suggested_code_snippet.contains("Err"), "Suggested code should include Err");
+        if let Some(FixDetails::SuggestCodeChange {
+            explanation,
+            suggested_code_snippet,
+            ..
+        }) = &fix.details
+        {
+            assert!(
+                explanation.contains("panic"),
+                "Explanation should mention panic"
+            );
+            assert!(
+                explanation.contains("Result"),
+                "Explanation should mention Result"
+            );
+            assert!(
+                suggested_code_snippet.contains("Err"),
+                "Suggested code should include Err"
+            );
         } else {
             panic!("Expected SuggestCodeChange details");
         }
@@ -9780,19 +11089,35 @@ mod tests {
         let fix = generator.generate_fix(&error, &params, Some(code));
 
         // Verify the fix
-        assert!(fix.is_some(), "Fix should be generated for question mark without Result return");
+        assert!(
+            fix.is_some(),
+            "Fix should be generated for question mark without Result return"
+        );
         let fix = fix.unwrap();
 
         // Check fix properties
         assert_eq!(fix.fix_type, FixType::TextReplacement);
-        assert!(fix.description.contains("question mark"),
-               "Description should mention question mark");
+        assert!(
+            fix.description.contains("question mark"),
+            "Description should mention question mark"
+        );
 
         // Check that the explanation contains suggestions
-        if let Some(FixDetails::SuggestCodeChange { explanation, suggested_code_snippet, .. }) = &fix.details {
+        if let Some(FixDetails::SuggestCodeChange {
+            explanation,
+            suggested_code_snippet,
+            ..
+        }) = &fix.details
+        {
             assert!(explanation.contains("?"), "Explanation should mention ?");
-            assert!(explanation.contains("Result"), "Explanation should mention Result");
-            assert!(suggested_code_snippet.contains("-> Result"), "Suggested code should add Result return type");
+            assert!(
+                explanation.contains("Result"),
+                "Explanation should mention Result"
+            );
+            assert!(
+                suggested_code_snippet.contains("-> Result"),
+                "Suggested code should add Result return type"
+            );
         } else {
             panic!("Expected SuggestCodeChange details");
         }
@@ -9804,34 +11129,44 @@ mod tests {
 
         // Test with a TLS certificate validation error
         let error = DecrustError::Network {
-            source: Box::new(std::io::Error::new(std::io::ErrorKind::Other, "SSL certificate verification failed")),
+            source: Box::new(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "SSL certificate verification failed",
+            )),
             url: Some("https://api.example.com".to_string()),
             kind: "TLS".to_string(),
             backtrace: Backtrace::generate(),
         };
 
-        let fix = generator.generate_fix(
-            &error,
-            &ExtractedParameters::new(),
-            None
-        );
+        let fix = generator.generate_fix(&error, &ExtractedParameters::new(), None);
 
         // Verify the fix
-        assert!(fix.is_some(), "Fix should be generated for TLS certificate error");
+        assert!(
+            fix.is_some(),
+            "Fix should be generated for TLS certificate error"
+        );
         let fix = fix.unwrap();
 
         // Check fix properties
         assert_eq!(fix.fix_type, FixType::ManualInterventionRequired);
-        assert!(fix.description.contains("TLS") || fix.description.contains("certificate"),
-               "Description should mention TLS or certificate");
+        assert!(
+            fix.description.contains("TLS") || fix.description.contains("certificate"),
+            "Description should mention TLS or certificate"
+        );
 
         // Check that commands are generated
-        assert!(!fix.commands_to_apply.is_empty(), "Commands should be generated");
+        assert!(
+            !fix.commands_to_apply.is_empty(),
+            "Commands should be generated"
+        );
 
         // Test with a self-signed certificate error
         let params = {
             let mut p = ExtractedParameters::new();
-            p.add_parameter("message", "SSL error: self-signed certificate for api.example.com");
+            p.add_parameter(
+                "message",
+                "SSL error: self-signed certificate for api.example.com",
+            );
             p
         };
 
@@ -9842,20 +11177,28 @@ mod tests {
                 backtrace: Backtrace::generate(),
             },
             &params,
-            None
+            None,
         );
 
         // Verify the fix
-        assert!(fix.is_some(), "Fix should be generated for self-signed certificate error");
+        assert!(
+            fix.is_some(),
+            "Fix should be generated for self-signed certificate error"
+        );
         let fix = fix.unwrap();
 
         // Check fix properties
         assert_eq!(fix.fix_type, FixType::ManualInterventionRequired);
-        assert!(fix.description.contains("certificate") || fix.description.contains("trusted"),
-               "Description should mention certificate or trusted");
+        assert!(
+            fix.description.contains("certificate") || fix.description.contains("trusted"),
+            "Description should mention certificate or trusted"
+        );
 
         // Check that commands are generated
-        assert!(!fix.commands_to_apply.is_empty(), "Commands should be generated");
+        assert!(
+            !fix.commands_to_apply.is_empty(),
+            "Commands should be generated"
+        );
 
         // Test with a hostname mismatch error
         let params = {
@@ -9871,20 +11214,28 @@ mod tests {
                 backtrace: Backtrace::generate(),
             },
             &params,
-            None
+            None,
         );
 
         // Verify the fix
-        assert!(fix.is_some(), "Fix should be generated for hostname mismatch error");
+        assert!(
+            fix.is_some(),
+            "Fix should be generated for hostname mismatch error"
+        );
         let fix = fix.unwrap();
 
         // Check fix properties
         assert_eq!(fix.fix_type, FixType::ManualInterventionRequired);
-        assert!(fix.description.contains("hostname") || fix.description.contains("mismatch"),
-               "Description should mention hostname or mismatch");
+        assert!(
+            fix.description.contains("hostname") || fix.description.contains("mismatch"),
+            "Description should mention hostname or mismatch"
+        );
 
         // Check that commands are generated
-        assert!(!fix.commands_to_apply.is_empty(), "Commands should be generated");
+        assert!(
+            !fix.commands_to_apply.is_empty(),
+            "Commands should be generated"
+        );
     }
 
     #[test]
@@ -9893,28 +11244,36 @@ mod tests {
 
         // Test with a connection refused error
         let error = DecrustError::Network {
-            source: Box::new(std::io::Error::new(std::io::ErrorKind::ConnectionRefused, "Connection refused")),
+            source: Box::new(std::io::Error::new(
+                std::io::ErrorKind::ConnectionRefused,
+                "Connection refused",
+            )),
             url: Some("https://api.example.com:8080".to_string()),
             kind: "HTTP".to_string(),
             backtrace: Backtrace::generate(),
         };
 
-        let fix = generator.generate_fix(
-            &error,
-            &ExtractedParameters::new(),
-            None
-        );
+        let fix = generator.generate_fix(&error, &ExtractedParameters::new(), None);
 
         // Verify the fix
-        assert!(fix.is_some(), "Fix should be generated for connection refused error");
+        assert!(
+            fix.is_some(),
+            "Fix should be generated for connection refused error"
+        );
         let fix = fix.unwrap();
 
         // Check fix properties
         assert_eq!(fix.fix_type, FixType::ManualInterventionRequired);
-        assert!(fix.description.contains("Check"), "Description should suggest checking something");
+        assert!(
+            fix.description.contains("Check"),
+            "Description should suggest checking something"
+        );
 
         // Check that commands are generated
-        assert!(!fix.commands_to_apply.is_empty(), "Commands should be generated");
+        assert!(
+            !fix.commands_to_apply.is_empty(),
+            "Commands should be generated"
+        );
 
         // Test with a DNS resolution error
         let params = {
@@ -9930,7 +11289,7 @@ mod tests {
                 backtrace: Backtrace::generate(),
             },
             &params,
-            None
+            None,
         );
 
         // Verify the fix
@@ -9939,11 +11298,16 @@ mod tests {
 
         // Check fix properties
         assert_eq!(fix.fix_type, FixType::ManualInterventionRequired);
-        assert!(fix.description.contains("DNS") || fix.description.contains("host"),
-               "Description should mention DNS or host resolution");
+        assert!(
+            fix.description.contains("DNS") || fix.description.contains("host"),
+            "Description should mention DNS or host resolution"
+        );
 
         // Check that commands are generated
-        assert!(!fix.commands_to_apply.is_empty(), "Commands should be generated");
+        assert!(
+            !fix.commands_to_apply.is_empty(),
+            "Commands should be generated"
+        );
 
         // Test with a timeout error
         let params = {
@@ -9959,7 +11323,7 @@ mod tests {
                 backtrace: Backtrace::generate(),
             },
             &params,
-            None
+            None,
         );
 
         // Verify the fix
@@ -9968,11 +11332,16 @@ mod tests {
 
         // Check fix properties
         assert_eq!(fix.fix_type, FixType::ManualInterventionRequired);
-        assert!(fix.description.contains("network") || fix.description.contains("connectivity"),
-               "Description should mention network or connectivity");
+        assert!(
+            fix.description.contains("network") || fix.description.contains("connectivity"),
+            "Description should mention network or connectivity"
+        );
 
         // Check that commands are generated
-        assert!(!fix.commands_to_apply.is_empty(), "Commands should be generated");
+        assert!(
+            !fix.commands_to_apply.is_empty(),
+            "Commands should be generated"
+        );
     }
 
     #[test]
@@ -9988,7 +11357,7 @@ mod tests {
                 backtrace: Backtrace::generate(),
             },
             &ExtractedParameters::new(),
-            Some(code)
+            Some(code),
         );
 
         // Verify the fix
@@ -10000,7 +11369,12 @@ mod tests {
         assert!(fix.description.contains("Remove unused 'mut' keyword"));
 
         // Check that the details contain the correct suggestion
-        if let Some(FixDetails::SuggestCodeChange { suggested_code_snippet, explanation, .. }) = &fix.details {
+        if let Some(FixDetails::SuggestCodeChange {
+            suggested_code_snippet,
+            explanation,
+            ..
+        }) = &fix.details
+        {
             assert!(suggested_code_snippet.contains("let counter = 0"));
             assert!(!suggested_code_snippet.contains("mut"));
             assert!(explanation.contains("never mutated"));
@@ -10017,11 +11391,14 @@ mod tests {
                 backtrace: Backtrace::generate(),
             },
             &ExtractedParameters::new(),
-            Some(code)
+            Some(code),
         );
 
         // Verify that no fix is generated for a variable that is mutated
-        assert!(fix.is_none(), "No fix should be generated for a variable that is mutated");
+        assert!(
+            fix.is_none(),
+            "No fix should be generated for a variable that is mutated"
+        );
 
         // Test with a variable that is used with &mut
         let code = "let mut data = vec![1, 2, 3];\nprocess_data(&mut data);\nprintln!(\"Data: {:?}\", data);";
@@ -10032,11 +11409,14 @@ mod tests {
                 backtrace: Backtrace::generate(),
             },
             &ExtractedParameters::new(),
-            Some(code)
+            Some(code),
         );
 
         // Verify that no fix is generated for a variable that is used with &mut
-        assert!(fix.is_none(), "No fix should be generated for a variable that is used with &mut");
+        assert!(
+            fix.is_none(),
+            "No fix should be generated for a variable that is used with &mut"
+        );
     }
 
     #[test]
@@ -10044,7 +11424,8 @@ mod tests {
         let generator = UnnecessaryParenthesesFixGenerator::new();
 
         // Test with code containing unnecessary parentheses in import
-        let code = "use std::time::{Duration};\n\nfn main() {\n    let d = Duration::from_secs(1);\n}";
+        let code =
+            "use std::time::{Duration};\n\nfn main() {\n    let d = Duration::from_secs(1);\n}";
 
         let error = DecrustError::Style {
             message: "Unnecessary braces in import statement".to_string(),
@@ -10052,24 +11433,37 @@ mod tests {
         };
 
         let mut params = ExtractedParameters::new();
-        params.values.insert("file_path".to_string(), "src/main.rs".to_string());
+        params
+            .values
+            .insert("file_path".to_string(), "src/main.rs".to_string());
         params.values.insert("line".to_string(), "1".to_string());
 
         let fix = generator.generate_fix(&error, &params, Some(code));
 
         // Verify the fix
-        assert!(fix.is_some(), "Fix should be generated for unnecessary parentheses");
+        assert!(
+            fix.is_some(),
+            "Fix should be generated for unnecessary parentheses"
+        );
         let fix = fix.unwrap();
 
         // Check fix properties
         assert_eq!(fix.fix_type, FixType::TextReplacement);
-        assert!(fix.description.contains("Remove unnecessary parentheses"),
-               "Description should mention removing unnecessary parentheses");
+        assert!(
+            fix.description.contains("Remove unnecessary parentheses"),
+            "Description should mention removing unnecessary parentheses"
+        );
 
         // Check that the fix removes the braces
-        if let Some(FixDetails::SuggestCodeChange { suggested_code_snippet, .. }) = &fix.details {
-            assert_eq!(suggested_code_snippet, "use std::time::Duration;",
-                   "Fix should remove the unnecessary braces");
+        if let Some(FixDetails::SuggestCodeChange {
+            suggested_code_snippet,
+            ..
+        }) = &fix.details
+        {
+            assert_eq!(
+                suggested_code_snippet, "use std::time::Duration;",
+                "Fix should remove the unnecessary braces"
+            );
         } else {
             panic!("Expected SuggestCodeChange details");
         }
@@ -10094,11 +11488,14 @@ mod tests {
                 backtrace: Backtrace::generate(),
             },
             &ExtractedParameters::new(),
-            Some(code)
+            Some(code),
         );
 
         // Verify the fix
-        assert!(fix.is_some(), "Fix should be generated for unnecessary clone in closure");
+        assert!(
+            fix.is_some(),
+            "Fix should be generated for unnecessary clone in closure"
+        );
         let fix = fix.unwrap();
 
         // Check fix properties
@@ -10106,7 +11503,12 @@ mod tests {
         assert!(fix.description.contains("Remove unnecessary clone() call"));
 
         // Check that the details contain the correct suggestion
-        if let Some(FixDetails::SuggestCodeChange { suggested_code_snippet, explanation, .. }) = &fix.details {
+        if let Some(FixDetails::SuggestCodeChange {
+            suggested_code_snippet,
+            explanation,
+            ..
+        }) = &fix.details
+        {
             assert!(suggested_code_snippet.contains("item"));
             assert!(!suggested_code_snippet.contains("clone()"));
             assert!(explanation.contains("unnecessary"));
@@ -10123,11 +11525,14 @@ mod tests {
                 backtrace: Backtrace::generate(),
             },
             &ExtractedParameters::new(),
-            Some(code)
+            Some(code),
         );
 
         // Verify the fix
-        assert!(fix.is_some(), "Fix should be generated for reference to a clone");
+        assert!(
+            fix.is_some(),
+            "Fix should be generated for reference to a clone"
+        );
         let fix = fix.unwrap();
 
         // Check fix properties
@@ -10135,7 +11540,12 @@ mod tests {
         assert!(fix.description.contains("Remove unnecessary clone() call"));
 
         // Check that the details contain the correct suggestion
-        if let Some(FixDetails::SuggestCodeChange { suggested_code_snippet, explanation, .. }) = &fix.details {
+        if let Some(FixDetails::SuggestCodeChange {
+            suggested_code_snippet,
+            explanation,
+            ..
+        }) = &fix.details
+        {
             assert!(suggested_code_snippet.contains("value"));
             assert!(!suggested_code_snippet.contains("clone()"));
             assert!(explanation.contains("reference"));
@@ -10152,11 +11562,14 @@ mod tests {
                 backtrace: Backtrace::generate(),
             },
             &ExtractedParameters::new(),
-            Some(code)
+            Some(code),
         );
 
         // Verify the fix
-        assert!(fix.is_some(), "Fix should be generated for clone in function call");
+        assert!(
+            fix.is_some(),
+            "Fix should be generated for clone in function call"
+        );
         let fix = fix.unwrap();
 
         // Check fix properties
@@ -10164,7 +11577,12 @@ mod tests {
         assert!(fix.description.contains("Remove unnecessary clone() call"));
 
         // Check that the details contain the correct suggestion
-        if let Some(FixDetails::SuggestCodeChange { suggested_code_snippet, explanation, .. }) = &fix.details {
+        if let Some(FixDetails::SuggestCodeChange {
+            suggested_code_snippet,
+            explanation,
+            ..
+        }) = &fix.details
+        {
             assert!(suggested_code_snippet.contains("&data"));
             assert!(!suggested_code_snippet.contains("clone()"));
             assert!(explanation.contains("reference"));
@@ -10188,14 +11606,23 @@ mod tests {
 
         // Create YAML test parameters
         let mut yaml_params = ExtractedParameters::new();
-        yaml_params.values.insert("file_path".to_string(), "/path/to/config.yaml".to_string());
-        yaml_params.values.insert("message".to_string(), "YAML syntax error at line 5, column 3: mapping values are not allowed in this context".to_string());
+        yaml_params
+            .values
+            .insert("file_path".to_string(), "/path/to/config.yaml".to_string());
+        yaml_params.values.insert(
+            "message".to_string(),
+            "YAML syntax error at line 5, column 3: mapping values are not allowed in this context"
+                .to_string(),
+        );
 
         // Generate YAML fix
         let yaml_fix = yaml_generator.generate_fix(&yaml_error, &yaml_params, None);
 
         // Verify the YAML fix
-        assert!(yaml_fix.is_some(), "Fix should be generated for YAML parse error");
+        assert!(
+            yaml_fix.is_some(),
+            "Fix should be generated for YAML parse error"
+        );
         let yaml_fix = yaml_fix.unwrap();
 
         // Check YAML fix properties
@@ -10203,7 +11630,11 @@ mod tests {
         assert!(yaml_fix.description.contains("Fix YAML parsing error"));
 
         // Check that the details contain the correct command
-        if let Some(FixDetails::SuggestCommand { command, explanation }) = &yaml_fix.details {
+        if let Some(FixDetails::SuggestCommand {
+            command,
+            explanation,
+        }) = &yaml_fix.details
+        {
             assert!(command.contains("yamllint -f parsable"));
             assert!(explanation.contains("line 5"));
             assert!(explanation.contains("column 3"));
@@ -10215,18 +11646,30 @@ mod tests {
 
         // Test with a different YAML error message format
         let mut yaml_params2 = ExtractedParameters::new();
-        yaml_params2.values.insert("file_path".to_string(), "/path/to/data.yml".to_string());
-        yaml_params2.values.insert("message".to_string(), "Invalid YAML: found unexpected end of stream".to_string());
+        yaml_params2
+            .values
+            .insert("file_path".to_string(), "/path/to/data.yml".to_string());
+        yaml_params2.values.insert(
+            "message".to_string(),
+            "Invalid YAML: found unexpected end of stream".to_string(),
+        );
 
         // Generate fix
-        let yaml_fix2 = yaml_generator.generate_fix(&DecrustError::Internal {
-            message: "YAML parsing failed".to_string(),
-            source: OptionalError::new(None),
-            backtrace: Backtrace::generate(),
-        }, &yaml_params2, None);
+        let yaml_fix2 = yaml_generator.generate_fix(
+            &DecrustError::Internal {
+                message: "YAML parsing failed".to_string(),
+                source: OptionalError::new(None),
+                backtrace: Backtrace::generate(),
+            },
+            &yaml_params2,
+            None,
+        );
 
         // Verify the fix
-        assert!(yaml_fix2.is_some(), "Fix should be generated for YAML parse error with different format");
+        assert!(
+            yaml_fix2.is_some(),
+            "Fix should be generated for YAML parse error with different format"
+        );
         let yaml_fix2 = yaml_fix2.unwrap();
 
         // Check fix properties
@@ -10234,7 +11677,11 @@ mod tests {
         assert!(yaml_fix2.description.contains("Fix YAML parsing error"));
 
         // Check that the details contain the correct command
-        if let Some(FixDetails::SuggestCommand { command, explanation }) = &yaml_fix2.details {
+        if let Some(FixDetails::SuggestCommand {
+            command,
+            explanation,
+        }) = &yaml_fix2.details
+        {
             assert!(command.contains("yamllint -f parsable"));
             assert!(explanation.contains("YAML parsing error"));
             assert!(explanation.contains("found unexpected end of stream"));
@@ -10248,22 +11695,34 @@ mod tests {
 
         // Create a JSON test error
         let json_error = DecrustError::Parse {
-            source: Box::new(std::io::Error::new(std::io::ErrorKind::InvalidData, "JSON syntax error")),
+            source: Box::new(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "JSON syntax error",
+            )),
             kind: "JSON".to_string(),
-            context_info: "JSON syntax error at line 42, column 10: expected ',' but found '}'".to_string(),
+            context_info: "JSON syntax error at line 42, column 10: expected ',' but found '}'"
+                .to_string(),
             backtrace: Backtrace::generate(),
         };
 
         // Create JSON test parameters
         let mut json_params = ExtractedParameters::new();
-        json_params.values.insert("file_path".to_string(), "/path/to/config.json".to_string());
-        json_params.values.insert("message".to_string(), "JSON syntax error at line 42, column 10: expected ',' but found '}'".to_string());
+        json_params
+            .values
+            .insert("file_path".to_string(), "/path/to/config.json".to_string());
+        json_params.values.insert(
+            "message".to_string(),
+            "JSON syntax error at line 42, column 10: expected ',' but found '}'".to_string(),
+        );
 
         // Generate JSON fix
         let json_fix = json_generator.generate_fix(&json_error, &json_params, None);
 
         // Verify the JSON fix
-        assert!(json_fix.is_some(), "Fix should be generated for JSON parse error");
+        assert!(
+            json_fix.is_some(),
+            "Fix should be generated for JSON parse error"
+        );
         let json_fix = json_fix.unwrap();
 
         // Check JSON fix properties
@@ -10271,7 +11730,11 @@ mod tests {
         assert!(json_fix.description.contains("Fix JSON parsing error"));
 
         // Check that the details contain the correct command
-        if let Some(FixDetails::SuggestCommand { command, explanation }) = &json_fix.details {
+        if let Some(FixDetails::SuggestCommand {
+            command,
+            explanation,
+        }) = &json_fix.details
+        {
             assert!(command.contains("jsonlint --fix"));
             assert!(explanation.contains("line 42"));
             assert!(explanation.contains("column 10"));
@@ -10283,18 +11746,30 @@ mod tests {
 
         // Test with a different JSON error message format
         let mut json_params2 = ExtractedParameters::new();
-        json_params2.values.insert("file_path".to_string(), "/path/to/data.json".to_string());
-        json_params2.values.insert("message".to_string(), "Invalid JSON: Unexpected end of input at position 100".to_string());
+        json_params2
+            .values
+            .insert("file_path".to_string(), "/path/to/data.json".to_string());
+        json_params2.values.insert(
+            "message".to_string(),
+            "Invalid JSON: Unexpected end of input at position 100".to_string(),
+        );
 
         // Generate fix
-        let json_fix2 = json_generator.generate_fix(&DecrustError::Internal {
-            message: "JSON parsing failed".to_string(),
-            source: OptionalError::new(None),
-            backtrace: Backtrace::generate(),
-        }, &json_params2, None);
+        let json_fix2 = json_generator.generate_fix(
+            &DecrustError::Internal {
+                message: "JSON parsing failed".to_string(),
+                source: OptionalError::new(None),
+                backtrace: Backtrace::generate(),
+            },
+            &json_params2,
+            None,
+        );
 
         // Verify the fix
-        assert!(json_fix2.is_some(), "Fix should be generated for JSON parse error with different format");
+        assert!(
+            json_fix2.is_some(),
+            "Fix should be generated for JSON parse error with different format"
+        );
         let json_fix2 = json_fix2.unwrap();
 
         // Check fix properties
@@ -10302,7 +11777,11 @@ mod tests {
         assert!(json_fix2.description.contains("Fix JSON parsing error"));
 
         // Check that the details contain the correct command
-        if let Some(FixDetails::SuggestCommand { command, explanation }) = &json_fix2.details {
+        if let Some(FixDetails::SuggestCommand {
+            command,
+            explanation,
+        }) = &json_fix2.details
+        {
             assert!(command.contains("jsonlint --fix"));
             assert!(explanation.contains("JSON parsing error"));
         } else {
@@ -10323,20 +11802,32 @@ mod tests {
         };
 
         let mut params = ExtractedParameters::new();
-        params.values.insert("file_path".to_string(), "/path/to/config.json".to_string());
-        params.values.insert("message".to_string(), "missing key: \"api_key\"".to_string());
+        params
+            .values
+            .insert("file_path".to_string(), "/path/to/config.json".to_string());
+        params.values.insert(
+            "message".to_string(),
+            "missing key: \"api_key\"".to_string(),
+        );
 
         let fix = generator.generate_fix(&error, &params, None);
 
         // The fix should be generated successfully
-        assert!(fix.is_some(), "Fix should be generated for missing key error");
+        assert!(
+            fix.is_some(),
+            "Fix should be generated for missing key error"
+        );
         let fix = fix.unwrap();
         assert_eq!(fix.fix_type, FixType::TextReplacement);
         assert!(fix.description.contains("Add missing configuration key"));
         assert!(fix.description.contains("api_key"));
 
         // Check that the details contain the correct suggestion
-        if let Some(FixDetails::SuggestCodeChange { suggested_code_snippet, .. }) = &fix.details {
+        if let Some(FixDetails::SuggestCodeChange {
+            suggested_code_snippet,
+            ..
+        }) = &fix.details
+        {
             assert!(suggested_code_snippet.contains("api_key"));
         } else {
             panic!("Expected SuggestCodeChange details");
@@ -10351,20 +11842,34 @@ mod tests {
         };
 
         let mut yaml_params = ExtractedParameters::new();
-        yaml_params.values.insert("file_path".to_string(), "/path/to/config.yaml".to_string());
-        yaml_params.values.insert("message".to_string(), "required key not found: host".to_string());
+        yaml_params
+            .values
+            .insert("file_path".to_string(), "/path/to/config.yaml".to_string());
+        yaml_params.values.insert(
+            "message".to_string(),
+            "required key not found: host".to_string(),
+        );
 
         let yaml_fix = generator.generate_fix(&yaml_error, &yaml_params, None);
 
         // The fix should be generated successfully
-        assert!(yaml_fix.is_some(), "Fix should be generated for missing key error in YAML");
+        assert!(
+            yaml_fix.is_some(),
+            "Fix should be generated for missing key error in YAML"
+        );
         let yaml_fix = yaml_fix.unwrap();
         assert_eq!(yaml_fix.fix_type, FixType::TextReplacement);
-        assert!(yaml_fix.description.contains("Add missing configuration key"));
+        assert!(yaml_fix
+            .description
+            .contains("Add missing configuration key"));
         assert!(yaml_fix.description.contains("host"));
 
         // Check that the details contain the correct suggestion
-        if let Some(FixDetails::SuggestCodeChange { suggested_code_snippet, .. }) = &yaml_fix.details {
+        if let Some(FixDetails::SuggestCodeChange {
+            suggested_code_snippet,
+            ..
+        }) = &yaml_fix.details
+        {
             assert!(suggested_code_snippet.contains("host"));
         } else {
             panic!("Expected SuggestCodeChange details");
@@ -10379,20 +11884,33 @@ mod tests {
         };
 
         let mut toml_params = ExtractedParameters::new();
-        toml_params.values.insert("file_path".to_string(), "/path/to/config.toml".to_string());
-        toml_params.values.insert("message".to_string(), "missing field: timeout".to_string());
+        toml_params
+            .values
+            .insert("file_path".to_string(), "/path/to/config.toml".to_string());
+        toml_params
+            .values
+            .insert("message".to_string(), "missing field: timeout".to_string());
 
         let toml_fix = generator.generate_fix(&toml_error, &toml_params, None);
 
         // The fix should be generated successfully
-        assert!(toml_fix.is_some(), "Fix should be generated for missing key error in TOML");
+        assert!(
+            toml_fix.is_some(),
+            "Fix should be generated for missing key error in TOML"
+        );
         let toml_fix = toml_fix.unwrap();
         assert_eq!(toml_fix.fix_type, FixType::TextReplacement);
-        assert!(toml_fix.description.contains("Add missing configuration key"));
+        assert!(toml_fix
+            .description
+            .contains("Add missing configuration key"));
         assert!(toml_fix.description.contains("timeout"));
 
         // Check that the details contain the correct suggestion
-        if let Some(FixDetails::SuggestCodeChange { suggested_code_snippet, .. }) = &toml_fix.details {
+        if let Some(FixDetails::SuggestCodeChange {
+            suggested_code_snippet,
+            ..
+        }) = &toml_fix.details
+        {
             assert!(suggested_code_snippet.contains("timeout"));
             // Timeout should have a numeric default value
             assert!(suggested_code_snippet.contains("60"));
@@ -10414,14 +11932,20 @@ mod tests {
         };
 
         let mut params = ExtractedParameters::new();
-        params.values.insert("file_path".to_string(), "/path/to/config.json".to_string());
-        params.values.insert("message".to_string(), "JSON syntax error at line 42".to_string());
+        params
+            .values
+            .insert("file_path".to_string(), "/path/to/config.json".to_string());
+        params.values.insert(
+            "message".to_string(),
+            "JSON syntax error at line 42".to_string(),
+        );
 
         // Debug output
         println!("Test params: {:?}", params);
 
         // Call the generator directly with the parameters we know should work
-        let is_json = generator.is_json_syntax_error("JSON syntax error at line 42", "/path/to/config.json");
+        let is_json =
+            generator.is_json_syntax_error("JSON syntax error at line 42", "/path/to/config.json");
         println!("Direct is_json check: {}", is_json);
 
         let fix = generator.generate_fix(&error, &params, None);
@@ -10430,10 +11954,15 @@ mod tests {
         println!("Fix result: {:?}", fix);
 
         // The fix should be generated successfully
-        assert!(fix.is_some(), "Fix should be generated for JSON syntax error");
+        assert!(
+            fix.is_some(),
+            "Fix should be generated for JSON syntax error"
+        );
         let fix = fix.unwrap();
         assert_eq!(fix.fix_type, FixType::ExecuteCommand);
-        assert!(fix.description.contains("Fix syntax error in configuration file"));
+        assert!(fix
+            .description
+            .contains("Fix syntax error in configuration file"));
         assert!(fix.description.contains("/path/to/config.json"));
 
         // Check that the details contain the correct command for a JSON file
@@ -10456,14 +11985,20 @@ mod tests {
         };
 
         let mut yaml_params = ExtractedParameters::new();
-        yaml_params.values.insert("file_path".to_string(), "/path/to/config.yaml".to_string());
-        yaml_params.values.insert("message".to_string(), "YAML syntax error at line 10".to_string());
+        yaml_params
+            .values
+            .insert("file_path".to_string(), "/path/to/config.yaml".to_string());
+        yaml_params.values.insert(
+            "message".to_string(),
+            "YAML syntax error at line 10".to_string(),
+        );
 
         // Debug output
         println!("YAML test params: {:?}", yaml_params);
 
         // Call the generator directly with the parameters we know should work
-        let is_yaml = generator.is_yaml_syntax_error("YAML syntax error at line 10", "/path/to/config.yaml");
+        let is_yaml =
+            generator.is_yaml_syntax_error("YAML syntax error at line 10", "/path/to/config.yaml");
         println!("Direct is_yaml check: {}", is_yaml);
 
         let yaml_fix = generator.generate_fix(&yaml_error, &yaml_params, None);
@@ -10472,10 +12007,15 @@ mod tests {
         println!("YAML fix result: {:?}", yaml_fix);
 
         // The fix should be generated successfully
-        assert!(yaml_fix.is_some(), "Fix should be generated for YAML syntax error");
+        assert!(
+            yaml_fix.is_some(),
+            "Fix should be generated for YAML syntax error"
+        );
         let yaml_fix = yaml_fix.unwrap();
         assert_eq!(yaml_fix.fix_type, FixType::ExecuteCommand);
-        assert!(yaml_fix.description.contains("Fix syntax error in configuration file"));
+        assert!(yaml_fix
+            .description
+            .contains("Fix syntax error in configuration file"));
         assert!(yaml_fix.description.contains("/path/to/config.yaml"));
 
         // Check that the details contain the correct command for a YAML file
@@ -10498,14 +12038,20 @@ mod tests {
         };
 
         let mut toml_params = ExtractedParameters::new();
-        toml_params.values.insert("file_path".to_string(), "/path/to/config.toml".to_string());
-        toml_params.values.insert("message".to_string(), "TOML syntax error at line 5".to_string());
+        toml_params
+            .values
+            .insert("file_path".to_string(), "/path/to/config.toml".to_string());
+        toml_params.values.insert(
+            "message".to_string(),
+            "TOML syntax error at line 5".to_string(),
+        );
 
         // Debug output
         println!("TOML test params: {:?}", toml_params);
 
         // Call the generator directly with the parameters we know should work
-        let is_toml = generator.is_toml_syntax_error("TOML syntax error at line 5", "/path/to/config.toml");
+        let is_toml =
+            generator.is_toml_syntax_error("TOML syntax error at line 5", "/path/to/config.toml");
         println!("Direct is_toml check: {}", is_toml);
 
         let toml_fix = generator.generate_fix(&toml_error, &toml_params, None);
@@ -10514,10 +12060,15 @@ mod tests {
         println!("TOML fix result: {:?}", toml_fix);
 
         // The fix should be generated successfully
-        assert!(toml_fix.is_some(), "Fix should be generated for TOML syntax error");
+        assert!(
+            toml_fix.is_some(),
+            "Fix should be generated for TOML syntax error"
+        );
         let toml_fix = toml_fix.unwrap();
         assert_eq!(toml_fix.fix_type, FixType::ExecuteCommand);
-        assert!(toml_fix.description.contains("Fix syntax error in configuration file"));
+        assert!(toml_fix
+            .description
+            .contains("Fix syntax error in configuration file"));
         assert!(toml_fix.description.contains("/path/to/config.toml"));
 
         // Check that the details contain the correct command for a TOML file

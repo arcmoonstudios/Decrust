@@ -127,13 +127,13 @@ impl ErrorReporter {
                     for (i, line) in code.lines().enumerate() {
                         writeln!(writer, "{:4} | {}", i + 1, line)?;
                     }
-                },
+                }
                 ErrorReportFormat::Markdown => {
                     writeln!(writer, "\n### Source Code Context\n")?;
                     writeln!(writer, "```rust")?;
                     writeln!(writer, "{}", code)?;
                     writeln!(writer, "```")?;
-                },
+                }
                 ErrorReportFormat::Html => {
                     writeln!(writer, "<h3>Source Code Context</h3>")?;
                     writeln!(writer, "<pre class=\"code rust\">")?;
@@ -146,14 +146,14 @@ impl ErrorReporter {
 
                     writeln!(writer, "{}", escaped_code)?;
                     writeln!(writer, "</pre>")?;
-                },
+                }
                 ErrorReportFormat::Json => {
                     // For JSON, we need to modify the existing JSON output
                     // This is a simplified approach - in a real implementation,
                     // we would use a proper JSON library
                     let escaped_code = code.replace("\"", "\\\"").replace("\n", "\\n");
                     writeln!(writer, "{{ \"source_code\": \"{}\" }}", escaped_code)?;
-                },
+                }
             }
         }
 
@@ -251,7 +251,10 @@ impl ErrorReporter {
         let mut json = String::from("{");
 
         // Add the main error message
-        json.push_str(&format!("\"error\": \"{}\"", error.to_string().replace("\"", "\\\"")));
+        json.push_str(&format!(
+            "\"error\": \"{}\"",
+            error.to_string().replace("\"", "\\\"")
+        ));
 
         // Add source chain if configured
         if config.include_source_chain {
@@ -284,9 +287,10 @@ impl ErrorReporter {
         // Pretty print if configured
         if config.pretty_print_json {
             // This is a very simple pretty print - a real implementation would use a JSON library
-            json = json.replace("{", "{\n  ")
-                      .replace("}", "\n}")
-                      .replace(", ", ",\n  ");
+            json = json
+                .replace("{", "{\n  ")
+                .replace("}", "\n}")
+                .replace(", ", ",\n  ");
         }
 
         writeln!(writer, "{}", json)?;
@@ -405,7 +409,9 @@ mod tests {
 
     impl Error for TestError {
         fn source(&self) -> Option<&(dyn Error + 'static)> {
-            self.source.as_ref().map(|s| s.as_ref() as &(dyn Error + 'static))
+            self.source
+                .as_ref()
+                .map(|s| s.as_ref() as &(dyn Error + 'static))
         }
     }
 

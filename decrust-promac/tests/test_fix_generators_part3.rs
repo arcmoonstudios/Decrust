@@ -4,8 +4,8 @@
 // Part 3 of the fix generator tests
 
 use decrust_promac_runtime::backtrace::DecrustBacktrace as Backtrace;
-use decrust_promac_runtime::DecrustError;
 use decrust_promac_runtime::types::ErrorCategory;
+use decrust_promac_runtime::DecrustError;
 
 // Helper function to create a validation error
 fn create_validation_error(field: &str, message: &str) -> DecrustError {
@@ -21,7 +21,10 @@ fn create_validation_error(field: &str, message: &str) -> DecrustError {
 fn create_whatever_error(message: &str) -> DecrustError {
     DecrustError::Oops {
         message: message.to_string(),
-        source: Box::new(std::io::Error::new(std::io::ErrorKind::Other, "Other error")),
+        source: Box::new(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            "Other error",
+        )),
         backtrace: Backtrace::capture(),
     }
 }
@@ -32,12 +35,12 @@ fn test_missing_lifetime_fix_generator_parameter() {
     // Create a validation error for missing lifetime
     let error = create_validation_error(
         "lifetime",
-        "Missing lifetime parameter in function signature: 'fn process(data: &str) -> &str'"
+        "Missing lifetime parameter in function signature: 'fn process(data: &str) -> &str'",
     );
-    
+
     // Verify the error category
     assert_eq!(error.category(), ErrorCategory::Validation);
-    
+
     // Verify the error message
     let error_string = format!("{}", error);
     assert!(error_string.contains("Missing lifetime parameter"));
@@ -50,12 +53,12 @@ fn test_missing_lifetime_fix_generator_elision() {
     // Create a validation error for lifetime elision
     let error = create_validation_error(
         "lifetime",
-        "Lifetime may not live long enough in 'impl MyStruct<'a>'"
+        "Lifetime may not live long enough in 'impl MyStruct<'a>'",
     );
-    
+
     // Verify the error category
     assert_eq!(error.category(), ErrorCategory::Validation);
-    
+
     // Verify the error message
     let error_string = format!("{}", error);
     assert!(error_string.contains("Lifetime may not live long enough"));
@@ -68,12 +71,12 @@ fn test_match_pattern_fix_generator_exhaustive() {
     // Create a validation error for non-exhaustive match
     let error = create_validation_error(
         "pattern",
-        "Match is not exhaustive, missing pattern: 'None'"
+        "Match is not exhaustive, missing pattern: 'None'",
     );
-    
+
     // Verify the error category
     assert_eq!(error.category(), ErrorCategory::Validation);
-    
+
     // Verify the error message
     let error_string = format!("{}", error);
     assert!(error_string.contains("Match is not exhaustive"));
@@ -86,12 +89,12 @@ fn test_match_pattern_fix_generator_unreachable() {
     // Create a validation error for unreachable pattern
     let error = create_validation_error(
         "pattern",
-        "Unreachable pattern in match: '_' is unreachable because previous patterns are exhaustive"
+        "Unreachable pattern in match: '_' is unreachable because previous patterns are exhaustive",
     );
-    
+
     // Verify the error category
     assert_eq!(error.category(), ErrorCategory::Validation);
-    
+
     // Verify the error message
     let error_string = format!("{}", error);
     assert!(error_string.contains("Unreachable pattern"));
@@ -104,12 +107,12 @@ fn test_private_field_access_fix_generator_field() {
     // Create a validation error for private field access
     let error = create_validation_error(
         "privacy",
-        "Field 'user.password' is private and cannot be accessed"
+        "Field 'user.password' is private and cannot be accessed",
     );
-    
+
     // Verify the error category
     assert_eq!(error.category(), ErrorCategory::Validation);
-    
+
     // Verify the error message
     let error_string = format!("{}", error);
     assert!(error_string.contains("Field"));
@@ -123,12 +126,12 @@ fn test_private_field_access_fix_generator_method() {
     // Create a validation error for private method access
     let error = create_validation_error(
         "privacy",
-        "Method 'user.validate_password()' is private and cannot be called from this context"
+        "Method 'user.validate_password()' is private and cannot be called from this context",
     );
-    
+
     // Verify the error category
     assert_eq!(error.category(), ErrorCategory::Validation);
-    
+
     // Verify the error message
     let error_string = format!("{}", error);
     assert!(error_string.contains("Method"));
@@ -142,12 +145,12 @@ fn test_generic_param_conflict_fix_generator_bounds() {
     // Create a validation error for generic parameter conflict
     let error = create_validation_error(
         "generic",
-        "Conflicting trait bounds for type parameter 'T': 'T: Copy' and 'T: Clone'"
+        "Conflicting trait bounds for type parameter 'T': 'T: Copy' and 'T: Clone'",
     );
-    
+
     // Verify the error category
     assert_eq!(error.category(), ErrorCategory::Validation);
-    
+
     // Verify the error message
     let error_string = format!("{}", error);
     assert!(error_string.contains("Conflicting trait bounds"));
@@ -159,14 +162,11 @@ fn test_generic_param_conflict_fix_generator_bounds() {
 #[test]
 fn test_generic_param_conflict_fix_generator_missing() {
     // Create a validation error for missing generic bound
-    let error = create_validation_error(
-        "generic",
-        "The trait bound 'T: Display' is not satisfied"
-    );
-    
+    let error = create_validation_error("generic", "The trait bound 'T: Display' is not satisfied");
+
     // Verify the error category
     assert_eq!(error.category(), ErrorCategory::Validation);
-    
+
     // Verify the error message
     let error_string = format!("{}", error);
     assert!(error_string.contains("trait bound"));
@@ -180,12 +180,12 @@ fn test_missing_return_fix_generator_statement() {
     // Create a validation error for missing return
     let error = create_validation_error(
         "return",
-        "Missing return statement in function 'get_user' that returns 'User'"
+        "Missing return statement in function 'get_user' that returns 'User'",
     );
-    
+
     // Verify the error category
     assert_eq!(error.category(), ErrorCategory::Validation);
-    
+
     // Verify the error message
     let error_string = format!("{}", error);
     assert!(error_string.contains("Missing return statement"));
@@ -199,12 +199,12 @@ fn test_missing_return_fix_generator_implicit() {
     // Create a validation error for implicit return
     let error = create_validation_error(
         "return",
-        "Function 'calculate_total' has implicit return of '()' but return type is 'i32'"
+        "Function 'calculate_total' has implicit return of '()' but return type is 'i32'",
     );
-    
+
     // Verify the error category
     assert_eq!(error.category(), ErrorCategory::Validation);
-    
+
     // Verify the error message
     let error_string = format!("{}", error);
     assert!(error_string.contains("implicit return"));
@@ -218,12 +218,12 @@ fn test_enum_parameter_match_fix_generator_variant() {
     // Create a validation error for enum parameter match
     let error = create_validation_error(
         "pattern",
-        "Pattern does not match enum variant 'Status::Pending'"
+        "Pattern does not match enum variant 'Status::Pending'",
     );
-    
+
     // Verify the error category
     assert_eq!(error.category(), ErrorCategory::Validation);
-    
+
     // Verify the error message
     let error_string = format!("{}", error);
     assert!(error_string.contains("Pattern does not match enum variant"));
@@ -236,12 +236,12 @@ fn test_enum_parameter_match_fix_generator_parameters() {
     // Create a validation error for enum parameter match
     let error = create_validation_error(
         "pattern",
-        "Enum variant 'Result::Err' has 1 parameter but pattern has 2 parameters"
+        "Enum variant 'Result::Err' has 1 parameter but pattern has 2 parameters",
     );
-    
+
     // Verify the error category
     assert_eq!(error.category(), ErrorCategory::Validation);
-    
+
     // Verify the error message
     let error_string = format!("{}", error);
     assert!(error_string.contains("Enum variant"));

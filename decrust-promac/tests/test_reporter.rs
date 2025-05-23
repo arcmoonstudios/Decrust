@@ -3,9 +3,9 @@
 // This file tests the reporter functionality in decrust-promac
 
 use decrust_promac_runtime::backtrace::DecrustBacktrace as Backtrace;
-use decrust_promac_runtime::DecrustError;
-use decrust_promac_runtime::reporter::{ErrorReporter, ErrorReportConfig};
+use decrust_promac_runtime::reporter::{ErrorReportConfig, ErrorReporter};
 use decrust_promac_runtime::types::ErrorReportFormat;
+use decrust_promac_runtime::DecrustError;
 use std::path::PathBuf;
 
 // Helper function to create a validation error
@@ -18,7 +18,11 @@ fn create_validation_error(field: &str, message: &str) -> DecrustError {
 }
 
 // Helper function to create an IO error
-fn create_io_error(kind: std::io::ErrorKind, operation: &str, path: Option<PathBuf>) -> DecrustError {
+fn create_io_error(
+    kind: std::io::ErrorKind,
+    operation: &str,
+    path: Option<PathBuf>,
+) -> DecrustError {
     DecrustError::Io {
         source: std::io::Error::new(kind, "IO Error"),
         path,
@@ -82,10 +86,11 @@ fn test_error_reporter_json_format() {
     // Verify the report
     assert!(!report.is_empty());
     assert!(report.contains("\"field\":\"email\"") || report.contains("email"));
-    assert!(report.contains("\"message\":\"Invalid email format\"") ||
-            report.contains("Invalid email format"));
-    assert!(report.contains("\"category\":\"Validation\"") ||
-            report.contains("Validation"));
+    assert!(
+        report.contains("\"message\":\"Invalid email format\"")
+            || report.contains("Invalid email format")
+    );
+    assert!(report.contains("\"category\":\"Validation\"") || report.contains("Validation"));
 }
 
 // Test 3: Error Reporter Markdown Format
@@ -145,7 +150,7 @@ fn test_error_reporter_debug_config() {
     let error = create_io_error(
         std::io::ErrorKind::NotFound,
         "read",
-        Some(PathBuf::from("config.json"))
+        Some(PathBuf::from("config.json")),
     );
 
     // Create an error reporter
@@ -177,7 +182,7 @@ fn test_error_reporter_with_source() {
     let error = create_io_error(
         std::io::ErrorKind::PermissionDenied,
         "write",
-        Some(PathBuf::from("data.txt"))
+        Some(PathBuf::from("data.txt")),
     );
 
     // Create an error reporter
@@ -240,7 +245,7 @@ fn test_error_reporter_with_config_error() {
     // Create a config error
     let error = create_config_error(
         "Missing required configuration key: 'database.url'",
-        Some(PathBuf::from("app.config"))
+        Some(PathBuf::from("app.config")),
     );
 
     // Create an error reporter

@@ -16,8 +16,8 @@
 //! from cascading failures when interacting with external services or performing
 //! operations prone to repeated errors.
 
-use super::{DecrustError, Result};
 use super::backtrace::DecrustBacktrace as Backtrace;
+use super::{DecrustError, Result};
 use std::collections::VecDeque;
 use std::fmt;
 use std::sync::{Arc, Mutex, RwLock};
@@ -39,10 +39,10 @@ impl<T: Clone + ?Sized> Clone for DebugIgnore<T> {
     }
 }
 
-#[cfg(feature = "tokio")]
-use tokio::time;
 #[cfg(feature = "rand")]
 use rand::Rng;
+#[cfg(feature = "tokio")]
+use tokio::time;
 
 /// Represents the state of the circuit breaker.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -109,7 +109,7 @@ pub trait CircuitBreakerObserver: Send + Sync {
         op_type: CircuitOperationType,
         duration: Duration,
         error: Option<&DecrustError>,
-    );  
+    );
     /// Called when the circuit breaker is manually reset.
     fn on_reset(&self, name: &str);
 }
@@ -208,16 +208,35 @@ impl fmt::Debug for CircuitBreakerConfig {
         f.debug_struct("CircuitBreakerConfig")
             .field("failure_threshold", &self.failure_threshold)
             .field("failure_rate_threshold", &self.failure_rate_threshold)
-            .field("minimum_request_threshold_for_rate", &self.minimum_request_threshold_for_rate)
-            .field("success_threshold_to_close", &self.success_threshold_to_close)
+            .field(
+                "minimum_request_threshold_for_rate",
+                &self.minimum_request_threshold_for_rate,
+            )
+            .field(
+                "success_threshold_to_close",
+                &self.success_threshold_to_close,
+            )
             .field("reset_timeout", &self.reset_timeout)
-            .field("half_open_max_concurrent_operations", &self.half_open_max_concurrent_operations)
+            .field(
+                "half_open_max_concurrent_operations",
+                &self.half_open_max_concurrent_operations,
+            )
             .field("operation_timeout", &self.operation_timeout)
             .field("sliding_window_size", &self.sliding_window_size)
-            .field("error_predicate", &if self.error_predicate.is_some() { "Some(<function>)" } else { "None" })
+            .field(
+                "error_predicate",
+                &if self.error_predicate.is_some() {
+                    "Some(<function>)"
+                } else {
+                    "None"
+                },
+            )
             .field("metrics_window_size", &self.metrics_window_size)
             .field("track_metrics", &self.track_metrics)
-            .field("slow_call_duration_threshold", &self.slow_call_duration_threshold)
+            .field(
+                "slow_call_duration_threshold",
+                &self.slow_call_duration_threshold,
+            )
             .field("slow_call_rate_threshold", &self.slow_call_rate_threshold)
             .field("circuit_breaker_threshold", &self.circuit_breaker_threshold)
             .field("circuit_breaker_cooldown", &self.circuit_breaker_cooldown)
@@ -233,7 +252,7 @@ struct InnerState {
     consecutive_failures: usize,
     consecutive_successes: usize,
     half_open_concurrency_count: usize,
-    results_window: VecDeque<bool>,      // true for success, false for failure
+    results_window: VecDeque<bool>, // true for success, false for failure
     slow_call_window: VecDeque<bool>, // true if call was slow
     metrics: CircuitMetrics,
 }
@@ -387,27 +406,19 @@ impl CircuitBreaker {
                     Err(DecrustError::CircuitBreakerOpen {
                         name: self.name.clone(),
                         retry_after: Some(
-                            self.config.reset_timeout
+                            self.config
+                                .reset_timeout
                                 .checked_sub(
-                                    self.inner
-                                        .read()
-                                        .unwrap()
-                                        .opened_at
-                                        .unwrap()
-                                        .elapsed()
+                                    self.inner.read().unwrap().opened_at.unwrap().elapsed(),
                                 )
-                                .unwrap_or_default()
+                                .unwrap_or_default(),
                         ),
                         backtrace: Backtrace::generate(),
                     })
                 }
-            },
-            CircuitBreakerState::HalfOpen => {
-                self.execute_half_open(operation, start_time)
-            },
-            CircuitBreakerState::Closed => {
-                self.execute_closed(operation, start_time)
             }
+            CircuitBreakerState::HalfOpen => self.execute_half_open(operation, start_time),
+            CircuitBreakerState::Closed => self.execute_closed(operation, start_time),
         }
     }
 
@@ -444,26 +455,21 @@ impl CircuitBreaker {
                     Err(super::CircuitBreakerOpenSnafu {
                         name: self.name.clone(),
                         retry_after: Some(
-                            self.config.reset_timeout
+                            self.config
+                                .reset_timeout
                                 .checked_sub(
-                                    self.inner
-                                        .read()
-                                        .unwrap()
-                                        .opened_at
-                                        .unwrap()
-                                        .elapsed()
+                                    self.inner.read().unwrap().opened_at.unwrap().elapsed(),
                                 )
-                                .unwrap_or_default()
+                                .unwrap_or_default(),
                         ),
-                    }.build())
+                    }
+                    .build())
                 }
-            },
+            }
             CircuitBreakerState::HalfOpen => {
                 self.execute_half_open_async(operation, start_time).await
-            },
-            CircuitBreakerState::Closed => {
-                self.execute_closed_async(operation, start_time).await
             }
+            CircuitBreakerState::Closed => self.execute_closed_async(operation, start_time).await,
         }
     }
 
@@ -512,7 +518,8 @@ impl CircuitBreaker {
         // Check if we can proceed with the operation
         {
             let mut inner = self.inner.write().unwrap();
-            if inner.half_open_concurrency_count >= self.config.half_open_max_concurrent_operations {
+            if inner.half_open_concurrency_count >= self.config.half_open_max_concurrent_operations
+            {
                 // Too many concurrent operations in half-open state
                 self.record_rejected();
                 return Err(DecrustError::CircuitBreakerOpen {
@@ -538,8 +545,7 @@ impl CircuitBreaker {
         // Decrement concurrency count
         {
             let mut inner = self.inner.write().unwrap();
-            inner.half_open_concurrency_count = inner.half_open_concurrency_count
-                .saturating_sub(1);
+            inner.half_open_concurrency_count = inner.half_open_concurrency_count.saturating_sub(1);
         }
 
         match &result {
@@ -575,7 +581,11 @@ impl CircuitBreaker {
     // Async versions
 
     #[cfg(feature = "tokio")]
-    async fn execute_closed_async<F, Fut, Ret>(&self, operation: F, start_time: Instant) -> Result<Ret>
+    async fn execute_closed_async<F, Fut, Ret>(
+        &self,
+        operation: F,
+        start_time: Instant,
+    ) -> Result<Ret>
     where
         F: FnOnce() -> Fut,
         Fut: std::future::Future<Output = Result<Ret>>,
@@ -611,7 +621,11 @@ impl CircuitBreaker {
     }
 
     #[cfg(feature = "tokio")]
-    async fn execute_half_open_async<F, Fut, Ret>(&self, operation: F, start_time: Instant) -> Result<Ret>
+    async fn execute_half_open_async<F, Fut, Ret>(
+        &self,
+        operation: F,
+        start_time: Instant,
+    ) -> Result<Ret>
     where
         F: FnOnce() -> Fut,
         Fut: std::future::Future<Output = Result<Ret>>,
@@ -619,13 +633,15 @@ impl CircuitBreaker {
         // Check if we can proceed with the operation
         {
             let mut inner = self.inner.write().unwrap();
-            if inner.half_open_concurrency_count >= self.config.half_open_max_concurrent_operations {
+            if inner.half_open_concurrency_count >= self.config.half_open_max_concurrent_operations
+            {
                 // Too many concurrent operations in half-open state
                 self.record_rejected();
                 return Err(super::CircuitBreakerOpenSnafu {
                     name: self.name.clone(),
                     retry_after: Some(Duration::from_millis(100)),
-                }.build());
+                }
+                .build());
             }
 
             // Increment concurrency count
@@ -644,8 +660,7 @@ impl CircuitBreaker {
         // Decrement concurrency count
         {
             let mut inner = self.inner.write().unwrap();
-            inner.half_open_concurrency_count = inner.half_open_concurrency_count
-                .saturating_sub(1);
+            inner.half_open_concurrency_count = inner.half_open_concurrency_count.saturating_sub(1);
         }
 
         match &result {
@@ -706,8 +721,8 @@ impl CircuitBreaker {
 
         #[cfg(feature = "std-thread")]
         {
-            use std::thread;
             use std::sync::mpsc;
+            use std::thread;
 
             let (tx, rx) = mpsc::channel();
 
@@ -728,14 +743,19 @@ impl CircuitBreaker {
                     Err(super::TimeoutSnafu {
                         operation: format!("Operation in circuit breaker '{}'", self.name),
                         duration: timeout,
-                    }.build())
+                    }
+                    .build())
                 }
             }
         }
     }
 
     #[cfg(feature = "tokio")]
-    async fn execute_with_timeout_async<F, Fut, Ret>(&self, operation: F, timeout: Duration) -> Result<Ret>
+    async fn execute_with_timeout_async<F, Fut, Ret>(
+        &self,
+        operation: F,
+        timeout: Duration,
+    ) -> Result<Ret>
     where
         F: FnOnce() -> Fut,
         Fut: std::future::Future<Output = Result<Ret>>,
@@ -747,7 +767,8 @@ impl CircuitBreaker {
                 Err(super::TimeoutSnafu {
                     operation: format!("Operation in circuit breaker '{}'", self.name),
                     duration: timeout,
-                }.build())
+                }
+                .build())
             }
         }
     }
@@ -775,7 +796,10 @@ impl CircuitBreaker {
         // Drop the lock before calling observers
         drop(inner);
 
-        info!("Circuit breaker '{}' transitioning to Open: {}", self.name, reason);
+        info!(
+            "Circuit breaker '{}' transitioning to Open: {}",
+            self.name, reason
+        );
         self.notify_state_change(&event);
     }
 
@@ -801,7 +825,10 @@ impl CircuitBreaker {
         // Drop the lock before calling observers
         drop(inner);
 
-        info!("Circuit breaker '{}' transitioning to HalfOpen: {}", self.name, reason);
+        info!(
+            "Circuit breaker '{}' transitioning to HalfOpen: {}",
+            self.name, reason
+        );
         self.notify_state_change(&event);
     }
 
@@ -827,7 +854,10 @@ impl CircuitBreaker {
         // Drop the lock before calling observers
         drop(inner);
 
-        info!("Circuit breaker '{}' transitioning to Closed: {}", self.name, reason);
+        info!(
+            "Circuit breaker '{}' transitioning to Closed: {}",
+            self.name, reason
+        );
         self.notify_state_change(&event);
     }
 
@@ -868,11 +898,7 @@ impl CircuitBreaker {
 
         drop(inner);
 
-        self.notify_operation_result(
-            CircuitOperationType::Success,
-            duration,
-            None
-        );
+        self.notify_operation_result(CircuitOperationType::Success, duration, None);
     }
 
     fn record_failure(&self, error: &DecrustError, duration: Duration) {
@@ -912,11 +938,7 @@ impl CircuitBreaker {
         let error_clone = error.clone(); // This requires Clone for DecrustError
         drop(inner);
 
-        self.notify_operation_result(
-            CircuitOperationType::Failure,
-            duration,
-            Some(&error_clone)
-        );
+        self.notify_operation_result(CircuitOperationType::Failure, duration, Some(&error_clone));
     }
 
     fn record_rejected(&self) {
@@ -926,11 +948,7 @@ impl CircuitBreaker {
         drop(inner);
 
         // Zero duration since operation was rejected
-        self.notify_operation_result(
-            CircuitOperationType::Rejected,
-            Duration::from_secs(0),
-            None
-        );
+        self.notify_operation_result(CircuitOperationType::Rejected, Duration::from_secs(0), None);
     }
 
     fn record_timeout(&self) {
@@ -965,7 +983,7 @@ impl CircuitBreaker {
         self.notify_operation_result(
             CircuitOperationType::Timeout,
             self.config.operation_timeout.unwrap_or_default(),
-            Some(&timeout_error)
+            Some(&timeout_error),
         );
     }
 
@@ -981,7 +999,11 @@ impl CircuitBreaker {
 
         // Check failure rate if we have enough samples
         if inner.results_window.len() >= self.config.minimum_request_threshold_for_rate {
-            let failure_count = inner.results_window.iter().filter(|&&success| !success).count();
+            let failure_count = inner
+                .results_window
+                .iter()
+                .filter(|&&success| !success)
+                .count();
             let failure_rate = failure_count as f64 / inner.results_window.len() as f64;
 
             if failure_rate >= self.config.failure_rate_threshold {
@@ -990,7 +1012,10 @@ impl CircuitBreaker {
         }
 
         // Check slow call rate if configured
-        if let (Some(threshold), true) = (self.config.slow_call_rate_threshold, !inner.slow_call_window.is_empty()) {
+        if let (Some(threshold), true) = (
+            self.config.slow_call_rate_threshold,
+            !inner.slow_call_window.is_empty(),
+        ) {
             let slow_count = inner.slow_call_window.iter().filter(|&&slow| slow).count();
             let slow_rate = slow_count as f64 / inner.slow_call_window.len() as f64;
 
@@ -1016,7 +1041,11 @@ impl CircuitBreaker {
         if inner.results_window.is_empty() {
             inner.metrics.failure_rate_in_window = None;
         } else {
-            let failure_count = inner.results_window.iter().filter(|&&success| !success).count();
+            let failure_count = inner
+                .results_window
+                .iter()
+                .filter(|&&success| !success)
+                .count();
             let failure_rate = failure_count as f64 / inner.results_window.len() as f64;
             inner.metrics.failure_rate_in_window = Some(failure_rate);
         }
@@ -1046,13 +1075,18 @@ impl CircuitBreaker {
         }
     }
 
-    fn notify_operation_result(&self, op_type: CircuitOperationType, duration: Duration, error: Option<&DecrustError>) {
+    fn notify_operation_result(
+        &self,
+        op_type: CircuitOperationType,
+        duration: Duration,
+        error: Option<&DecrustError>,
+    ) {
         let observers = self.observers.lock().unwrap();
         for observer in &*observers {
             observer.on_operation_result(&self.name, op_type, duration, error);
         }
     }
-      fn notify_reset(&self) {
+    fn notify_reset(&self) {
         let observers = self.observers.lock().unwrap();
         for observer in &*observers {
             observer.on_reset(&self.name);
@@ -1062,10 +1096,10 @@ impl CircuitBreaker {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use std::sync::atomic::{AtomicUsize, Ordering};
-    use crate::backtrace::DecrustBacktrace as Backtrace;
     use super::super::OptionalError;
+    use super::*;
+    use crate::backtrace::DecrustBacktrace as Backtrace;
+    use std::sync::atomic::{AtomicUsize, Ordering};
 
     // Mock observer for testing
     struct TestObserver {
@@ -1194,4 +1228,3 @@ mod tests {
         assert!(result.is_err());
     }
 }
-

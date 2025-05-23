@@ -5,8 +5,8 @@
 // Re-export all the necessary types and functions from decrust
 // This allows users to import from decrust-promac-runtime instead of directly from decrust
 pub mod backtrace {
-    pub use ::decrust::backtrace::*;
     pub use ::decrust::backtrace::DecrustBacktrace as Backtrace;
+    pub use ::decrust::backtrace::*;
 }
 
 pub mod circuit_breaker {

@@ -11,8 +11,8 @@
 //! using the quote and syn crates. It enables AST-aware code generation for
 //! the autocorrection system.
 
-use std::collections::HashMap;
 use super::types::ErrorCategory;
+use std::collections::HashMap;
 
 /// Template for generating code fixes
 #[derive(Debug, Clone)]
@@ -36,7 +36,11 @@ impl FixTemplate {
     /// * `name` - Name of the template
     /// * `description` - Description of what the template does
     /// * `template` - The template code with placeholders
-    pub fn new(name: impl Into<String>, description: impl Into<String>, template: impl Into<String>) -> Self {
+    pub fn new(
+        name: impl Into<String>,
+        description: impl Into<String>,
+        template: impl Into<String>,
+    ) -> Self {
         Self {
             name: name.into(),
             description: description.into(),
@@ -107,7 +111,10 @@ impl SyntaxGenerator {
     ) -> String {
         let mut impl_body = String::new();
         for (method_name, method_body) in methods {
-            impl_body.push_str(&format!("    fn {}() {{\n        {}\n    }}\n\n", method_name, method_body));
+            impl_body.push_str(&format!(
+                "    fn {}() {{\n        {}\n    }}\n\n",
+                method_name, method_body
+            ));
         }
 
         format!(
@@ -372,8 +379,12 @@ mod tests {
         let import_single = generator.generate_import("std::collections", &["HashMap"]);
         assert_eq!(import_single, "use std::collections::HashMap;");
 
-        let import_multiple = generator.generate_import("std::collections", &["HashMap", "HashSet", "BTreeMap"]);
-        assert_eq!(import_multiple, "use std::collections::{HashMap, HashSet, BTreeMap};");
+        let import_multiple =
+            generator.generate_import("std::collections", &["HashMap", "HashSet", "BTreeMap"]);
+        assert_eq!(
+            import_multiple,
+            "use std::collections::{HashMap, HashSet, BTreeMap};"
+        );
 
         let import_empty = generator.generate_import("std::collections", &[]);
         assert_eq!(import_empty, "use std::collections;");
@@ -402,18 +413,14 @@ mod tests {
         let template1 = FixTemplate::new(
             "validation_fix",
             "Fix for validation errors",
-            "// Validation fix for {field_name}"
+            "// Validation fix for {field_name}",
         )
         .add_category(ErrorCategory::Validation)
         .add_error_code("E0001");
 
-        let template2 = FixTemplate::new(
-            "io_fix",
-            "Fix for IO errors",
-            "// IO fix for {path}"
-        )
-        .add_category(ErrorCategory::Io)
-        .add_error_code("E0002");
+        let template2 = FixTemplate::new("io_fix", "Fix for IO errors", "// IO fix for {path}")
+            .add_category(ErrorCategory::Io)
+            .add_error_code("E0002");
 
         // Register templates
         registry.register_template(template1);
@@ -422,7 +429,10 @@ mod tests {
         // Test getting a template by name
         let validation_template = registry.get_template("validation_fix");
         assert!(validation_template.is_some());
-        assert_eq!(validation_template.unwrap().description, "Fix for validation errors");
+        assert_eq!(
+            validation_template.unwrap().description,
+            "Fix for validation errors"
+        );
 
         // Test getting templates for a category
         let io_templates = registry.get_templates_for_category(ErrorCategory::Io);
@@ -454,7 +464,7 @@ mod tests {
         let template = FixTemplate::new(
             "user_struct_template",
             "Template for User struct",
-            struct_def
+            struct_def,
         )
         .add_category(ErrorCategory::Validation);
 

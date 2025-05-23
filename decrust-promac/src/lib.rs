@@ -3,15 +3,13 @@
 extern crate proc_macro;
 // Import the decrust-promac-runtime crate
 extern crate decrust_promac_runtime;
-use regex::Regex;
 use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
-use quote::{quote, format_ident};
+use quote::{format_ident, quote};
+use regex::Regex;
 use syn::{
-    parse_macro_input, parse_quote,
-    DeriveInput, ItemFn, Ident, Fields,
-    Meta, Lit, LitStr, LitInt, Expr, Stmt,
-    Block, Error as SynError
+    parse_macro_input, parse_quote, Block, DeriveInput, Error as SynError, Expr, Fields, Ident,
+    ItemFn, Lit, LitInt, LitStr, Meta, Stmt,
 };
 
 // Note: Since this is a proc-macro crate, we can't re-export types directly.
@@ -214,7 +212,7 @@ fn parse_decrust_meta_items(tokens: TokenStream2) -> Result<DecrustAttributeArgs
                 // Create a Meta::NameValue
                 if value_str.starts_with('"') && value_str.ends_with('"') {
                     // String value
-                    let value_content = &value_str[1..value_str.len()-1];
+                    let value_content = &value_str[1..value_str.len() - 1];
                     meta_items.push(Meta::NameValue(parse_quote! { #name_str = #value_content }));
                 } else if value_str == "true" || value_str == "false" {
                     // Boolean value
@@ -253,10 +251,16 @@ fn parse_decrust_meta_items(tokens: TokenStream2) -> Result<DecrustAttributeArgs
                         if let Lit::Bool(lit_bool) = &expr_lit.lit {
                             config_args.performance_tracking = Some(lit_bool.value());
                         } else {
-                            return Err(SynError::new_spanned(&nv.value, "Expected boolean for performance_tracking"));
+                            return Err(SynError::new_spanned(
+                                &nv.value,
+                                "Expected boolean for performance_tracking",
+                            ));
                         }
                     } else {
-                        return Err(SynError::new_spanned(&nv.value, "Expected literal for performance_tracking"));
+                        return Err(SynError::new_spanned(
+                            &nv.value,
+                            "Expected literal for performance_tracking",
+                        ));
                     }
                 }
                 // Add more top-level NameValue pairs here
@@ -275,7 +279,8 @@ fn parse_decrust_meta_items(tokens: TokenStream2) -> Result<DecrustAttributeArgs
                             if let Some(threshold_match) = captures.get(1) {
                                 let threshold_str = threshold_match.as_str();
                                 if let Ok(_) = threshold_str.parse::<u64>() {
-                                    let lit_int = LitInt::new(&threshold_str, proc_macro2::Span::call_site());
+                                    let lit_int =
+                                        LitInt::new(&threshold_str, proc_macro2::Span::call_site());
                                     cb_args.threshold = Some(lit_int);
                                 }
                             }
@@ -287,7 +292,8 @@ fn parse_decrust_meta_items(tokens: TokenStream2) -> Result<DecrustAttributeArgs
                         if let Some(captures) = re.captures(&tokens_str) {
                             if let Some(timeout_match) = captures.get(1) {
                                 let timeout_str = timeout_match.as_str();
-                                let lit_str = LitStr::new(timeout_str, proc_macro2::Span::call_site());
+                                let lit_str =
+                                    LitStr::new(timeout_str, proc_macro2::Span::call_site());
                                 cb_args.timeout = Some(lit_str);
                             }
                         }
@@ -314,7 +320,10 @@ fn parse_decrust_meta_items(tokens: TokenStream2) -> Result<DecrustAttributeArgs
                                         if let Lit::Int(lit_int) = &expr_lit.lit {
                                             cb_args.threshold = Some(lit_int.clone());
                                         } else {
-                                            return Err(SynError::new_spanned(&nv.value, "Expected integer for threshold"));
+                                            return Err(SynError::new_spanned(
+                                                &nv.value,
+                                                "Expected integer for threshold",
+                                            ));
                                         }
                                     }
                                 } else if nv.path.is_ident("timeout") {
@@ -322,28 +331,40 @@ fn parse_decrust_meta_items(tokens: TokenStream2) -> Result<DecrustAttributeArgs
                                         if let Lit::Str(lit_str) = &expr_lit.lit {
                                             cb_args.timeout = Some(lit_str.clone());
                                         } else {
-                                            return Err(SynError::new_spanned(&nv.value, "Expected string for timeout"));
+                                            return Err(SynError::new_spanned(
+                                                &nv.value,
+                                                "Expected string for timeout",
+                                            ));
                                         }
                                     }
                                 } else if nv.path.is_ident("circuit_breaker_threshold") {
                                     if let Expr::Lit(expr_lit) = &nv.value {
                                         if let Lit::Int(lit_int) = &expr_lit.lit {
-                                            cb_args.circuit_breaker_threshold = Some(lit_int.clone());
+                                            cb_args.circuit_breaker_threshold =
+                                                Some(lit_int.clone());
                                         } else {
-                                            return Err(SynError::new_spanned(&nv.value, "Expected integer for circuit_breaker_threshold"));
+                                            return Err(SynError::new_spanned(
+                                                &nv.value,
+                                                "Expected integer for circuit_breaker_threshold",
+                                            ));
                                         }
                                     }
                                 } else if nv.path.is_ident("circuit_breaker_cooldown") {
                                     if let Expr::Lit(expr_lit) = &nv.value {
                                         if let Lit::Str(lit_str) = &expr_lit.lit {
-                                            cb_args.circuit_breaker_cooldown = Some(lit_str.clone());
+                                            cb_args.circuit_breaker_cooldown =
+                                                Some(lit_str.clone());
                                         } else {
-                                            return Err(SynError::new_spanned(&nv.value, "Expected string for circuit_breaker_cooldown"));
+                                            return Err(SynError::new_spanned(
+                                                &nv.value,
+                                                "Expected string for circuit_breaker_cooldown",
+                                            ));
                                         }
                                     }
                                 } // ... parse other cb_args
                             }
-                            Meta::Path(p) => { // For simple booleans like circuit_breaker(enabled)
+                            Meta::Path(p) => {
+                                // For simple booleans like circuit_breaker(enabled)
                                 if p.is_ident("enabled") {
                                     cb_args.enabled = Some(true);
                                 }
@@ -364,7 +385,8 @@ fn parse_decrust_meta_items(tokens: TokenStream2) -> Result<DecrustAttributeArgs
                         if let Some(captures) = re.captures(&tokens_str) {
                             if let Some(mode_match) = captures.get(1) {
                                 let mode_str = mode_match.as_str();
-                                ac_args.mode = Some(Ident::new(mode_str, proc_macro2::Span::call_site()));
+                                ac_args.mode =
+                                    Some(Ident::new(mode_str, proc_macro2::Span::call_site()));
                             }
                         }
                     }
@@ -374,9 +396,13 @@ fn parse_decrust_meta_items(tokens: TokenStream2) -> Result<DecrustAttributeArgs
                             if nv.path.is_ident("mode") {
                                 if let Expr::Lit(expr_lit) = &nv.value {
                                     if let Lit::Str(lit_str) = &expr_lit.lit {
-                                        ac_args.mode = Some(Ident::new(&lit_str.value(), lit_str.span()));
+                                        ac_args.mode =
+                                            Some(Ident::new(&lit_str.value(), lit_str.span()));
                                     } else {
-                                        return Err(SynError::new_spanned(&nv.value, "Expected string for autocorrect mode"));
+                                        return Err(SynError::new_spanned(
+                                            &nv.value,
+                                            "Expected string for autocorrect mode",
+                                        ));
                                     }
                                 }
                             } // ... parse other ac_args
@@ -395,7 +421,8 @@ fn parse_decrust_meta_items(tokens: TokenStream2) -> Result<DecrustAttributeArgs
                         if let Some(captures) = re.captures(&tokens_str) {
                             if let Some(format_match) = captures.get(1) {
                                 let format_str = format_match.as_str();
-                                r_args.format = Some(Ident::new(format_str, proc_macro2::Span::call_site()));
+                                r_args.format =
+                                    Some(Ident::new(format_str, proc_macro2::Span::call_site()));
                             }
                         }
                     }
@@ -415,7 +442,8 @@ fn parse_decrust_meta_items(tokens: TokenStream2) -> Result<DecrustAttributeArgs
                         if let Some(captures) = re.captures(&tokens_str) {
                             if let Some(level_match) = captures.get(1) {
                                 let level_str = level_match.as_str();
-                                r_args.level = Some(Ident::new(level_str, proc_macro2::Span::call_site()));
+                                r_args.level =
+                                    Some(Ident::new(level_str, proc_macro2::Span::call_site()));
                             }
                         }
                     }
@@ -425,9 +453,13 @@ fn parse_decrust_meta_items(tokens: TokenStream2) -> Result<DecrustAttributeArgs
                             if nv.path.is_ident("format") {
                                 if let Expr::Lit(expr_lit) = &nv.value {
                                     if let Lit::Str(lit_str) = &expr_lit.lit {
-                                        r_args.format = Some(Ident::new(&lit_str.value(), lit_str.span()));
+                                        r_args.format =
+                                            Some(Ident::new(&lit_str.value(), lit_str.span()));
                                     } else {
-                                        return Err(SynError::new_spanned(&nv.value, "Expected string for reporting format"));
+                                        return Err(SynError::new_spanned(
+                                            &nv.value,
+                                            "Expected string for reporting format",
+                                        ));
                                     }
                                 }
                             } // ... parse other r_args
@@ -447,7 +479,8 @@ fn parse_decrust_meta_items(tokens: TokenStream2) -> Result<DecrustAttributeArgs
                             if let Some(attempts_match) = captures.get(1) {
                                 let attempts_str = attempts_match.as_str();
                                 if let Ok(_) = attempts_str.parse::<u64>() {
-                                    let lit_int = LitInt::new(&attempts_str, proc_macro2::Span::call_site());
+                                    let lit_int =
+                                        LitInt::new(&attempts_str, proc_macro2::Span::call_site());
                                     retry_args.max_attempts = Some(lit_int);
                                 }
                             }
@@ -459,7 +492,8 @@ fn parse_decrust_meta_items(tokens: TokenStream2) -> Result<DecrustAttributeArgs
                         if let Some(captures) = re.captures(&tokens_str) {
                             if let Some(backoff_match) = captures.get(1) {
                                 let backoff_str = backoff_match.as_str();
-                                retry_args.backoff = Some(Ident::new(backoff_str, proc_macro2::Span::call_site()));
+                                retry_args.backoff =
+                                    Some(Ident::new(backoff_str, proc_macro2::Span::call_site()));
                             }
                         }
                     }
@@ -471,15 +505,22 @@ fn parse_decrust_meta_items(tokens: TokenStream2) -> Result<DecrustAttributeArgs
                                     if let Lit::Int(lit_int) = &expr_lit.lit {
                                         retry_args.max_attempts = Some(lit_int.clone());
                                     } else {
-                                        return Err(SynError::new_spanned(&nv.value, "Expected integer for max_attempts"));
+                                        return Err(SynError::new_spanned(
+                                            &nv.value,
+                                            "Expected integer for max_attempts",
+                                        ));
                                     }
                                 }
                             } else if nv.path.is_ident("backoff") {
                                 if let Expr::Lit(expr_lit) = &nv.value {
                                     if let Lit::Str(lit_str) = &expr_lit.lit {
-                                        retry_args.backoff = Some(Ident::new(&lit_str.value(), lit_str.span()));
+                                        retry_args.backoff =
+                                            Some(Ident::new(&lit_str.value(), lit_str.span()));
                                     } else {
-                                        return Err(SynError::new_spanned(&nv.value, "Expected string for backoff strategy"));
+                                        return Err(SynError::new_spanned(
+                                            &nv.value,
+                                            "Expected string for backoff strategy",
+                                        ));
                                     }
                                 }
                             }
@@ -556,7 +597,8 @@ fn parse_decrust_meta_items(tokens: TokenStream2) -> Result<DecrustAttributeArgs
                         if let Some(captures) = re.captures(&tokens_str) {
                             if let Some(level_match) = captures.get(1) {
                                 let level_str = level_match.as_str();
-                                intent_args.optimization_level = Some(Ident::new(level_str, proc_macro2::Span::call_site()));
+                                intent_args.optimization_level =
+                                    Some(Ident::new(level_str, proc_macro2::Span::call_site()));
                             }
                         }
                     }
@@ -584,7 +626,8 @@ fn parse_decrust_meta_items(tokens: TokenStream2) -> Result<DecrustAttributeArgs
                         if let Some(captures) = re.captures(&tokens_str) {
                             if let Some(analysis_match) = captures.get(1) {
                                 let analysis_str = analysis_match.as_str();
-                                resolution_args.causal_chain_analysis = Some(analysis_str == "true");
+                                resolution_args.causal_chain_analysis =
+                                    Some(analysis_str == "true");
                             }
                         }
                     }
@@ -595,7 +638,8 @@ fn parse_decrust_meta_items(tokens: TokenStream2) -> Result<DecrustAttributeArgs
                             if let Some(depth_match) = captures.get(1) {
                                 let depth_str = depth_match.as_str();
                                 if let Ok(_) = depth_str.parse::<u32>() {
-                                    let lit_int = LitInt::new(&depth_str, proc_macro2::Span::call_site());
+                                    let lit_int =
+                                        LitInt::new(&depth_str, proc_macro2::Span::call_site());
                                     resolution_args.causal_resolution_depth = Some(lit_int);
                                 }
                             }
@@ -633,12 +677,14 @@ fn parse_decrust_meta_items(tokens: TokenStream2) -> Result<DecrustAttributeArgs
                     }
 
                     // Parse recursive_enhancement_threshold
-                    if let Ok(re) = Regex::new(r#"recursive_enhancement_threshold\s*=\s*([\d\.]+)"#) {
+                    if let Ok(re) = Regex::new(r#"recursive_enhancement_threshold\s*=\s*([\d\.]+)"#)
+                    {
                         if let Some(captures) = re.captures(&tokens_str) {
                             if let Some(threshold_match) = captures.get(1) {
                                 let threshold_str = threshold_match.as_str();
                                 if let Ok(threshold) = threshold_str.parse::<f64>() {
-                                    processing_args.recursive_enhancement_threshold = Some(threshold);
+                                    processing_args.recursive_enhancement_threshold =
+                                        Some(threshold);
                                 }
                             }
                         }
@@ -667,7 +713,8 @@ fn parse_decrust_meta_items(tokens: TokenStream2) -> Result<DecrustAttributeArgs
                         if let Some(captures) = re.captures(&tokens_str) {
                             if let Some(level_match) = captures.get(1) {
                                 let level_str = level_match.as_str();
-                                cert_args.level = Some(Ident::new(level_str, proc_macro2::Span::call_site()));
+                                cert_args.level =
+                                    Some(Ident::new(level_str, proc_macro2::Span::call_site()));
                             }
                         }
                     }
@@ -677,7 +724,8 @@ fn parse_decrust_meta_items(tokens: TokenStream2) -> Result<DecrustAttributeArgs
                         if let Some(captures) = re.captures(&tokens_str) {
                             if let Some(readiness_match) = captures.get(1) {
                                 let readiness_str = readiness_match.as_str();
-                                cert_args.production_readiness = Some(Ident::new(readiness_str, proc_macro2::Span::call_site()));
+                                cert_args.production_readiness =
+                                    Some(Ident::new(readiness_str, proc_macro2::Span::call_site()));
                             }
                         }
                     }
@@ -710,7 +758,6 @@ fn parse_decrust_meta_items(tokens: TokenStream2) -> Result<DecrustAttributeArgs
     Ok(config_args)
 }
 
-
 // Represents the input to the decrust! function-like macro
 // E.g., decrust! { #[attr] let x = foo()?; bar(x)? }
 struct DecrustFnLikeInput {
@@ -738,7 +785,6 @@ impl syn::parse::Parse for DecrustFnLikeInput {
         Ok(DecrustFnLikeInput { attrs, stmts })
     }
 }
-
 
 /// **Level 1: Core Error Management with M.A.R.S. Integration (`decrust!` function-like macro)**
 ///
@@ -809,26 +855,34 @@ pub fn decrust(input: TokenStream) -> TokenStream {
 
         // Process each attribute to extract configuration
         for attr in &parsed_input.attrs {
-            if attr.path().is_ident("circuit_breaker") ||
-               attr.path().is_ident("autocorrect") ||
-               attr.path().is_ident("reporting") ||
-               attr.path().is_ident("performance_tracking") ||
-               attr.path().is_ident("retry") {
-
+            if attr.path().is_ident("circuit_breaker")
+                || attr.path().is_ident("autocorrect")
+                || attr.path().is_ident("reporting")
+                || attr.path().is_ident("performance_tracking")
+                || attr.path().is_ident("retry")
+            {
                 if let Ok(meta) = attr.parse_args::<Meta>() {
                     if let Meta::List(meta_list) = meta {
-                        if let Ok(parsed_args) = parse_decrust_meta_items(meta_list.tokens.clone()) {
+                        if let Ok(parsed_args) = parse_decrust_meta_items(meta_list.tokens.clone())
+                        {
                             // Merge the parsed args into our config
-                            if attr.path().is_ident("circuit_breaker") && parsed_args.circuit_breaker.is_some() {
+                            if attr.path().is_ident("circuit_breaker")
+                                && parsed_args.circuit_breaker.is_some()
+                            {
                                 decrust_config.circuit_breaker = parsed_args.circuit_breaker;
-                            } else if attr.path().is_ident("autocorrect") && parsed_args.autocorrect.is_some() {
+                            } else if attr.path().is_ident("autocorrect")
+                                && parsed_args.autocorrect.is_some()
+                            {
                                 decrust_config.autocorrect = parsed_args.autocorrect;
-                            } else if attr.path().is_ident("reporting") && parsed_args.reporting.is_some() {
+                            } else if attr.path().is_ident("reporting")
+                                && parsed_args.reporting.is_some()
+                            {
                                 decrust_config.reporting = parsed_args.reporting;
                             } else if attr.path().is_ident("retry") && parsed_args.retry.is_some() {
                                 decrust_config.retry = parsed_args.retry;
                             } else if attr.path().is_ident("performance_tracking") {
-                                decrust_config.performance_tracking = parsed_args.performance_tracking;
+                                decrust_config.performance_tracking =
+                                    parsed_args.performance_tracking;
                             }
                         }
                     } else if let Meta::Path(path) = meta {
@@ -857,23 +911,34 @@ pub fn decrust(input: TokenStream) -> TokenStream {
                 // or if there are multiple statements and the last is not an expression,
                 // this construction might not result in a value.
                 // A common pattern is to expect the block to end with an expression.
-                 let block_content = quote! { #(#stmts)* };
-                 quote! { { #block_content } } // This will take the value of the block
+                let block_content = quote! { #(#stmts)* };
+                quote! { { #block_content } } // This will take the value of the block
             }
         };
 
-
         // Generate the actual runtime calls based on the configuration
         let cb_setup = if let Some(cb_config_args) = &decrust_config.circuit_breaker {
-            let threshold = cb_config_args.threshold.as_ref().map_or(quote!(5), |l| quote!(#l)); // Default 5
-            let timeout_str = cb_config_args.timeout.as_ref().map_or(quote!("30s"), |l| quote!(#l));
+            let threshold = cb_config_args
+                .threshold
+                .as_ref()
+                .map_or(quote!(5), |l| quote!(#l)); // Default 5
+            let timeout_str = cb_config_args
+                .timeout
+                .as_ref()
+                .map_or(quote!("30s"), |l| quote!(#l));
             let timeout_duration = quote! {
                 ::decrust::utils::parse_duration(#timeout_str).unwrap_or(::std::time::Duration::from_secs(30))
             };
 
             // New fields
-            let cb_threshold = cb_config_args.circuit_breaker_threshold.as_ref().map_or(quote!(3), |l| quote!(#l)); // Default 3
-            let cb_cooldown_str = cb_config_args.circuit_breaker_cooldown.as_ref().map_or(quote!("60s"), |l| quote!(#l));
+            let cb_threshold = cb_config_args
+                .circuit_breaker_threshold
+                .as_ref()
+                .map_or(quote!(3), |l| quote!(#l)); // Default 3
+            let cb_cooldown_str = cb_config_args
+                .circuit_breaker_cooldown
+                .as_ref()
+                .map_or(quote!("60s"), |l| quote!(#l));
             let cb_cooldown_duration = quote! {
                 ::decrust::utils::parse_duration(#cb_cooldown_str).unwrap_or(::std::time::Duration::from_secs(60))
             };
@@ -1037,7 +1102,6 @@ pub fn decrust(input: TokenStream) -> TokenStream {
             }
         };
         expanded.into()
-
     } else {
         // Fallback: assume it's just a single expression like decrust!(risky_operation())
         // This is the "Basic usage" from your prompt.
@@ -1078,7 +1142,6 @@ pub fn decrust(input: TokenStream) -> TokenStream {
         expanded.into()
     }
 }
-
 
 /// **Level 2: Function Enhancement with Luna⚛︎Ultima Integration (`#[decrust_enhance]` attribute macro)**
 ///
@@ -1421,9 +1484,11 @@ pub fn derive_decrust(input: TokenStream) -> TokenStream {
 
     let data_enum = match &input_enum.data {
         syn::Data::Enum(data_enum) => data_enum,
-        _ => return SynError::new_spanned(input_enum, "DecrustDerive can only be applied to enums")
-            .to_compile_error()
-            .into(),
+        _ => {
+            return SynError::new_spanned(input_enum, "DecrustDerive can only be applied to enums")
+                .to_compile_error()
+                .into()
+        }
     };
 
     // --- Parse top-level #[decrust(...)] attributes on the enum ---
@@ -1440,10 +1505,14 @@ pub fn derive_decrust(input: TokenStream) -> TokenStream {
                         Err(e) => return e.to_compile_error().into(),
                     }
                 } else {
-                    return SynError::new_spanned(attr, "Expected #[decrust(...)]").to_compile_error().into();
+                    return SynError::new_spanned(attr, "Expected #[decrust(...)]")
+                        .to_compile_error()
+                        .into();
                 }
             } else {
-                return SynError::new_spanned(attr, "Expected #[decrust(...)]").to_compile_error().into();
+                return SynError::new_spanned(attr, "Expected #[decrust(...)]")
+                    .to_compile_error()
+                    .into();
             }
         }
     }
@@ -1518,7 +1587,6 @@ pub fn derive_decrust(input: TokenStream) -> TokenStream {
         }
     });
 
-
     let error_impl = quote! {
         impl #impl_generics std::error::Error for #enum_name #ty_generics #where_clause {
             fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
@@ -1553,7 +1621,8 @@ pub fn derive_decrust(input: TokenStream) -> TokenStream {
                                 if let Some(captures) = re.captures(&tokens_str) {
                                     if let Some(cat_match) = captures.get(1) {
                                         let cat_ident = format_ident!("{}", cat_match.as_str());
-                                        category = quote!(::decrust::types::ErrorCategory::#cat_ident);
+                                        category =
+                                            quote!(::decrust::types::ErrorCategory::#cat_ident);
                                     }
                                 }
                             }
@@ -1567,10 +1636,10 @@ pub fn derive_decrust(input: TokenStream) -> TokenStream {
         match &variant.fields {
             Fields::Named(_) => {
                 quote! { Self::#variant_ident { .. } => #category }
-            },
+            }
             Fields::Unnamed(_) => {
                 quote! { Self::#variant_ident(..) => #category }
-            },
+            }
             Fields::Unit => {
                 quote! { Self::#variant_ident => #category }
             }
@@ -1643,7 +1712,6 @@ pub fn derive_decrust(input: TokenStream) -> TokenStream {
             }
         }
     };
-
 
     // Combine all implementations
     let expanded = quote! {

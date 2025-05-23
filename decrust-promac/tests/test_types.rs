@@ -3,8 +3,9 @@
 // This file tests the types functionality in decrust-promac
 
 use decrust_promac_runtime::types::{
-    ErrorCategory, ErrorSeverity, ErrorReportFormat, Autocorrection, FixType, FixDetails,
-    ErrorSource, ErrorLocation, DiagnosticResult, ErrorContext, ExtractedParameters, ParameterSource
+    Autocorrection, DiagnosticResult, ErrorCategory, ErrorContext, ErrorLocation,
+    ErrorReportFormat, ErrorSeverity, ErrorSource, ExtractedParameters, FixDetails, FixType,
+    ParameterSource,
 };
 use std::path::PathBuf;
 
@@ -23,7 +24,10 @@ fn test_error_category_display_and_debug() {
     assert_eq!(format!("{:?}", ErrorCategory::Io), "Io");
     assert_eq!(format!("{:?}", ErrorCategory::Parsing), "Parsing");
     assert_eq!(format!("{:?}", ErrorCategory::Network), "Network");
-    assert_eq!(format!("{:?}", ErrorCategory::Configuration), "Configuration");
+    assert_eq!(
+        format!("{:?}", ErrorCategory::Configuration),
+        "Configuration"
+    );
     assert_eq!(format!("{:?}", ErrorCategory::Validation), "Validation");
     assert_eq!(format!("{:?}", ErrorCategory::Internal), "Internal");
 }
@@ -65,11 +69,7 @@ fn test_error_report_format_display_and_debug() {
 #[test]
 fn test_autocorrection_building() {
     // Create a basic autocorrection
-    let autocorrection = Autocorrection::new(
-        "Fix parse error",
-        FixType::TextReplacement,
-        0.85
-    );
+    let autocorrection = Autocorrection::new("Fix parse error", FixType::TextReplacement, 0.85);
 
     // Verify the basic properties
     assert_eq!(autocorrection.description, "Fix parse error");
@@ -95,9 +95,8 @@ fn test_autocorrection_building() {
     assert!(autocorrection.details.is_some());
 
     // Add diff suggestion
-    let autocorrection = autocorrection.with_diff_suggestion(
-        "@@ -10,5 +10,5 @@\n-foo(bar)\n+foo(baz)"
-    );
+    let autocorrection =
+        autocorrection.with_diff_suggestion("@@ -10,5 +10,5 @@\n-foo(bar)\n+foo(baz)");
 
     // Verify diff suggestion was added
     assert!(autocorrection.diff_suggestion.is_some());
@@ -188,12 +187,7 @@ fn test_error_source() {
 #[test]
 fn test_error_location() {
     // Create a basic error location
-    let location = ErrorLocation::new(
-        "src/main.rs",
-        42,
-        10,
-        "process_data"
-    );
+    let location = ErrorLocation::new("src/main.rs", 42, 10, "process_data");
 
     // Verify basic properties
     assert_eq!(location.file, "src/main.rs");
@@ -214,12 +208,7 @@ fn test_error_location() {
 fn test_diagnostic_result() {
     // Create a diagnostic result
     let diagnostic = DiagnosticResult {
-        primary_location: Some(ErrorLocation::new(
-            "src/main.rs",
-            42,
-            10,
-            "process_data"
-        )),
+        primary_location: Some(ErrorLocation::new("src/main.rs", 42, 10, "process_data")),
         expansion_trace: vec![],
         suggested_fixes: vec!["Add semicolon at the end of line".to_string()],
         original_message: Some("Expected ';', found '}'".to_string()),
@@ -230,8 +219,14 @@ fn test_diagnostic_result() {
     assert!(diagnostic.primary_location.is_some());
     assert!(diagnostic.expansion_trace.is_empty());
     assert_eq!(diagnostic.suggested_fixes.len(), 1);
-    assert_eq!(diagnostic.suggested_fixes[0], "Add semicolon at the end of line");
-    assert_eq!(diagnostic.original_message, Some("Expected ';', found '}'".to_string()));
+    assert_eq!(
+        diagnostic.suggested_fixes[0],
+        "Add semicolon at the end of line"
+    );
+    assert_eq!(
+        diagnostic.original_message,
+        Some("Expected ';', found '}'".to_string())
+    );
     assert_eq!(diagnostic.diagnostic_code, Some("E0001".to_string()));
 }
 
@@ -265,7 +260,10 @@ fn test_error_context_building() {
     // Verify additional properties
     assert_eq!(context.severity, ErrorSeverity::Warning);
     assert_eq!(context.recovery_suggestion, Some("Try again".to_string()));
-    assert_eq!(context.metadata.get("request_id"), Some(&"123456".to_string()));
+    assert_eq!(
+        context.metadata.get("request_id"),
+        Some(&"123456".to_string())
+    );
     assert_eq!(context.correlation_id, Some("corr-789".to_string()));
     assert_eq!(context.component, Some("auth_service".to_string()));
     assert_eq!(context.tags.len(), 1);
@@ -307,7 +305,10 @@ fn test_extracted_parameters() {
     // Verify merged state
     assert_eq!(params.values.len(), 4);
     assert_eq!(params.values.get("column"), Some(&"10".to_string()));
-    assert_eq!(params.values.get("message"), Some(&"Missing semicolon".to_string()));
+    assert_eq!(
+        params.values.get("message"),
+        Some(&"Missing semicolon".to_string())
+    );
     assert_eq!(params.confidence, 0.9);
     assert_eq!(params.source, ParameterSource::DiagnosticInfo);
 }

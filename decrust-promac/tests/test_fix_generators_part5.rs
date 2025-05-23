@@ -4,8 +4,8 @@
 // Part 5 of the fix generator tests
 
 use decrust_promac_runtime::backtrace::DecrustBacktrace as Backtrace;
-use decrust_promac_runtime::DecrustError;
 use decrust_promac_runtime::types::ErrorCategory;
+use decrust_promac_runtime::DecrustError;
 
 // Helper function to create a validation error
 fn create_validation_error(field: &str, message: &str) -> DecrustError {
@@ -20,7 +20,10 @@ fn create_validation_error(field: &str, message: &str) -> DecrustError {
 fn create_whatever_error(message: &str) -> DecrustError {
     DecrustError::Oops {
         message: message.to_string(),
-        source: Box::new(std::io::Error::new(std::io::ErrorKind::Other, "Other error")),
+        source: Box::new(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            "Other error",
+        )),
         backtrace: Backtrace::capture(),
     }
 }
@@ -29,10 +32,8 @@ fn create_whatever_error(message: &str) -> DecrustError {
 #[test]
 fn test_return_local_reference_fix_generator_local() {
     // Create a validation error for returning reference to local
-    let error = create_validation_error(
-        "lifetime",
-        "Returning reference to a local variable 'data'"
-    );
+    let error =
+        create_validation_error("lifetime", "Returning reference to a local variable 'data'");
 
     // Verify the error category
     assert_eq!(error.category(), ErrorCategory::Validation);
@@ -47,10 +48,7 @@ fn test_return_local_reference_fix_generator_local() {
 #[test]
 fn test_return_local_reference_fix_generator_temporary() {
     // Create a validation error for returning reference to temporary
-    let error = create_validation_error(
-        "lifetime",
-        "Returning reference to a temporary value"
-    );
+    let error = create_validation_error("lifetime", "Returning reference to a temporary value");
 
     // Verify the error category
     assert_eq!(error.category(), ErrorCategory::Validation);
@@ -66,7 +64,7 @@ fn test_unstable_feature_fix_generator_feature() {
     // Create a validation error for unstable feature
     let error = create_validation_error(
         "feature",
-        "Feature 'generic_associated_types' is not stable and is only available in nightly"
+        "Feature 'generic_associated_types' is not stable and is only available in nightly",
     );
 
     // Verify the error category
@@ -85,7 +83,7 @@ fn test_unstable_feature_fix_generator_nightly() {
     // Create a validation error for nightly requirement
     let error = create_validation_error(
         "feature",
-        "This code requires a nightly compiler because it uses the feature 'async_fn_in_trait'"
+        "This code requires a nightly compiler because it uses the feature 'async_fn_in_trait'",
     );
 
     // Verify the error category
@@ -103,7 +101,7 @@ fn test_invalid_argument_count_fix_generator_too_many() {
     // Create a validation error for invalid argument count
     let error = create_validation_error(
         "argument",
-        "Function 'process' takes 2 arguments but 3 were supplied"
+        "Function 'process' takes 2 arguments but 3 were supplied",
     );
 
     // Verify the error category
@@ -121,7 +119,7 @@ fn test_invalid_argument_count_fix_generator_too_few() {
     // Create a validation error for invalid argument count
     let error = create_validation_error(
         "argument",
-        "Function 'calculate' takes 3 arguments but 2 were supplied"
+        "Function 'calculate' takes 3 arguments but 2 were supplied",
     );
 
     // Verify the error category
@@ -137,10 +135,7 @@ fn test_invalid_argument_count_fix_generator_too_few() {
 #[test]
 fn test_unnecessary_braces_fix_generator_block() {
     // Create a validation error for unnecessary braces
-    let error = create_validation_error(
-        "style",
-        "Unnecessary braces around block expression"
-    );
+    let error = create_validation_error("style", "Unnecessary braces around block expression");
 
     // Verify the error category
     assert_eq!(error.category(), ErrorCategory::Validation);
@@ -155,10 +150,7 @@ fn test_unnecessary_braces_fix_generator_block() {
 #[test]
 fn test_unnecessary_braces_fix_generator_statement() {
     // Create a validation error for unnecessary braces
-    let error = create_validation_error(
-        "style",
-        "Unnecessary braces around single statement"
-    );
+    let error = create_validation_error("style", "Unnecessary braces around single statement");
 
     // Verify the error category
     assert_eq!(error.category(), ErrorCategory::Validation);
@@ -173,10 +165,7 @@ fn test_unnecessary_braces_fix_generator_statement() {
 #[test]
 fn test_unnecessary_clone_fix_generator_owned() {
     // Create a validation error for unnecessary clone
-    let error = create_validation_error(
-        "style",
-        "Unnecessary use of 'clone()' on an owned value"
-    );
+    let error = create_validation_error("style", "Unnecessary use of 'clone()' on an owned value");
 
     // Verify the error category
     assert_eq!(error.category(), ErrorCategory::Validation);
@@ -191,10 +180,7 @@ fn test_unnecessary_clone_fix_generator_owned() {
 #[test]
 fn test_unnecessary_clone_fix_generator_copy() {
     // Create a validation error for unnecessary clone
-    let error = create_validation_error(
-        "style",
-        "Unnecessary use of 'clone()' on a Copy type"
-    );
+    let error = create_validation_error("style", "Unnecessary use of 'clone()' on a Copy type");
 
     // Verify the error category
     assert_eq!(error.category(), ErrorCategory::Validation);
@@ -209,10 +195,7 @@ fn test_unnecessary_clone_fix_generator_copy() {
 #[test]
 fn test_unnecessary_parentheses_fix_generator_expression() {
     // Create a validation error for unnecessary parentheses
-    let error = create_validation_error(
-        "style",
-        "Unnecessary parentheses around expression"
-    );
+    let error = create_validation_error("style", "Unnecessary parentheses around expression");
 
     // Verify the error category
     assert_eq!(error.category(), ErrorCategory::Validation);
@@ -227,10 +210,7 @@ fn test_unnecessary_parentheses_fix_generator_expression() {
 #[test]
 fn test_unnecessary_parentheses_fix_generator_return() {
     // Create a validation error for unnecessary parentheses
-    let error = create_validation_error(
-        "style",
-        "Unnecessary parentheses around return value"
-    );
+    let error = create_validation_error("style", "Unnecessary parentheses around return value");
 
     // Verify the error category
     assert_eq!(error.category(), ErrorCategory::Validation);

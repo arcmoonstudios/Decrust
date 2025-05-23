@@ -21,7 +21,10 @@ fn test_backtrace_module() {
 
     // Test that we can use the generate method
     let bt2 = backtrace::DecrustBacktrace::generate();
-    assert!(matches!(bt2.status(), backtrace::BacktraceStatus::Captured | backtrace::BacktraceStatus::Disabled));
+    assert!(matches!(
+        bt2.status(),
+        backtrace::BacktraceStatus::Captured | backtrace::BacktraceStatus::Disabled
+    ));
 }
 
 #[test]
@@ -118,5 +121,8 @@ fn test_from_std_backtrace() {
     let decrust_bt: backtrace::DecrustBacktrace = std_bt.into();
 
     // Test that the converted backtrace is valid
-    assert!(matches!(decrust_bt.status(), backtrace::BacktraceStatus::Captured | backtrace::BacktraceStatus::Disabled));
+    assert!(matches!(
+        decrust_bt.status(),
+        backtrace::BacktraceStatus::Captured | backtrace::BacktraceStatus::Disabled
+    ));
 }

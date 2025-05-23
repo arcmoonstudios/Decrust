@@ -3,10 +3,10 @@
 // This file tests the fix generators functionality in decrust-promac
 // Part 1 of the fix generator tests
 
+use decrust_promac_runtime::backtrace::DecrustBacktrace as Backtrace;
+use decrust_promac_runtime::types::ErrorCategory;
 use decrust_promac_runtime::DecrustError;
 use decrust_promac_runtime::OptionalError;
-use decrust_promac_runtime::types::ErrorCategory;
-use decrust_promac_runtime::backtrace::DecrustBacktrace as Backtrace;
 use std::path::PathBuf;
 
 // Helper function to create a validation error
@@ -20,7 +20,11 @@ fn create_validation_error(field: &str, message: &str) -> DecrustError {
 }
 
 // Helper function to create an IO error
-fn create_io_error(kind: std::io::ErrorKind, operation: &str, path: Option<PathBuf>) -> DecrustError {
+fn create_io_error(
+    kind: std::io::ErrorKind,
+    operation: &str,
+    path: Option<PathBuf>,
+) -> DecrustError {
     DecrustError::Io {
         source: std::io::Error::new(kind, "IO Error"),
         path,
@@ -52,7 +56,10 @@ fn create_not_found_error(resource_type: &str, identifier: &str) -> DecrustError
 #[allow(dead_code)]
 fn create_network_error(url: &str, kind: &str) -> DecrustError {
     DecrustError::Network {
-        source: Box::new(std::io::Error::new(std::io::ErrorKind::ConnectionRefused, "Connection refused")),
+        source: Box::new(std::io::Error::new(
+            std::io::ErrorKind::ConnectionRefused,
+            "Connection refused",
+        )),
         url: Some(url.to_string()),
         kind: kind.to_string(),
         backtrace: Backtrace::capture(),
@@ -96,7 +103,7 @@ fn test_io_missing_directory_fix_generator_parent() {
     let error = create_io_error(
         std::io::ErrorKind::NotFound,
         "open",
-        Some(PathBuf::from("/nonexistent/dir/file.txt"))
+        Some(PathBuf::from("/nonexistent/dir/file.txt")),
     );
 
     // Verify the error category
@@ -115,7 +122,7 @@ fn test_io_missing_directory_fix_generator_file() {
     let error = create_io_error(
         std::io::ErrorKind::NotFound,
         "read",
-        Some(PathBuf::from("config.json"))
+        Some(PathBuf::from("config.json")),
     );
 
     // Verify the error category
@@ -134,7 +141,7 @@ fn test_io_permission_fix_generator_denied() {
     let error = create_io_error(
         std::io::ErrorKind::PermissionDenied,
         "write",
-        Some(PathBuf::from("/etc/hosts"))
+        Some(PathBuf::from("/etc/hosts")),
     );
 
     // Verify the error category
@@ -155,7 +162,7 @@ fn test_io_permission_fix_generator_readonly() {
     let error = create_io_error(
         std::io::ErrorKind::PermissionDenied,
         "modify",
-        Some(PathBuf::from("readonly.txt"))
+        Some(PathBuf::from("readonly.txt")),
     );
 
     // Verify the error category
@@ -173,7 +180,7 @@ fn test_config_syntax_fix_generator_json() {
     // Create a config error for invalid JSON
     let error = create_config_error(
         "Invalid JSON syntax at line 5: unexpected token",
-        Some(PathBuf::from("config.json"))
+        Some(PathBuf::from("config.json")),
     );
 
     // Verify the error category
@@ -191,7 +198,7 @@ fn test_config_syntax_fix_generator_yaml() {
     // Create a config error for invalid YAML
     let error = create_config_error(
         "Invalid YAML syntax: mapping values are not allowed in this context",
-        Some(PathBuf::from("config.yaml"))
+        Some(PathBuf::from("config.yaml")),
     );
 
     // Verify the error category
@@ -209,7 +216,7 @@ fn test_config_missing_key_fix_generator_required() {
     // Create a config error for a missing required key
     let error = create_config_error(
         "Missing required configuration key: 'database.url'",
-        Some(PathBuf::from("app.config"))
+        Some(PathBuf::from("app.config")),
     );
 
     // Verify the error category
@@ -227,7 +234,7 @@ fn test_config_missing_key_fix_generator_optional() {
     // Create a config error for a missing optional key
     let error = create_config_error(
         "Missing optional configuration key: 'logging.level', using default: 'info'",
-        Some(PathBuf::from("app.config"))
+        Some(PathBuf::from("app.config")),
     );
 
     // Verify the error category

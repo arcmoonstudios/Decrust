@@ -2,9 +2,11 @@
 //
 // This file tests the circuit breaker functionality in decrust-promac
 use decrust_promac_runtime::backtrace::DecrustBacktrace as Backtrace;
-use decrust_promac_runtime::circuit_breaker::{CircuitBreaker, CircuitBreakerConfig, CircuitBreakerState};
-use decrust_promac_runtime::DecrustError;
+use decrust_promac_runtime::circuit_breaker::{
+    CircuitBreaker, CircuitBreakerConfig, CircuitBreakerState,
+};
 use decrust_promac_runtime::types::ErrorCategory;
+use decrust_promac_runtime::DecrustError;
 use std::sync::{Arc, Mutex};
 
 // Helper function to create a validation error
@@ -25,7 +27,7 @@ fn create_network_error(url: &str, kind: &str) -> DecrustError {
                 "tls" | "tls_expired" => std::io::ErrorKind::InvalidData,
                 _ => std::io::ErrorKind::ConnectionRefused,
             },
-            format!("{} error", kind)
+            format!("{} error", kind),
         )),
         url: Some(url.to_string()),
         kind: kind.to_string(),
@@ -136,9 +138,7 @@ fn test_circuit_breaker_execute_success() {
     let cb = CircuitBreaker::new("execute-success-cb", config);
 
     // Execute a successful operation
-    let result: Result<i32, DecrustError> = cb.execute(|| {
-        Ok(42)
-    });
+    let result: Result<i32, DecrustError> = cb.execute(|| Ok(42));
 
     // Verify result and state
     assert!(result.is_ok());
@@ -154,9 +154,8 @@ fn test_circuit_breaker_execute_error() {
     let cb = CircuitBreaker::new("execute-error-cb", config);
 
     // Execute an operation that fails
-    let result: Result<i32, DecrustError> = cb.execute(|| {
-        Err(create_validation_error("test", "Test error"))
-    });
+    let result: Result<i32, DecrustError> =
+        cb.execute(|| Err(create_validation_error("test", "Test error")));
 
     // Verify result and state
     assert!(result.is_err());
@@ -176,9 +175,7 @@ fn test_circuit_breaker_execute_when_open() {
     assert_eq!(cb.state(), CircuitBreakerState::Closed);
 
     // Execute an operation when the circuit is closed
-    let result: Result<i32, DecrustError> = cb.execute(|| {
-        Ok(42)
-    });
+    let result: Result<i32, DecrustError> = cb.execute(|| Ok(42));
 
     // Verify the result is successful
     assert!(result.is_ok());
@@ -277,8 +274,3 @@ fn test_circuit_breaker_observer_notifications() {
     // as these methods are not accessible in the decrust CircuitBreaker
     assert_eq!(cb.state(), CircuitBreakerState::Closed);
 }
-
-
-
-
-

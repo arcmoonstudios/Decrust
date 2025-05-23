@@ -4,8 +4,8 @@
 // Part 4 of the fix generator tests
 
 use decrust_promac_runtime::backtrace::DecrustBacktrace as Backtrace;
-use decrust_promac_runtime::DecrustError;
 use decrust_promac_runtime::types::ErrorCategory;
+use decrust_promac_runtime::DecrustError;
 
 // Helper function to create a validation error
 fn create_validation_error(field: &str, message: &str) -> DecrustError {
@@ -21,7 +21,10 @@ fn create_validation_error(field: &str, message: &str) -> DecrustError {
 fn create_whatever_error(message: &str) -> DecrustError {
     DecrustError::Oops {
         message: message.to_string(),
-        source: Box::new(std::io::Error::new(std::io::ErrorKind::Other, "Other error")),
+        source: Box::new(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            "Other error",
+        )),
         backtrace: Backtrace::capture(),
     }
 }
@@ -32,12 +35,12 @@ fn test_struct_parameter_match_fix_generator_missing() {
     // Create a validation error for struct parameter match
     let error = create_validation_error(
         "pattern",
-        "Missing field 'username' in struct pattern for 'User'"
+        "Missing field 'username' in struct pattern for 'User'",
     );
-    
+
     // Verify the error category
     assert_eq!(error.category(), ErrorCategory::Validation);
-    
+
     // Verify the error message
     let error_string = format!("{}", error);
     assert!(error_string.contains("Missing field"));
@@ -51,12 +54,12 @@ fn test_struct_parameter_match_fix_generator_extra() {
     // Create a validation error for struct parameter match
     let error = create_validation_error(
         "pattern",
-        "Struct 'User' does not have a field named 'password_hash'"
+        "Struct 'User' does not have a field named 'password_hash'",
     );
-    
+
     // Verify the error category
     assert_eq!(error.category(), ErrorCategory::Validation);
-    
+
     // Verify the error message
     let error_string = format!("{}", error);
     assert!(error_string.contains("does not have a field named"));
@@ -70,12 +73,12 @@ fn test_trait_implementation_fix_generator_method() {
     // Create a validation error for trait implementation
     let error = create_validation_error(
         "trait",
-        "Missing method 'validate' in implementation of trait 'Validator' for 'UserForm'"
+        "Missing method 'validate' in implementation of trait 'Validator' for 'UserForm'",
     );
-    
+
     // Verify the error category
     assert_eq!(error.category(), ErrorCategory::Validation);
-    
+
     // Verify the error message
     let error_string = format!("{}", error);
     assert!(error_string.contains("Missing method"));
@@ -92,10 +95,10 @@ fn test_trait_implementation_fix_generator_signature() {
         "trait",
         "Method 'process' has wrong signature: expected 'fn process(&self, data: &str) -> Result<(), Error>', found 'fn process(&self, data: String) -> Result<(), Error>'"
     );
-    
+
     // Verify the error category
     assert_eq!(error.category(), ErrorCategory::Validation);
-    
+
     // Verify the error message
     let error_string = format!("{}", error);
     assert!(error_string.contains("Method"));
@@ -111,10 +114,10 @@ fn test_closure_capture_lifetime_fix_generator_borrow() {
         "closure",
         "Closure may outlive the current function, but it borrows 'data', which is owned by the current function"
     );
-    
+
     // Verify the error category
     assert_eq!(error.category(), ErrorCategory::Validation);
-    
+
     // Verify the error message
     let error_string = format!("{}", error);
     assert!(error_string.contains("Closure may outlive"));
@@ -128,12 +131,12 @@ fn test_closure_capture_lifetime_fix_generator_move() {
     // Create a validation error for closure capture
     let error = create_validation_error(
         "closure",
-        "Closure requires unique access to 'user' but it is already borrowed"
+        "Closure requires unique access to 'user' but it is already borrowed",
     );
-    
+
     // Verify the error category
     assert_eq!(error.category(), ErrorCategory::Validation);
-    
+
     // Verify the error message
     let error_string = format!("{}", error);
     assert!(error_string.contains("Closure requires unique access"));
@@ -145,14 +148,11 @@ fn test_closure_capture_lifetime_fix_generator_move() {
 #[test]
 fn test_recursive_type_fix_generator_infinite() {
     // Create a validation error for recursive type
-    let error = create_validation_error(
-        "type",
-        "Recursive type 'Node' has infinite size"
-    );
-    
+    let error = create_validation_error("type", "Recursive type 'Node' has infinite size");
+
     // Verify the error category
     assert_eq!(error.category(), ErrorCategory::Validation);
-    
+
     // Verify the error message
     let error_string = format!("{}", error);
     assert!(error_string.contains("Recursive type"));
@@ -166,12 +166,12 @@ fn test_recursive_type_fix_generator_box() {
     // Create a validation error for recursive type
     let error = create_validation_error(
         "type",
-        "Consider using 'Box<T>' to make recursive type 'LinkedList' have a known size"
+        "Consider using 'Box<T>' to make recursive type 'LinkedList' have a known size",
     );
-    
+
     // Verify the error category
     assert_eq!(error.category(), ErrorCategory::Validation);
-    
+
     // Verify the error message
     let error_string = format!("{}", error);
     assert!(error_string.contains("Consider using"));
@@ -187,10 +187,10 @@ fn test_question_mark_propagation_fix_generator_try() {
         "propagation",
         "Function 'process_data' returns 'Result<T, E>' but expression returns 'Result<T, E>' without using '?'"
     );
-    
+
     // Verify the error category
     assert_eq!(error.category(), ErrorCategory::Validation);
-    
+
     // Verify the error message
     let error_string = format!("{}", error);
     assert!(error_string.contains("returns 'Result<T, E>'"));
@@ -203,12 +203,12 @@ fn test_question_mark_propagation_fix_generator_return() {
     // Create a validation error for question mark propagation
     let error = create_validation_error(
         "propagation",
-        "The '?' operator can only be used in a function that returns 'Result' or 'Option'"
+        "The '?' operator can only be used in a function that returns 'Result' or 'Option'",
     );
-    
+
     // Verify the error category
     assert_eq!(error.category(), ErrorCategory::Validation);
-    
+
     // Verify the error message
     let error_string = format!("{}", error);
     assert!(error_string.contains("'?' operator"));
@@ -222,12 +222,12 @@ fn test_missing_ok_err_fix_generator_ok() {
     // Create a validation error for missing Ok
     let error = create_validation_error(
         "return",
-        "Function returns 'Result<String, Error>' but expression returns 'String'"
+        "Function returns 'Result<String, Error>' but expression returns 'String'",
     );
-    
+
     // Verify the error category
     assert_eq!(error.category(), ErrorCategory::Validation);
-    
+
     // Verify the error message
     let error_string = format!("{}", error);
     assert!(error_string.contains("Function returns 'Result<String, Error>'"));
@@ -240,12 +240,12 @@ fn test_missing_ok_err_fix_generator_err() {
     // Create a validation error for missing Err
     let error = create_validation_error(
         "return",
-        "Function returns 'Result<String, Error>' but expression returns 'Error'"
+        "Function returns 'Result<String, Error>' but expression returns 'Error'",
     );
-    
+
     // Verify the error category
     assert_eq!(error.category(), ErrorCategory::Validation);
-    
+
     // Verify the error message
     let error_string = format!("{}", error);
     assert!(error_string.contains("Function returns 'Result<String, Error>'"));

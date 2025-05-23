@@ -23,7 +23,7 @@ pub mod syntax;
 pub mod types;
 
 use std::path::PathBuf;
-use std::time::{Duration};
+use std::time::Duration;
 
 pub use self::backtrace::{
     DecrustBacktrace as Backtrace, // For Backtrace::generate()
@@ -33,32 +33,28 @@ pub use self::backtrace::{
 };
 
 pub use self::circuit_breaker::{
-    CircuitBreaker, CircuitBreakerConfig, CircuitBreakerState, CircuitBreakerObserver
+    CircuitBreaker, CircuitBreakerConfig, CircuitBreakerObserver, CircuitBreakerState,
 };
 
 pub use self::decrust::{
-    Decrust, AutocorrectableError,
-    AstMissingImportFixGenerator, AstUnusedCodeFixGenerator,
-    IoMissingDirectoryFixGenerator, IoPermissionFixGenerator,
-    ConfigSyntaxFixGenerator, ConfigMissingKeyFixGenerator,
-    JsonParseFixGenerator, YamlParseFixGenerator,
-    UnnecessaryCloneFixGenerator, UnnecessaryParenthesesFixGenerator, UnusedMutFixGenerator,
-    NetworkConnectionFixGenerator, NetworkTlsFixGenerator,
-    ReturnLocalReferenceFixGenerator, UnstableFeatureFixGenerator,
-    InvalidArgumentCountFixGenerator, UnsafeUnwrapFixGenerator,
-    QuestionMarkPropagationFixGenerator, MissingOkErrFixGenerator,
-    DivisionByZeroFixGenerator, RuntimePanicFixGenerator,
-    ClosureCaptureLifetimeFixGenerator, RecursiveTypeFixGenerator,
+    AstMissingImportFixGenerator, AstUnusedCodeFixGenerator, AutocorrectableError,
+    ClosureCaptureLifetimeFixGenerator, ConfigMissingKeyFixGenerator, ConfigSyntaxFixGenerator,
+    Decrust, DivisionByZeroFixGenerator, InvalidArgumentCountFixGenerator,
+    IoMissingDirectoryFixGenerator, IoPermissionFixGenerator, JsonParseFixGenerator,
+    MissingOkErrFixGenerator, NetworkConnectionFixGenerator, NetworkTlsFixGenerator,
+    QuestionMarkPropagationFixGenerator, RecursiveTypeFixGenerator,
+    ReturnLocalReferenceFixGenerator, RuntimePanicFixGenerator, UnnecessaryCloneFixGenerator,
+    UnnecessaryParenthesesFixGenerator, UnsafeUnwrapFixGenerator, UnstableFeatureFixGenerator,
+    UnusedMutFixGenerator, YamlParseFixGenerator,
 };
 
-pub use self::reporter::{ErrorReporter, ErrorReportConfig};
+pub use self::reporter::{ErrorReportConfig, ErrorReporter};
 
-pub use self::syntax::{SyntaxGenerator, FixTemplate, TemplateRegistry};
+pub use self::syntax::{FixTemplate, SyntaxGenerator, TemplateRegistry};
 
 pub use self::types::{
-    ErrorContext, ErrorSource, ErrorSeverity, ErrorCategory,
-    Autocorrection, FixType, FixDetails, ErrorReportFormat,
-    ParameterSource, ExtractedParameters, ParameterExtractor,
+    Autocorrection, ErrorCategory, ErrorContext, ErrorReportFormat, ErrorSeverity, ErrorSource,
+    ExtractedParameters, FixDetails, FixType, ParameterExtractor, ParameterSource,
 };
 
 /// A Result type specialized for DecrustError
@@ -81,12 +77,9 @@ impl Clone for OptionalError {
         match &self.0 {
             Some(err) => {
                 // Create a new error with the string representation of the original error
-                let cloned_err = std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    format!("{}", err)
-                );
+                let cloned_err = std::io::Error::new(std::io::ErrorKind::Other, format!("{}", err));
                 OptionalError(Some(Box::new(cloned_err)))
-            },
+            }
             None => OptionalError(None),
         }
     }
@@ -120,11 +113,25 @@ impl std::error::Error for DecrustError {
             DecrustError::Oops { source, .. } => Some(source.as_ref()),
             DecrustError::Parse { source, .. } => Some(source.as_ref()),
             DecrustError::Network { source, .. } => Some(source.as_ref()),
-            DecrustError::Config { source, .. } => source.0.as_ref().map(|e| e.as_ref() as &(dyn std::error::Error + 'static)),
-            DecrustError::Internal { source, .. } => source.0.as_ref().map(|e| e.as_ref() as &(dyn std::error::Error + 'static)),
-            DecrustError::Concurrency { source, .. } => source.0.as_ref().map(|e| e.as_ref() as &(dyn std::error::Error + 'static)),
-            DecrustError::ExternalService { source, .. } => source.0.as_ref().map(|e| e.as_ref() as &(dyn std::error::Error + 'static)),
-            DecrustError::MultipleErrors { errors, .. } => errors.first().map(|e| e as &(dyn std::error::Error + 'static)),
+            DecrustError::Config { source, .. } => source
+                .0
+                .as_ref()
+                .map(|e| e.as_ref() as &(dyn std::error::Error + 'static)),
+            DecrustError::Internal { source, .. } => source
+                .0
+                .as_ref()
+                .map(|e| e.as_ref() as &(dyn std::error::Error + 'static)),
+            DecrustError::Concurrency { source, .. } => source
+                .0
+                .as_ref()
+                .map(|e| e.as_ref() as &(dyn std::error::Error + 'static)),
+            DecrustError::ExternalService { source, .. } => source
+                .0
+                .as_ref()
+                .map(|e| e.as_ref() as &(dyn std::error::Error + 'static)),
+            DecrustError::MultipleErrors { errors, .. } => errors
+                .first()
+                .map(|e| e as &(dyn std::error::Error + 'static)),
             DecrustError::CircuitBreakerOpen { .. } => None,
             DecrustError::ResourceExhausted { .. } => None,
             DecrustError::StateConflict { .. } => None,
@@ -141,24 +148,105 @@ impl std::error::Error for DecrustError {
 impl PartialEq for DecrustError {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (DecrustError::Parse { kind: k1, .. }, DecrustError::Parse { kind: k2, .. }) => k1 == k2,
-            (DecrustError::Oops { message: m1, .. }, DecrustError::Oops { message: m2, .. }) => m1 == m2,
-            (DecrustError::Network { kind: k1, .. }, DecrustError::Network { kind: k2, .. }) => k1 == k2,
-            (DecrustError::Style { message: m1, .. }, DecrustError::Style { message: m2, .. }) => m1 == m2,
-            (DecrustError::Config { message: m1, .. }, DecrustError::Config { message: m2, .. }) => m1 == m2,
-            (DecrustError::Io { operation: op1, .. }, DecrustError::Io { operation: op2, .. }) => op1 == op2,
-            (DecrustError::Internal { message: m1, .. }, DecrustError::Internal { message: m2, .. }) => m1 == m2,
-            (DecrustError::Concurrency { message: m1, .. }, DecrustError::Concurrency { message: m2, .. }) => m1 == m2,
-            (DecrustError::Timeout { operation: op1, .. }, DecrustError::Timeout { operation: op2, .. }) => op1 == op2,
-            (DecrustError::StateConflict { message: m1, .. }, DecrustError::StateConflict { message: m2, .. }) => m1 == m2,
-            (DecrustError::CircuitBreakerOpen { name: n1, .. }, DecrustError::CircuitBreakerOpen { name: n2, .. }) => n1 == n2,
-            (DecrustError::ResourceExhausted { resource: r1, .. }, DecrustError::ResourceExhausted { resource: r2, .. }) => r1 == r2,
-            (DecrustError::ExternalService { service_name: s1, .. }, DecrustError::ExternalService { service_name: s2, .. }) => s1 == s2,
-            (DecrustError::MissingValue { item_description: i1, .. }, DecrustError::MissingValue { item_description: i2, .. }) => i1 == i2,
-            (DecrustError::MultipleErrors { errors: e1, .. }, DecrustError::MultipleErrors { errors: e2, .. }) => e1 == e2,
-            (DecrustError::Validation { field: f1, message: m1, .. }, DecrustError::Validation { field: f2, message: m2, .. }) => f1 == f2 && m1 == m2,
-            (DecrustError::NotFound { resource_type: r1, identifier: i1, .. }, DecrustError::NotFound { resource_type: r2, identifier: i2, .. }) => r1 == r2 && i1 == i2,
-            (DecrustError::WithRichContext { context: c1, source: s1 }, DecrustError::WithRichContext { context: c2, source: s2 }) => c1.message == c2.message && s1 == s2,
+            (DecrustError::Parse { kind: k1, .. }, DecrustError::Parse { kind: k2, .. }) => {
+                k1 == k2
+            }
+            (DecrustError::Oops { message: m1, .. }, DecrustError::Oops { message: m2, .. }) => {
+                m1 == m2
+            }
+            (DecrustError::Network { kind: k1, .. }, DecrustError::Network { kind: k2, .. }) => {
+                k1 == k2
+            }
+            (DecrustError::Style { message: m1, .. }, DecrustError::Style { message: m2, .. }) => {
+                m1 == m2
+            }
+            (
+                DecrustError::Config { message: m1, .. },
+                DecrustError::Config { message: m2, .. },
+            ) => m1 == m2,
+            (DecrustError::Io { operation: op1, .. }, DecrustError::Io { operation: op2, .. }) => {
+                op1 == op2
+            }
+            (
+                DecrustError::Internal { message: m1, .. },
+                DecrustError::Internal { message: m2, .. },
+            ) => m1 == m2,
+            (
+                DecrustError::Concurrency { message: m1, .. },
+                DecrustError::Concurrency { message: m2, .. },
+            ) => m1 == m2,
+            (
+                DecrustError::Timeout { operation: op1, .. },
+                DecrustError::Timeout { operation: op2, .. },
+            ) => op1 == op2,
+            (
+                DecrustError::StateConflict { message: m1, .. },
+                DecrustError::StateConflict { message: m2, .. },
+            ) => m1 == m2,
+            (
+                DecrustError::CircuitBreakerOpen { name: n1, .. },
+                DecrustError::CircuitBreakerOpen { name: n2, .. },
+            ) => n1 == n2,
+            (
+                DecrustError::ResourceExhausted { resource: r1, .. },
+                DecrustError::ResourceExhausted { resource: r2, .. },
+            ) => r1 == r2,
+            (
+                DecrustError::ExternalService {
+                    service_name: s1, ..
+                },
+                DecrustError::ExternalService {
+                    service_name: s2, ..
+                },
+            ) => s1 == s2,
+            (
+                DecrustError::MissingValue {
+                    item_description: i1,
+                    ..
+                },
+                DecrustError::MissingValue {
+                    item_description: i2,
+                    ..
+                },
+            ) => i1 == i2,
+            (
+                DecrustError::MultipleErrors { errors: e1, .. },
+                DecrustError::MultipleErrors { errors: e2, .. },
+            ) => e1 == e2,
+            (
+                DecrustError::Validation {
+                    field: f1,
+                    message: m1,
+                    ..
+                },
+                DecrustError::Validation {
+                    field: f2,
+                    message: m2,
+                    ..
+                },
+            ) => f1 == f2 && m1 == m2,
+            (
+                DecrustError::NotFound {
+                    resource_type: r1,
+                    identifier: i1,
+                    ..
+                },
+                DecrustError::NotFound {
+                    resource_type: r2,
+                    identifier: i2,
+                    ..
+                },
+            ) => r1 == r2 && i1 == i2,
+            (
+                DecrustError::WithRichContext {
+                    context: c1,
+                    source: s1,
+                },
+                DecrustError::WithRichContext {
+                    context: c2,
+                    source: s2,
+                },
+            ) => c1.message == c2.message && s1 == s2,
             _ => false,
         }
     }
@@ -185,8 +273,6 @@ impl backtrace::BacktraceCompat for DecrustError {
             DecrustError::ResourceExhausted { backtrace, .. } => Some(backtrace),
             DecrustError::CircuitBreakerOpen { backtrace, .. } => Some(backtrace),
             DecrustError::WithRichContext { source, .. } => source.backtrace(),
-
-
         }
     }
 }
@@ -410,75 +496,152 @@ pub enum DecrustError {
 impl Clone for DecrustError {
     fn clone(&self) -> Self {
         match self {
-            Self::Io { source, path, operation, .. } => {
-                Self::Io {
-                    source: std::io::Error::new(source.kind(), format!("{}", source)),
-                    path: path.clone(),
-                    operation: operation.clone(),
-                    backtrace: Backtrace::generate(),
-                }
+            Self::Io {
+                source,
+                path,
+                operation,
+                ..
+            } => Self::Io {
+                source: std::io::Error::new(source.kind(), format!("{}", source)),
+                path: path.clone(),
+                operation: operation.clone(),
+                backtrace: Backtrace::generate(),
             },
-            Self::Parse { source, kind, context_info, .. } => {
-                Self::Parse {
-                    source: Box::new(std::io::Error::new(std::io::ErrorKind::InvalidData, format!("{}", source))),
-                    kind: kind.clone(),
-                    context_info: context_info.clone(),
-                    backtrace: Backtrace::generate(),
-                }
+            Self::Parse {
+                source,
+                kind,
+                context_info,
+                ..
+            } => Self::Parse {
+                source: Box::new(std::io::Error::new(
+                    std::io::ErrorKind::InvalidData,
+                    format!("{}", source),
+                )),
+                kind: kind.clone(),
+                context_info: context_info.clone(),
+                backtrace: Backtrace::generate(),
             },
-            Self::Network { source, url, kind, .. } => {
-                Self::Network {
-                    source: Box::new(std::io::Error::new(std::io::ErrorKind::Other, format!("{}", source))),
-                    url: url.clone(),
-                    kind: kind.clone(),
-                    backtrace: Backtrace::generate(),
-                }
+            Self::Network {
+                source, url, kind, ..
+            } => Self::Network {
+                source: Box::new(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    format!("{}", source),
+                )),
+                url: url.clone(),
+                kind: kind.clone(),
+                backtrace: Backtrace::generate(),
             },
-            Self::Config { message, path, source, .. } => {
-                Self::Config {
-                    message: message.clone(),
-                    path: path.clone(),
-                    source: source.clone(),
-                    backtrace: Backtrace::generate(),
-                }
+            Self::Config {
+                message,
+                path,
+                source,
+                ..
+            } => Self::Config {
+                message: message.clone(),
+                path: path.clone(),
+                source: source.clone(),
+                backtrace: Backtrace::generate(),
             },
-            Self::Validation { field, message, .. } => Self::Validation { field: field.clone(), message: message.clone(), backtrace: Backtrace::generate() },
-            Self::Internal { message, source, .. } => Self::Internal {
+            Self::Validation { field, message, .. } => Self::Validation {
+                field: field.clone(),
+                message: message.clone(),
+                backtrace: Backtrace::generate(),
+            },
+            Self::Internal {
+                message, source, ..
+            } => Self::Internal {
                 message: message.clone(),
                 source: source.clone(),
                 backtrace: Backtrace::generate(),
             },
-            Self::CircuitBreakerOpen { name, retry_after, .. } => Self::CircuitBreakerOpen { name: name.clone(), retry_after: *retry_after, backtrace: Backtrace::generate() },
-            Self::Timeout { operation, duration, .. } => Self::Timeout { operation: operation.clone(), duration: *duration, backtrace: Backtrace::generate() },
-            Self::ResourceExhausted { resource, limit, current, .. } => Self::ResourceExhausted { resource: resource.clone(), limit: limit.clone(), current: current.clone(), backtrace: Backtrace::generate() },
-            Self::NotFound { resource_type, identifier, .. } => Self::NotFound { resource_type: resource_type.clone(), identifier: identifier.clone(), backtrace: Backtrace::generate() },
-            Self::StateConflict { message, .. } => Self::StateConflict { message: message.clone(), backtrace: Backtrace::generate() },
-            Self::Concurrency { message, source, .. } => Self::Concurrency {
+            Self::CircuitBreakerOpen {
+                name, retry_after, ..
+            } => Self::CircuitBreakerOpen {
+                name: name.clone(),
+                retry_after: *retry_after,
+                backtrace: Backtrace::generate(),
+            },
+            Self::Timeout {
+                operation,
+                duration,
+                ..
+            } => Self::Timeout {
+                operation: operation.clone(),
+                duration: *duration,
+                backtrace: Backtrace::generate(),
+            },
+            Self::ResourceExhausted {
+                resource,
+                limit,
+                current,
+                ..
+            } => Self::ResourceExhausted {
+                resource: resource.clone(),
+                limit: limit.clone(),
+                current: current.clone(),
+                backtrace: Backtrace::generate(),
+            },
+            Self::NotFound {
+                resource_type,
+                identifier,
+                ..
+            } => Self::NotFound {
+                resource_type: resource_type.clone(),
+                identifier: identifier.clone(),
+                backtrace: Backtrace::generate(),
+            },
+            Self::StateConflict { message, .. } => Self::StateConflict {
+                message: message.clone(),
+                backtrace: Backtrace::generate(),
+            },
+            Self::Concurrency {
+                message, source, ..
+            } => Self::Concurrency {
                 message: message.clone(),
                 source: source.clone(),
                 backtrace: Backtrace::generate(),
             },
-            Self::ExternalService { service_name, message, source, .. } => Self::ExternalService {
+            Self::ExternalService {
+                service_name,
+                message,
+                source,
+                ..
+            } => Self::ExternalService {
                 service_name: service_name.clone(),
                 message: message.clone(),
                 source: source.clone(),
                 backtrace: Backtrace::generate(),
             },
-            Self::MissingValue { item_description, .. } => Self::MissingValue { item_description: item_description.clone(), backtrace: Backtrace::generate() },
-            Self::MultipleErrors { errors, .. } => Self::MultipleErrors { errors: errors.clone(), backtrace: Backtrace::generate() },
-            Self::WithRichContext { context, source } => { // Explicitly list fields, no 'backtrace' field here
+            Self::MissingValue {
+                item_description, ..
+            } => Self::MissingValue {
+                item_description: item_description.clone(),
+                backtrace: Backtrace::generate(),
+            },
+            Self::MultipleErrors { errors, .. } => Self::MultipleErrors {
+                errors: errors.clone(),
+                backtrace: Backtrace::generate(),
+            },
+            Self::WithRichContext { context, source } => {
+                // Explicitly list fields, no 'backtrace' field here
                 Self::WithRichContext {
                     context: context.clone(),
                     source: Box::new((**source).clone()),
                 }
-            },
+            }
             Self::Style { message, .. } => Self::Style {
                 message: message.clone(),
                 backtrace: Backtrace::generate(),
             },
-            Self::Oops { message, source, .. } => Self::Oops {
+            Self::Oops {
+                message, source, ..
+            } => Self::Oops {
                 message: message.clone(),
-                source: Box::new(std::io::Error::new(std::io::ErrorKind::Other, format!("{}", source))),
+                source: Box::new(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    format!("{}", source),
+                )),
                 backtrace: Backtrace::generate(),
             },
         }
@@ -488,25 +651,56 @@ impl Clone for DecrustError {
 impl std::fmt::Display for DecrustError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            DecrustError::Io { source, path, operation, .. } => {
-                write!(f, "I/O error during operation '{}' on path '{}': {}",
+            DecrustError::Io {
+                source,
+                path,
+                operation,
+                ..
+            } => {
+                write!(
+                    f,
+                    "I/O error during operation '{}' on path '{}': {}",
                     operation,
-                    path.as_ref().map(|p| p.to_string_lossy().to_string()).unwrap_or_else(|| "N/A".to_string()),
-                    source)
-            },
-            DecrustError::Parse { source, kind, context_info, .. } => {
+                    path.as_ref()
+                        .map(|p| p.to_string_lossy().to_string())
+                        .unwrap_or_else(|| "N/A".to_string()),
+                    source
+                )
+            }
+            DecrustError::Parse {
+                source,
+                kind,
+                context_info,
+                ..
+            } => {
                 write!(f, "{} parsing error: {} ({})", kind, source, context_info)
-            },
-            DecrustError::Network { source, url, kind, .. } => {
-                write!(f, "{} network error: {} (URL: {})",
+            }
+            DecrustError::Network {
+                source, url, kind, ..
+            } => {
+                write!(
+                    f,
+                    "{} network error: {} (URL: {})",
                     kind,
                     source,
-                    url.as_deref().unwrap_or("N/A"))
-            },
-            DecrustError::Config { message, path, source, .. } => {
+                    url.as_deref().unwrap_or("N/A")
+                )
+            }
+            DecrustError::Config {
+                message,
+                path,
+                source,
+                ..
+            } => {
                 if let Some(p) = path {
                     if let Some(s) = &source.0 {
-                        write!(f, "Configuration error in '{}': {} ({})", p.display(), message, s)
+                        write!(
+                            f,
+                            "Configuration error in '{}': {} ({})",
+                            p.display(),
+                            message,
+                            s
+                        )
                     } else {
                         write!(f, "Configuration error in '{}': {}", p.display(), message)
                     }
@@ -515,69 +709,115 @@ impl std::fmt::Display for DecrustError {
                 } else {
                     write!(f, "Configuration error: {}", message)
                 }
-            },
+            }
             DecrustError::Validation { field, message, .. } => {
                 write!(f, "Validation error for '{}': {}", field, message)
-            },
-            DecrustError::Internal { message, source, .. } => {
+            }
+            DecrustError::Internal {
+                message, source, ..
+            } => {
                 if let Some(s) = &source.0 {
                     write!(f, "Internal error: {} ({})", message, s)
                 } else {
                     write!(f, "Internal error: {}", message)
                 }
-            },
-            DecrustError::CircuitBreakerOpen { name, retry_after, .. } => {
+            }
+            DecrustError::CircuitBreakerOpen {
+                name, retry_after, ..
+            } => {
                 if let Some(duration) = retry_after {
-                    write!(f, "Circuit breaker '{}' is open. Retry after {:?}", name, duration)
+                    write!(
+                        f,
+                        "Circuit breaker '{}' is open. Retry after {:?}",
+                        name, duration
+                    )
                 } else {
                     write!(f, "Circuit breaker '{}' is open", name)
                 }
-            },
-            DecrustError::Timeout { operation, duration, .. } => {
-                write!(f, "Operation '{}' timed out after {:?}", operation, duration)
-            },
-            DecrustError::ResourceExhausted { resource, limit, current, .. } => {
-                write!(f, "Resource '{}' exhausted: {} (limit: {})", resource, current, limit)
-            },
-            DecrustError::NotFound { resource_type, identifier, .. } => {
+            }
+            DecrustError::Timeout {
+                operation,
+                duration,
+                ..
+            } => {
+                write!(
+                    f,
+                    "Operation '{}' timed out after {:?}",
+                    operation, duration
+                )
+            }
+            DecrustError::ResourceExhausted {
+                resource,
+                limit,
+                current,
+                ..
+            } => {
+                write!(
+                    f,
+                    "Resource '{}' exhausted: {} (limit: {})",
+                    resource, current, limit
+                )
+            }
+            DecrustError::NotFound {
+                resource_type,
+                identifier,
+                ..
+            } => {
                 write!(f, "{} not found: {}", resource_type, identifier)
-            },
+            }
             DecrustError::StateConflict { message, .. } => {
                 write!(f, "State conflict: {}", message)
-            },
-            DecrustError::Concurrency { message, source, .. } => {
+            }
+            DecrustError::Concurrency {
+                message, source, ..
+            } => {
                 if let Some(s) = &source.0 {
                     write!(f, "Concurrency error: {} ({})", message, s)
                 } else {
                     write!(f, "Concurrency error: {}", message)
                 }
-            },
-            DecrustError::ExternalService { service_name, message, source, .. } => {
+            }
+            DecrustError::ExternalService {
+                service_name,
+                message,
+                source,
+                ..
+            } => {
                 if let Some(s) = &source.0 {
-                    write!(f, "External service '{}' error: {} ({})", service_name, message, s)
+                    write!(
+                        f,
+                        "External service '{}' error: {} ({})",
+                        service_name, message, s
+                    )
                 } else {
                     write!(f, "External service '{}' error: {}", service_name, message)
                 }
-            },
-            DecrustError::MissingValue { item_description, .. } => {
+            }
+            DecrustError::MissingValue {
+                item_description, ..
+            } => {
                 write!(f, "Missing value: {}", item_description)
-            },
+            }
             DecrustError::MultipleErrors { errors, .. } => {
                 write!(f, "Multiple errors ({} total):", errors.len())?;
                 for (i, err) in errors.iter().enumerate() {
                     write!(f, "\n  {}. {}", i + 1, err)?;
                 }
                 Ok(())
-            },
-            DecrustError::WithRichContext { context, source, .. } => {
+            }
+            DecrustError::WithRichContext {
+                context, source, ..
+            } => {
                 write!(f, "{}: {}", context.message, source)
-            },
+            }
             DecrustError::Style { message, .. } => {
                 write!(f, "Style issue: {}", message)
-            },
-            DecrustError::Oops { message, source, .. } => {
+            }
+            DecrustError::Oops {
+                message, source, ..
+            } => {
                 write!(f, "{}: {}", message, source)
-            },
+            }
         }
     }
 }
@@ -736,12 +976,18 @@ pub trait DecrustOptionExt<T> {
     ///
     /// # Returns
     /// Ok(value) if the Option is Some(value), Err(DecrustError::MissingValue) otherwise
-    fn decrust_ok_or_missing_value(self, item_description: impl Into<String>) -> Result<T, DecrustError>;
+    fn decrust_ok_or_missing_value(
+        self,
+        item_description: impl Into<String>,
+    ) -> Result<T, DecrustError>;
 }
 
 impl<T> DecrustOptionExt<T> for Option<T> {
     #[track_caller]
-    fn decrust_ok_or_missing_value(self, item_description: impl Into<String>) -> Result<T, DecrustError> {
+    fn decrust_ok_or_missing_value(
+        self,
+        item_description: impl Into<String>,
+    ) -> Result<T, DecrustError> {
         match self {
             Some(v) => Ok(v),
             None => Err(DecrustError::MissingValue {
@@ -756,7 +1002,7 @@ impl<T> DecrustOptionExt<T> for Option<T> {
 mod tests {
     use super::*;
     use backtrace::BacktraceCompat; // Ensure BacktraceCompat is in scope for tests
-                                         // GenerateImplicitData is not needed in tests unless you call Backtrace::generate() directly.
+                                    // GenerateImplicitData is not needed in tests unless you call Backtrace::generate() directly.
 
     #[test]
     fn test_error_creation_and_context() {
@@ -771,11 +1017,15 @@ mod tests {
         assert_eq!(err.category(), types::ErrorCategory::Internal);
 
         // Create a Result with the error and use the extension trait
-        let err_with_context_res: Result<(), DecrustError> = Err(err).decrust_context_msg("Additional context");
+        let err_with_context_res: Result<(), DecrustError> =
+            Err(err).decrust_context_msg("Additional context");
         assert!(err_with_context_res.is_err());
         let err_with_context = err_with_context_res.unwrap_err();
 
-        if let DecrustError::WithRichContext { context, source, .. } = &err_with_context {
+        if let DecrustError::WithRichContext {
+            context, source, ..
+        } = &err_with_context
+        {
             assert_eq!(context.message, "Additional context");
             // source is &Box<DecrustError>, so we need to dereference it properly
             if let DecrustError::Internal { message, .. } = source.as_ref() {
@@ -784,7 +1034,10 @@ mod tests {
                 panic!("Expected Internal error variant, got {:?}", source);
             }
         } else {
-            panic!("Expected WithRichContext error variant, got {:?}", err_with_context);
+            panic!(
+                "Expected WithRichContext error variant, got {:?}",
+                err_with_context
+            );
         }
     }
 
@@ -803,7 +1056,13 @@ mod tests {
         assert_eq!(cloned_err.category(), types::ErrorCategory::Io);
 
         // Use `ref` for non-Copy fields in pattern to avoid moving
-        if let DecrustError::Io { ref path, ref operation, ref source, .. } = cloned_err {
+        if let DecrustError::Io {
+            ref path,
+            ref operation,
+            ref source,
+            ..
+        } = cloned_err
+        {
             assert_eq!(*path, Some(PathBuf::from("/path/to/file")));
             assert_eq!(*operation, "read_file");
             assert_eq!(source.kind(), std::io::ErrorKind::NotFound);
@@ -824,7 +1083,10 @@ mod tests {
         let result = opt_none.decrust_ok_or_missing_value("test value");
         assert!(result.is_err());
 
-        if let Err(DecrustError::MissingValue { item_description, .. }) = result {
+        if let Err(DecrustError::MissingValue {
+            item_description, ..
+        }) = result
+        {
             assert_eq!(item_description, "test value");
         } else {
             panic!("Expected MissingValue error variant");
@@ -875,11 +1137,16 @@ mod tests {
         // Create a Oops variant directly
         let err = DecrustError::Oops {
             message: "A oops message".to_string(),
-            source: Box::new(original_io_error) as Box<dyn std::error::Error + Send + Sync + 'static>,
+            source: Box::new(original_io_error)
+                as Box<dyn std::error::Error + Send + Sync + 'static>,
             backtrace: Backtrace::generate(),
         };
 
-        if let DecrustError::Oops { message, source, .. } = err { // Use .. for backtrace if not asserted
+        if let DecrustError::Oops {
+            message, source, ..
+        } = err
+        {
+            // Use .. for backtrace if not asserted
             assert_eq!(message, "A oops message");
             assert_eq!(source.to_string(), "some io problem");
         } else {
@@ -897,10 +1164,13 @@ mod tests {
             operation: "reading".to_string(),
             backtrace: Backtrace::generate(),
         };
-        assert_eq!(ak_err.to_string(), "I/O error during operation 'reading' on path '/my/file.txt': original os error");
+        assert_eq!(
+            ak_err.to_string(),
+            "I/O error during operation 'reading' on path '/my/file.txt': original os error"
+        );
     }
 
-     #[test]
+    #[test]
     fn test_io_error_display_no_path() {
         let io_err = std::io::Error::new(std::io::ErrorKind::NotFound, "original os error");
         let ak_err = DecrustError::Io {
@@ -909,6 +1179,9 @@ mod tests {
             operation: "reading".to_string(),
             backtrace: Backtrace::generate(),
         };
-        assert_eq!(ak_err.to_string(), "I/O error during operation 'reading' on path 'N/A': original os error");
+        assert_eq!(
+            ak_err.to_string(),
+            "I/O error during operation 'reading' on path 'N/A': original os error"
+        );
     }
 }

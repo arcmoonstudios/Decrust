@@ -2,9 +2,9 @@
 //
 // This file tests the syntax functionality in decrust-promac
 
-use std::collections::HashMap;
-use decrust_promac_runtime::types::{ErrorCategory, ExtractedParameters};
 use decrust_promac_runtime::syntax::{FixTemplate, SyntaxGenerator, TemplateRegistry};
+use decrust_promac_runtime::types::{ErrorCategory, ExtractedParameters};
+use std::collections::HashMap;
 
 // Test 1: Fix Template Creation and Application
 #[test]
@@ -13,7 +13,7 @@ fn test_fix_template_creation_and_application() {
     let template = FixTemplate::new(
         "missing_file_template",
         "Template for missing file errors",
-        "Missing file at path '{path}'. Consider creating it."
+        "Missing file at path '{path}'. Consider creating it.",
     );
 
     // Create parameters
@@ -25,7 +25,10 @@ fn test_fix_template_creation_and_application() {
     let correction = template.apply(&params.values);
 
     // Verify the correction
-    assert_eq!(correction, "Missing file at path '/tmp/config.json'. Consider creating it.");
+    assert_eq!(
+        correction,
+        "Missing file at path '/tmp/config.json'. Consider creating it."
+    );
 }
 
 // Test 2: Fix Template with Command Templates
@@ -35,7 +38,7 @@ fn test_fix_template_with_command_templates() {
     let template = FixTemplate::new(
         "missing_dir_template",
         "Template for missing directory errors",
-        "Missing directory '{dir}'. Create it?"
+        "Missing directory '{dir}'. Create it?",
     );
 
     // Create parameters
@@ -57,7 +60,7 @@ fn test_fix_template_with_multiple_parameters() {
     let template = FixTemplate::new(
         "error_template",
         "Template for error messages with file, line and message",
-        "Error in file '{file}' at line {line}: {message}"
+        "Error in file '{file}' at line {line}: {message}",
     );
 
     // Create parameters
@@ -70,7 +73,10 @@ fn test_fix_template_with_multiple_parameters() {
     // Apply the template
     let correction = template.apply(&params.values);
 
-    assert_eq!(correction, "Error in file 'src/main.rs' at line 42: Missing semicolon");
+    assert_eq!(
+        correction,
+        "Error in file 'src/main.rs' at line 42: Missing semicolon"
+    );
 }
 
 // Test 4: Fix Template with Missing Parameters
@@ -80,7 +86,7 @@ fn test_fix_template_with_missing_parameters() {
     let template = FixTemplate::new(
         "error_with_message_template",
         "Template for error messages with file and message",
-        "Error in file '{file}': {message}"
+        "Error in file '{file}': {message}",
     );
 
     // Create parameters with missing 'message'
@@ -104,14 +110,16 @@ fn test_template_registry_operations() {
     let template1 = FixTemplate::new(
         "missing_file_template",
         "Template for missing file errors",
-        "Missing file '{file}'"
-    ).add_category(ErrorCategory::NotFound);
+        "Missing file '{file}'",
+    )
+    .add_category(ErrorCategory::NotFound);
 
     let template2 = FixTemplate::new(
         "permission_denied_template",
         "Template for permission denied errors",
-        "Permission denied for '{file}'"
-    ).add_category(ErrorCategory::Io);
+        "Permission denied for '{file}'",
+    )
+    .add_category(ErrorCategory::Io);
 
     // Register templates
     registry.register_template(template1);
@@ -149,7 +157,7 @@ fn test_syntax_generator_code_generation() {
         "add_semicolon",
         params,
         Some("()"),
-        "// Add semicolon at the end of line"
+        "// Add semicolon at the end of line",
     );
 
     // Verify the generated code
@@ -177,7 +185,7 @@ fn test_syntax_generator_with_parameters() {
         "fix_error",
         params,
         Some("()"),
-        "// Fix error in src/main.rs at line 42"
+        "// Fix error in src/main.rs at line 42",
     );
 
     // Verify the generated code
@@ -204,7 +212,7 @@ fn test_syntax_generator_for_different_fix_types() {
         "replace_text",
         text_params,
         Some("()"),
-        "// Replace 'foo' with 'bar'"
+        "// Replace 'foo' with 'bar'",
     );
 
     let mut cmd_params = HashMap::new();
@@ -214,14 +222,14 @@ fn test_syntax_generator_for_different_fix_types() {
         "create_directory",
         cmd_params,
         Some("()"),
-        "// Create directory /tmp/logs"
+        "// Create directory /tmp/logs",
     );
 
     let manual_code = generator.generate_function(
         "manual_fix",
         HashMap::new(),
         Some("()"),
-        "// Manual fix required"
+        "// Manual fix required",
     );
 
     // Verify the generated code
@@ -244,8 +252,9 @@ fn test_syntax_integration() {
     let template = FixTemplate::new(
         "missing_file_template",
         "Template for missing file errors",
-        "Missing file '{file}'"
-    ).add_category(ErrorCategory::NotFound);
+        "Missing file '{file}'",
+    )
+    .add_category(ErrorCategory::NotFound);
 
     // Register the template
     registry.register_template(template);
@@ -269,7 +278,7 @@ fn test_syntax_integration() {
         "fix_missing_file",
         params.clone(),
         Some("()"),
-        &format!("// {}", correction)
+        &format!("// {}", correction),
     );
 
     // Verify the integration
@@ -284,7 +293,7 @@ fn test_fix_template_application_with_details() {
     let template = FixTemplate::new(
         "text_replacement_template",
         "Template for text replacement",
-        "Replace text in file '{file}'"
+        "Replace text in file '{file}'",
     );
 
     // Create parameters

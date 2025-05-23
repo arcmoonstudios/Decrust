@@ -2,10 +2,10 @@
 //
 // Tests for the Tri-Protocol Fusion System functionality in decrust-promac
 
-use decrust_promac_runtime::DecrustError;
-use decrust_promac_runtime::OptionalError;
 use decrust_promac_runtime::backtrace::DecrustBacktrace;
 use decrust_promac_runtime::types::ErrorCategory;
+use decrust_promac_runtime::DecrustError;
+use decrust_promac_runtime::OptionalError;
 use std::io::{Error as IoError, ErrorKind};
 
 // Test the M.A.R.S. integration in error handling
@@ -86,7 +86,10 @@ fn test_codemaster_integration() {
 
         if input == "network_error" {
             return Err(DecrustError::Network {
-                source: Box::new(std::io::Error::new(std::io::ErrorKind::ConnectionRefused, "Connection failed")),
+                source: Box::new(std::io::Error::new(
+                    std::io::ErrorKind::ConnectionRefused,
+                    "Connection failed",
+                )),
                 url: Some("https://test_endpoint.com".to_string()),
                 kind: "HTTP".to_string(),
                 backtrace: DecrustBacktrace::capture(),
@@ -98,7 +101,7 @@ fn test_codemaster_integration() {
                 message: "Database connection failed".to_string(),
                 source: OptionalError::new(Some(Box::new(std::io::Error::new(
                     std::io::ErrorKind::ConnectionRefused,
-                    "Database connection failed"
+                    "Database connection failed",
                 )))),
                 backtrace: DecrustBacktrace::capture(),
             });
@@ -175,7 +178,10 @@ fn test_tri_protocol_fusion() {
 
     // Test with valid input
     let result = tri_protocol_function("test_input");
-    assert_eq!(result, Ok("Processed with Tri-Protocol Fusion: test_input".to_string()));
+    assert_eq!(
+        result,
+        Ok("Processed with Tri-Protocol Fusion: test_input".to_string())
+    );
 
     // Test with invalid input
     let result = tri_protocol_function("");

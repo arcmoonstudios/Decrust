@@ -587,7 +587,10 @@ mod tests {
         assert_eq!(context.message, "Test error");
         assert_eq!(context.severity, ErrorSeverity::Warning);
         assert_eq!(context.recovery_suggestion, Some("Try again".to_string()));
-        assert_eq!(context.metadata.get("request_id"), Some(&"123456".to_string()));
+        assert_eq!(
+            context.metadata.get("request_id"),
+            Some(&"123456".to_string())
+        );
         assert_eq!(context.correlation_id, Some("corr-789".to_string()));
         assert_eq!(context.component, Some("auth_service".to_string()));
         assert_eq!(context.tags.len(), 1);
@@ -661,7 +664,10 @@ mod tests {
         assert_eq!(autocorrection.fix_type, FixType::TextReplacement);
         assert_eq!(autocorrection.confidence, 0.85);
         assert!(autocorrection.details.is_some());
-        assert_eq!(autocorrection.diff_suggestion, Some("@@ -10,5 +10,5 @@\n-foo(bar)\n+foo(baz)".to_string()));
+        assert_eq!(
+            autocorrection.diff_suggestion,
+            Some("@@ -10,5 +10,5 @@\n-foo(bar)\n+foo(baz)".to_string())
+        );
         assert_eq!(autocorrection.commands_to_apply.len(), 1);
         assert_eq!(autocorrection.commands_to_apply[0], "cargo check");
         assert_eq!(autocorrection.targets_error_code, Some("E0001".to_string()));
@@ -681,7 +687,10 @@ mod tests {
         assert_eq!(format!("{:?}", ErrorCategory::Io), "Io");
         assert_eq!(format!("{:?}", ErrorCategory::Parsing), "Parsing");
         assert_eq!(format!("{:?}", ErrorCategory::Network), "Network");
-        assert_eq!(format!("{:?}", ErrorCategory::Configuration), "Configuration");
+        assert_eq!(
+            format!("{:?}", ErrorCategory::Configuration),
+            "Configuration"
+        );
         assert_eq!(format!("{:?}", ErrorCategory::Validation), "Validation");
         assert_eq!(format!("{:?}", ErrorCategory::Internal), "Internal");
     }
@@ -706,12 +715,18 @@ mod tests {
         // Test Display implementation for FixType
         assert_eq!(format!("{}", FixType::TextReplacement), "Text Replacement");
         assert_eq!(format!("{}", FixType::ExecuteCommand), "Command Execution");
-        assert_eq!(format!("{}", FixType::ManualInterventionRequired), "Manual Intervention Required");
+        assert_eq!(
+            format!("{}", FixType::ManualInterventionRequired),
+            "Manual Intervention Required"
+        );
 
         // Test Debug implementation for FixType
         assert_eq!(format!("{:?}", FixType::TextReplacement), "TextReplacement");
         assert_eq!(format!("{:?}", FixType::ExecuteCommand), "ExecuteCommand");
-        assert_eq!(format!("{:?}", FixType::ManualInterventionRequired), "ManualInterventionRequired");
+        assert_eq!(
+            format!("{:?}", FixType::ManualInterventionRequired),
+            "ManualInterventionRequired"
+        );
     }
 }
 
@@ -845,7 +860,9 @@ impl FixTemplate {
     pub fn apply(&self, params: &ExtractedParameters) -> Autocorrection {
         let description = self.apply_template(&self.description_template, params);
 
-        let commands = self.command_templates.iter()
+        let commands = self
+            .command_templates
+            .iter()
             .map(|template| self.apply_template(template, params))
             .collect();
 
@@ -891,14 +908,9 @@ pub trait FixGenerator {
         &self,
         error: &super::DecrustError,
         params: &ExtractedParameters,
-        source_code_context: Option<&str>
+        source_code_context: Option<&str>,
     ) -> Option<Autocorrection>;
 
     /// Returns the name of this generator
     fn name(&self) -> &'static str;
 }
-
-
-
-
-

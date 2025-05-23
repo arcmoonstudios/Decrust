@@ -13,8 +13,8 @@
 // **Author:** Lord Xyn
 // **License:** MIT
 
-use std::fmt;
 use std::env;
+use std::fmt;
 use std::sync::OnceLock;
 
 /// Our own backtrace type that wraps std::backtrace::Backtrace
@@ -156,7 +156,7 @@ pub trait GenerateImplicitData {
     /// Default implementation ignores the source and calls generate()
     fn generate_with_source(_source: &dyn std::error::Error) -> Self
     where
-        Self: Sized
+        Self: Sized,
     {
         Self::generate()
     }
@@ -370,8 +370,14 @@ mod tests {
         let bt3 = DecrustBacktrace::disabled();
 
         // These should all be valid regardless of environment
-        assert!(matches!(bt1.status(), BacktraceStatus::Captured | BacktraceStatus::Disabled));
-        assert!(bt2.status() == BacktraceStatus::Captured || bt2.status() == BacktraceStatus::Unsupported);
+        assert!(matches!(
+            bt1.status(),
+            BacktraceStatus::Captured | BacktraceStatus::Disabled
+        ));
+        assert!(
+            bt2.status() == BacktraceStatus::Captured
+                || bt2.status() == BacktraceStatus::Unsupported
+        );
         assert_eq!(bt3.status(), BacktraceStatus::Disabled);
     }
 
@@ -382,7 +388,10 @@ mod tests {
         let tid = implicit_data!(ThreadId);
 
         // Just ensure they can be created
-        assert!(matches!(bt.status(), BacktraceStatus::Captured | BacktraceStatus::Disabled));
+        assert!(matches!(
+            bt.status(),
+            BacktraceStatus::Captured | BacktraceStatus::Disabled
+        ));
         assert!(ts.as_system_time() <= std::time::SystemTime::now());
         assert_eq!(tid.id(), std::thread::current().id());
     }
@@ -497,7 +506,10 @@ mod usage_examples {
 
         // Test backtrace provider
         if let Some(bt) = err.get_deepest_backtrace() {
-            assert!(matches!(bt.status(), BacktraceStatus::Captured | BacktraceStatus::Disabled));
+            assert!(matches!(
+                bt.status(),
+                BacktraceStatus::Captured | BacktraceStatus::Disabled
+            ));
         }
     }
 }

@@ -1,14 +1,17 @@
 // decrust-promac/tests/test_autocorrection.rs
 
-use decrust_promac_runtime::DecrustError;
-use decrust_promac_runtime::types::{Autocorrection, FixType};
 use decrust_promac_runtime::backtrace::DecrustBacktrace as Backtrace;
+use decrust_promac_runtime::types::{Autocorrection, FixType};
+use decrust_promac_runtime::DecrustError;
 
 // Helper function to create a validation error
 fn create_validation_error() -> DecrustError {
     DecrustError::Oops {
         message: "Validation error: Username too short".to_string(),
-        source: Box::new(std::io::Error::new(std::io::ErrorKind::InvalidInput, "Invalid input")),
+        source: Box::new(std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "Invalid input",
+        )),
         backtrace: Backtrace::capture(),
     }
 }
@@ -23,7 +26,7 @@ fn test_error_creation() {
     match error {
         DecrustError::Oops { message, .. } => {
             assert!(message.contains("Validation error"));
-        },
+        }
         _ => panic!("Expected Oops variant"),
     }
 }
@@ -48,11 +51,14 @@ fn test_manual_autocorrection() {
     let correction = Autocorrection::new(
         "Fix validation error by increasing username length",
         FixType::TextReplacement,
-        0.85
+        0.85,
     );
 
     // Verify the autocorrection
-    assert_eq!(correction.description, "Fix validation error by increasing username length");
+    assert_eq!(
+        correction.description,
+        "Fix validation error by increasing username length"
+    );
     assert_eq!(correction.fix_type, FixType::TextReplacement);
     assert_eq!(correction.confidence, 0.85);
 }

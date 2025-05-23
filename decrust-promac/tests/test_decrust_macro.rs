@@ -31,7 +31,9 @@ fn test_decrust_macro_block() {
     }
 
     // Use the and_then method directly
-    let result = risky_operation().and_then(|x| another_risky_op(x).map(|y| y + 1)).unwrap();
+    let result = risky_operation()
+        .and_then(|x| another_risky_op(x).map(|y| y + 1))
+        .unwrap();
 
     // Verify the result
     assert_eq!(result, 85); // 42 * 2 + 1 = 85
