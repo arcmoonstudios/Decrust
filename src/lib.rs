@@ -56,7 +56,7 @@ pub use self::reporter::{ErrorReporter, ErrorReportConfig};
 pub use self::syntax::{SyntaxGenerator, FixTemplate, TemplateRegistry};
 
 pub use self::types::{
-    ErrorContext, ErrorSource, ErrorSeverity, ErrorCategory, 
+    ErrorContext, ErrorSource, ErrorSeverity, ErrorCategory,
     Autocorrection, FixType, FixDetails, ErrorReportFormat,
     ParameterSource, ExtractedParameters, ParameterExtractor,
 };
@@ -68,7 +68,7 @@ pub type Result<T, E = DecrustError> = std::result::Result<T, E>;
 /// A Result type specialized for diagnostic operations that can return multiple errors
 pub type DiagnosticResult<T> = std::result::Result<T, Vec<DecrustError>>;
 
-/// Wrapper for Option<Box<dyn Error>> to make it compatible with backtrace
+/// Wrapper for `Option<Box<dyn Error>>` to make it compatible with backtrace
 ///
 /// This struct provides a way to handle optional error sources in a way that's
 /// compatible with the backtrace error handling framework. It wraps an optional boxed
@@ -128,7 +128,7 @@ impl std::error::Error for DecrustError {
             DecrustError::CircuitBreakerOpen { .. } => None,
             DecrustError::ResourceExhausted { .. } => None,
             DecrustError::StateConflict { .. } => None,
-            DecrustError::MissingValue { .. } => None,                        
+            DecrustError::MissingValue { .. } => None,
             DecrustError::Validation { .. } => None,
             DecrustError::NotFound { .. } => None,
             DecrustError::Timeout { .. } => None,
@@ -148,7 +148,7 @@ impl PartialEq for DecrustError {
             (DecrustError::Config { message: m1, .. }, DecrustError::Config { message: m2, .. }) => m1 == m2,
             (DecrustError::Io { operation: op1, .. }, DecrustError::Io { operation: op2, .. }) => op1 == op2,
             (DecrustError::Internal { message: m1, .. }, DecrustError::Internal { message: m2, .. }) => m1 == m2,
-            (DecrustError::Concurrency { message: m1, .. }, DecrustError::Concurrency { message: m2, .. }) => m1 == m2, 
+            (DecrustError::Concurrency { message: m1, .. }, DecrustError::Concurrency { message: m2, .. }) => m1 == m2,
             (DecrustError::Timeout { operation: op1, .. }, DecrustError::Timeout { operation: op2, .. }) => op1 == op2,
             (DecrustError::StateConflict { message: m1, .. }, DecrustError::StateConflict { message: m2, .. }) => m1 == m2,
             (DecrustError::CircuitBreakerOpen { name: n1, .. }, DecrustError::CircuitBreakerOpen { name: n2, .. }) => n1 == n2,
@@ -172,7 +172,7 @@ impl backtrace::BacktraceCompat for DecrustError {
             DecrustError::Style { backtrace, .. } => Some(backtrace),
             DecrustError::Parse { backtrace, .. } => Some(backtrace),
             DecrustError::Config { backtrace, .. } => Some(backtrace),
-            DecrustError::Timeout { backtrace, .. } => Some(backtrace),            
+            DecrustError::Timeout { backtrace, .. } => Some(backtrace),
             DecrustError::Network { backtrace, .. } => Some(backtrace),
             DecrustError::NotFound { backtrace, .. } => Some(backtrace),
             DecrustError::Internal { backtrace, .. } => Some(backtrace),
@@ -182,8 +182,8 @@ impl backtrace::BacktraceCompat for DecrustError {
             DecrustError::StateConflict { backtrace, .. } => Some(backtrace),
             DecrustError::MultipleErrors { backtrace, .. } => Some(backtrace),
             DecrustError::ExternalService { backtrace, .. } => Some(backtrace),
-            DecrustError::ResourceExhausted { backtrace, .. } => Some(backtrace),            
-            DecrustError::CircuitBreakerOpen { backtrace, .. } => Some(backtrace),            
+            DecrustError::ResourceExhausted { backtrace, .. } => Some(backtrace),
+            DecrustError::CircuitBreakerOpen { backtrace, .. } => Some(backtrace),
             DecrustError::WithRichContext { source, .. } => source.backtrace(),
 
 

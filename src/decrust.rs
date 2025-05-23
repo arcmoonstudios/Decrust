@@ -3,7 +3,7 @@
 //! **Brief:** Decrust autocorrection framework integration.
 // ~=####====A===r===c===M===o===o===n====S===t===u===d===i===o===s====X|0|$>
 //! + [Decrust Error Correction Framework]
-//! 
+//!
 //!  - [Autocorrection System]
 //!    * Automatic (8) Directly corrects:
 //!       ~ warning: unused import
@@ -13,29 +13,29 @@
 //!       ~ warning: unnecessary braces
 //!       ~ warning: unused mut keyword
 //!       ~ warning: unreachable or unused code
-//!       ~ error[E0433]: missing imports
+//!       ~ **E0433**: missing imports
 //!
-//!    * Interactive (13) Presents options for: 
-//!       ~ error[E0308]: type mismatches
-//!       ~ error[E0106]: missing lifetimes
-//!       ~ error[E0603]: private field access
-//!       ~ error[E0618/E0617]: parameter mismatches
-//!       ~ error[E0403]: generic parameter conflicts
-//!       ~ error[E0599]: missing trait implementations
-//!       ~ error[E0277]: required trait not implemented
-//!       ~ error[E0596]: immutable borrow used as mutable
-//!       ~ error[E0308]: missing or mismatched return values
-//!       ~ error[E0382]: use of moved value (borrow-after-move)
-//!       ~ error[E0005]: non-exhaustive or invalid match patterns
-//!       ~ error[E0023/E0027]: enum or struct parameter mismatches
+//!    * **Interactive** (13) Presents options for:
+//!       ~ **E0308**: type mismatches
+//!       ~ **E0106**: missing lifetimes
+//!       ~ **E0603**: private field access
+//!       ~ **E0618**/**E0617**: parameter mismatches
+//!       ~ **E0403**: generic parameter conflicts
+//!       ~ **E0599**: missing trait implementations
+//!       ~ **E0277**: required trait not implemented
+//!       ~ **E0596**: immutable borrow used as mutable
+//!       ~ **E0308**: missing or mismatched return values
+//!       ~ **E0382**: use of moved value (borrow-after-move)
+//!       ~ **E0005**: non-exhaustive or invalid match patterns
+//!       ~ **E0023**/**E0027**: enum or struct parameter mismatches
 //!
-//!    * Manual (18) Provides guidance for:
-//!       ~ error[E0601/E0593]: potential division by zero
-//!       ~ error[E0061]: incorrect number of function arguments
-//!       ~ error[E0515]: cannot return reference to local variable
-//!       ~ error[E0072]: recursive type definitions with no indirection
-//!       ~ error[E0658]: use of unstable features without nightly or flags
-//!       ~ error[E0373]: closure may outlive the current function, but it borrows
+//!    * **Manual** (18) Provides guidance for:
+//!       ~ **E0601**/**E0593**: potential division by zero
+//!       ~ **E0061**: incorrect number of function arguments
+//!       ~ **E0515**: cannot return reference to local variable
+//!       ~ **E0072**: recursive type definitions with no indirection
+//!       ~ **E0658**: use of unstable features without nightly or flags
+//!       ~ **E0373**: closure may outlive the current function, but it borrows
 //!       ~ error: network connection refused, timed out, or DNS failure
 //!       ~ error: file permission denied (e.g., EACCES, EPERM)
 //!       ~ error: configuration file format or schema issues
@@ -46,7 +46,7 @@
 //!       ~ warning: unsafe usage of unwrap()/expect() that may panic at runtime
 //!       ~ warning: complex architectural mismatches requiring domain-level analysis
 //!       ~ panic sources: explicit panic!, index out of bounds, unsafe transmute/casts
-//! 
+//!
 //!  - [Error Diagnostic Tools]
 //!    * Extracts detailed context from errors to enable precise fixes
 //!    * Extracts parameters from error messages using regex patterns
@@ -54,7 +54,7 @@
 //!    * Identifies error patterns across different modules
 //!    * Provides diagnostic commands for troubleshooting
 //!    * Analyzes AST for context-aware fixes
-//! 
+//!
 //!  - [Fix Suggestion Engine]
 //!    * Supports both automatic and interactive fix application
 //!    * Offers multiple solution strategies for complex issues

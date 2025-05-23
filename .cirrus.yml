@@ -1,0 +1,229 @@
+# Cirrus CI configuration for Decrust
+# Comprehensive testing across multiple Rust versions and platforms
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: "1"
+  RUSTFLAGS: "-D warnings"
+  RUSTDOCFLAGS: "-D warnings"
+
+# Main stable testing task
+stable_test_task:
+  name: "Rust Stable"
+  container:
+    image: rust:latest
+    cpu: 2
+    memory: 4Gi
+  cargo_cache:
+    folder: $CARGO_HOME/registry
+    fingerprint_script: cat Cargo.toml
+  setup_script:
+    - rustup component add rustfmt clippy
+  version_info_script:
+    - rustc --version
+    - cargo --version
+  format_check_script:
+    - cargo fmt --all -- --check
+  clippy_script:
+    - cargo clippy --workspace --all-targets --all-features -- -D warnings
+  build_script:
+    - cargo build --workspace --all-targets
+  test_script:
+    - cargo test --workspace --all-targets
+  test_with_features_script:
+    - cargo test --workspace --all-targets --features tokio,rand
+  doc_test_script:
+    - cargo test --workspace --doc
+  before_cache_script: rm -rf $CARGO_HOME/registry/index
+
+# Security audit task
+security_audit_task:
+  name: "Security Audit"
+  container:
+    image: rust:latest
+    cpu: 1
+    memory: 2Gi
+  cargo_cache:
+    folder: $CARGO_HOME/registry
+    fingerprint_script: cat Cargo.toml
+  install_audit_script:
+    - cargo install cargo-audit
+  audit_script:
+    - cargo audit
+  before_cache_script: rm -rf $CARGO_HOME/registry/index
+
+# Documentation generation and testing
+doc_test_task:
+  name: "Documentation"
+  env:
+    RUSTDOCFLAGS: "-D warnings --cfg docsrs"
+  container:
+    image: rustlang/rust:nightly
+    cpu: 1
+    memory: 2Gi
+  cargo_cache:
+    folder: $CARGO_HOME/registry
+    fingerprint_script: cat Cargo.toml
+  version_info_script:
+    - rustc +nightly --version
+  docs_script:
+    - cargo +nightly doc --workspace --all-features --no-deps
+  docs_with_tokio_script:
+    - cargo +nightly doc --workspace --features tokio --no-deps
+  docs_with_rand_script:
+    - cargo +nightly doc --workspace --features rand --no-deps
+  before_cache_script: rm -rf $CARGO_HOME/registry/index
+
+# Nightly Rust testing
+nightly_test_task:
+  name: "Rust Nightly"
+  container:
+    image: rustlang/rust:nightly
+    cpu: 2
+    memory: 4Gi
+  cargo_cache:
+    folder: $CARGO_HOME/registry
+    fingerprint_script: cat Cargo.toml
+  setup_script:
+    - rustup toolchain add stable --profile minimal
+  version_info_script:
+    - rustc +nightly --version
+  test_script:
+    - cargo +nightly test --workspace --all-targets
+  test_with_nightly_features_script:
+    - cargo +nightly test --workspace --all-targets --features nightly
+  minimum_version_test_script:
+    - cargo +nightly -Z minimal-versions update
+    - cargo +stable test --workspace
+  before_cache_script: rm -rf $CARGO_HOME/registry/index
+
+# Cross-platform testing
+cross_platform_test_task:
+  name: "Cross Platform"
+  matrix:
+    - name: "Linux"
+      container:
+        image: rust:latest
+        cpu: 2
+        memory: 4Gi
+    - name: "FreeBSD"
+      freebsd_instance:
+        image_family: freebsd-13-2
+        cpu: 2
+        memory: 4Gi
+  cargo_cache:
+    folder: $CARGO_HOME/registry
+    fingerprint_script: cat Cargo.toml
+  install_rust_script: |
+    if [ "$(uname)" = "FreeBSD" ]; then
+      pkg install -y curl
+      curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+      source ~/.cargo/env
+    fi
+  test_script:
+    - cargo test --workspace --all-targets
+  before_cache_script: rm -rf $CARGO_HOME/registry/index
+
+# Benchmarks (only on main branch or tags)
+benchmark_task:
+  name: "Benchmarks"
+  only_if: $CIRRUS_BRANCH == 'main' || $CIRRUS_TAG != ''
+  container:
+    image: rust:latest
+    cpu: 2
+    memory: 4Gi
+  cargo_cache:
+    folder: $CARGO_HOME/registry
+    fingerprint_script: cat Cargo.toml
+  benchmark_script:
+    - cargo bench --workspace
+  before_cache_script: rm -rf $CARGO_HOME/registry/index
+
+# MSRV (Minimum Supported Rust Version) testing
+msrv_test_task:
+  name: "MSRV (Rust 1.86)"
+  container:
+    image: rust:1.86
+    cpu: 1
+    memory: 2Gi
+  cargo_cache:
+    folder: $CARGO_HOME/registry
+    fingerprint_script: cat Cargo.toml
+  test_script:
+    - rustc --version
+    - cargo test --workspace --all-targets
+  before_cache_script: rm -rf $CARGO_HOME/registry/index
+
+# Individual crate testing
+crate_isolation_test_task:
+  name: "Individual Crate Testing"
+  container:
+    image: rust:latest
+    cpu: 1
+    memory: 2Gi
+  cargo_cache:
+    folder: $CARGO_HOME/registry
+    fingerprint_script: cat Cargo.toml
+  main_crate_test_script:
+    - cargo test --package decrust
+  promac_crate_test_script:
+    - cargo test --package decrust_promac
+  runtime_crate_test_script:
+    - cargo test --package decrust-promac-runtime
+  before_cache_script: rm -rf $CARGO_HOME/registry/index
+
+# Feature flag testing
+feature_test_task:
+  name: "Feature Flag Testing"
+  container:
+    image: rust:latest
+    cpu: 1
+    memory: 2Gi
+  cargo_cache:
+    folder: $CARGO_HOME/registry
+    fingerprint_script: cat Cargo.toml
+  no_default_features_script:
+    - cargo test --workspace --no-default-features
+  tokio_feature_script:
+    - cargo test --workspace --no-default-features --features tokio
+  rand_feature_script:
+    - cargo test --workspace --no-default-features --features rand
+  std_thread_feature_script:
+    - cargo test --workspace --no-default-features --features std-thread
+  all_features_script:
+    - cargo test --workspace --all-features
+  before_cache_script: rm -rf $CARGO_HOME/registry/index
+
+# Release build testing
+release_test_task:
+  name: "Release Build"
+  container:
+    image: rust:latest
+    cpu: 2
+    memory: 4Gi
+  cargo_cache:
+    folder: $CARGO_HOME/registry
+    fingerprint_script: cat Cargo.toml
+  release_build_script:
+    - cargo build --workspace --release
+  release_test_script:
+    - cargo test --workspace --release
+  before_cache_script: rm -rf $CARGO_HOME/registry/index
+
+# Dependency check
+dependency_check_task:
+  name: "Dependency Check"
+  container:
+    image: rust:latest
+    cpu: 1
+    memory: 2Gi
+  cargo_cache:
+    folder: $CARGO_HOME/registry
+    fingerprint_script: cat Cargo.toml
+  install_tools_script:
+    - cargo install cargo-outdated cargo-tree
+  outdated_check_script:
+    - cargo outdated --workspace
+  dependency_tree_script:
+    - cargo tree --workspace
+  before_cache_script: rm -rf $CARGO_HOME/registry/index

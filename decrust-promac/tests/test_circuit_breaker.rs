@@ -35,7 +35,6 @@ fn create_network_error(url: &str, kind: &str) -> DecrustError {
 
 // Test 1: Circuit Breaker Initial State
 #[test]
-#[ignore = "API has changed significantly and needs to be rewritten"]
 fn test_circuit_breaker_initial_state() {
     // Create a circuit breaker with default config
     let cb = CircuitBreaker::new("test-cb", CircuitBreakerConfig::default());
@@ -47,7 +46,6 @@ fn test_circuit_breaker_initial_state() {
 
 // Test 2: Circuit Breaker Default State
 #[test]
-#[ignore = "API has changed significantly and needs to be rewritten"]
 fn test_circuit_breaker_default_state() {
     // Create a circuit breaker with custom config
     let config = CircuitBreakerConfig::default();
@@ -62,7 +60,6 @@ fn test_circuit_breaker_default_state() {
 
 // Test 3: Circuit Breaker Trip
 #[test]
-#[ignore = "API has changed significantly and needs to be rewritten"]
 fn test_circuit_breaker_trip() {
     // Create a circuit breaker with default config
     let config = CircuitBreakerConfig::default();
@@ -77,7 +74,6 @@ fn test_circuit_breaker_trip() {
 
 // Test 4: Circuit Breaker Reset
 #[test]
-#[ignore = "API has changed significantly and needs to be rewritten"]
 fn test_circuit_breaker_reset() {
     // Create a circuit breaker with default config
     let config = CircuitBreakerConfig::default();
@@ -92,7 +88,6 @@ fn test_circuit_breaker_reset() {
 
 // Test 5: Circuit Breaker Half-Open State
 #[test]
-#[ignore = "API has changed significantly and needs to be rewritten"]
 fn test_circuit_breaker_half_open_state() {
     // Create a circuit breaker with default config
     let config = CircuitBreakerConfig::default();
@@ -107,7 +102,6 @@ fn test_circuit_breaker_half_open_state() {
 
 // Test 6: Circuit Breaker Success in Half-Open State
 #[test]
-#[ignore = "API has changed significantly and needs to be rewritten"]
 fn test_circuit_breaker_success_in_half_open() {
     // Create a circuit breaker with default config
     let config = CircuitBreakerConfig::default();
@@ -122,7 +116,6 @@ fn test_circuit_breaker_success_in_half_open() {
 
 // Test 7: Circuit Breaker Failure in Half-Open State
 #[test]
-#[ignore = "API has changed significantly and needs to be rewritten"]
 fn test_circuit_breaker_failure_in_half_open() {
     // Create a circuit breaker with default config
     let config = CircuitBreakerConfig::default();
@@ -137,7 +130,6 @@ fn test_circuit_breaker_failure_in_half_open() {
 
 // Test 8: Circuit Breaker Execute Success
 #[test]
-#[ignore = "API has changed significantly and needs to be rewritten"]
 fn test_circuit_breaker_execute_success() {
     // Create a circuit breaker with default config
     let config = CircuitBreakerConfig::default();
@@ -156,7 +148,6 @@ fn test_circuit_breaker_execute_success() {
 
 // Test 9: Circuit Breaker Execute Error
 #[test]
-#[ignore = "API has changed significantly and needs to be rewritten"]
 fn test_circuit_breaker_execute_error() {
     // Create a circuit breaker with default config
     let config = CircuitBreakerConfig::default();
@@ -175,7 +166,6 @@ fn test_circuit_breaker_execute_error() {
 
 // Test 10: Circuit Breaker Execute When Open
 #[test]
-#[ignore = "API has changed significantly and needs to be rewritten"]
 fn test_circuit_breaker_execute_when_open() {
     // Create a circuit breaker with default config
     let config = CircuitBreakerConfig::default();
@@ -236,7 +226,6 @@ impl CircuitBreakerObserver for TestObserver {
 
 // Add a test that uses the TestObserver to eliminate the "never used" warning
 #[test]
-#[ignore = "API has changed significantly and needs to be rewritten"]
 fn test_circuit_breaker_with_observer() {
     // Create a test observer
     let observer = TestObserver::new();
@@ -258,7 +247,6 @@ fn test_circuit_breaker_with_observer() {
 
 // Add a test that uses the create_network_error function
 #[test]
-#[ignore = "API has changed significantly and needs to be rewritten"]
 fn test_circuit_breaker_with_network_error() {
     // Create a network error
     let error = create_network_error("https://api.example.com", "connection");
@@ -277,7 +265,6 @@ fn test_circuit_breaker_with_network_error() {
 
 // Test 11: Circuit Breaker Observer Notifications
 #[test]
-#[ignore = "API has changed significantly and needs to be rewritten"]
 fn test_circuit_breaker_observer_notifications() {
     // Cannot create a test observer as the CircuitBreakerObserver trait
     // has changed in the decrust crate

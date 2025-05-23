@@ -134,7 +134,6 @@ fn test_template_registry_operations() {
 
 // Test 6: Syntax Generator Code Generation
 #[test]
-#[ignore = "API has changed significantly and needs to be rewritten"]
 fn test_syntax_generator_code_generation() {
     // This test is ignored because the SyntaxGenerator API has changed significantly
     // The generate_code_for_fix method no longer exists
@@ -161,7 +160,6 @@ fn test_syntax_generator_code_generation() {
 
 // Test 7: Syntax Generator with Parameters
 #[test]
-#[ignore = "API has changed significantly and needs to be rewritten"]
 fn test_syntax_generator_with_parameters() {
     // This test is ignored because the SyntaxGenerator API has changed significantly
     // The generate_code_with_params method no longer exists
@@ -190,7 +188,6 @@ fn test_syntax_generator_with_parameters() {
 
 // Test 8: Syntax Generator for Different Fix Types
 #[test]
-#[ignore = "API has changed significantly and needs to be rewritten"]
 fn test_syntax_generator_for_different_fix_types() {
     // This test is ignored because the SyntaxGenerator API has changed significantly
     // The generate_code_for_fix_type method no longer exists
