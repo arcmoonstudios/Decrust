@@ -1,4 +1,4 @@
-name: AMdPQuint CI
+name: Decrust CI
 
 on:
   push:
@@ -21,18 +21,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      
+
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
-      
+
       - name: Cache dependencies
         uses: Swatinem/rust-cache@v2
-      
+
       - name: Check formatting
         run: cargo fmt --all -- --check
-      
+
       - name: Run clippy
         run: cargo clippy --all-targets --all-features -- -D warnings
 
@@ -42,16 +42,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      
+
       - name: Install cargo-audit
         run: cargo install cargo-audit
-      
+
       - name: Run security audit
         run: cargo audit
 
-  # Basic tests without CUDA/GPU features
-  test-cpu:
-    name: Test CPU ${{ matrix.os }} - Rust ${{ matrix.rust }}
+  # Basic tests on multiple platforms
+  test:
+    name: Test ${{ matrix.os }} - Rust ${{ matrix.rust }}
     needs: [code-quality]
     runs-on: ${{ matrix.os }}
     strategy:
@@ -63,97 +63,45 @@ jobs:
           - rust: stable
             features: ""
           - rust: nightly
-            features: "nightly"
-    
+            features: "--features nightly"
+
     steps:
       - uses: actions/checkout@v3
-      
+
       - name: Install Rust ${{ matrix.rust }}
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ matrix.rust }}
-      
+
       - name: Cache dependencies
         uses: Swatinem/rust-cache@v2
-      
-      - name: Build with features
+
+      - name: Build
         run: cargo build --all-targets ${{ matrix.features }}
-      
+
       - name: Run tests
         run: cargo test --all-targets ${{ matrix.features }}
-
-  # Test with all features enabled including parallel
-  test-parallel:
-    name: Test Parallel ${{ matrix.os }}
-    needs: [code-quality]
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-    
-    steps:
-      - uses: actions/checkout@v3
-      
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-      
-      - name: Cache dependencies
-        uses: Swatinem/rust-cache@v2
-      
-      - name: Build with parallel feature
-        run: cargo build --all-targets --features="parallel,std"
-      
-      - name: Run parallel tests
-        run: cargo test --all-targets --features="parallel,std"
-
-  # GPU tests only on Linux with CUDA support
-  test-cuda:
-    name: Test CUDA
-    needs: [code-quality]
-    runs-on: ubuntu-latest
-    if: false  # Disabled until we have GPU runners - Enable with 'if: true'
-    
-    steps:
-      - uses: actions/checkout@v3
-      
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-      
-      - name: Install CUDA
-        uses: Jimver/cuda-toolkit@v0.2.10
-        with:
-          cuda: '11.8.0'
-      
-      - name: Cache dependencies
-        uses: Swatinem/rust-cache@v2
-      
-      - name: Build with CUDA
-        run: cargo build --features="cuda,std"
-      
-      - name: Run CUDA tests
-        run: cargo test --features="cuda,std" -- --test cuda_tests
 
   # Check documentation
   docs:
     name: Documentation
     needs: [code-quality]
     runs-on: ubuntu-latest
-    
+
     steps:
       - uses: actions/checkout@v3
-      
+
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
-      
+
       - name: Cache dependencies
         uses: Swatinem/rust-cache@v2
-      
+
       - name: Check documentation
         env:
           RUSTDOCFLAGS: "-D warnings --cfg docsrs"
         run: cargo doc --all-features --no-deps
-      
+
       - name: Upload documentation
         uses: actions/upload-artifact@v3
         with:
@@ -164,22 +112,22 @@ jobs:
   # Run benchmarks only on release builds
   benchmarks:
     name: Benchmarks
-    needs: [test-cpu, test-parallel]
+    needs: [test]
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
-    
+
     steps:
       - uses: actions/checkout@v3
-      
+
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
-      
+
       - name: Cache dependencies
         uses: Swatinem/rust-cache@v2
-      
+
       - name: Run benchmarks
         run: cargo bench
-      
+
       - name: Upload benchmark results
         uses: actions/upload-artifact@v3
         with:
@@ -190,7 +138,7 @@ jobs:
   # Create release builds
   release:
     name: Release Build
-    needs: [test-cpu, test-parallel]
+    needs: [test]
     runs-on: ${{ matrix.os }}
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     strategy:
@@ -199,36 +147,51 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
         include:
           - os: ubuntu-latest
-            artifact-name: amdpquint-linux
-            features: "std,parallel"
+            artifact-name: decrust-linux
           - os: windows-latest
-            artifact-name: amdpquint-windows
-            features: "std,parallel"
+            artifact-name: decrust-windows
           - os: macos-latest
-            artifact-name: amdpquint-macos
-            features: "std"
-    
+            artifact-name: decrust-macos
+
     steps:
       - uses: actions/checkout@v3
-      
+
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
-      
+
       - name: Cache dependencies
         uses: Swatinem/rust-cache@v2
-      
+
       - name: Build release
-        run: cargo build --release --features "${{ matrix.features }}"
-      
+        run: cargo build --release
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
         with:
           name: ${{ matrix.artifact-name }}
           path: |
-            target/release/libamdpquint.rlib
-            target/release/libamdpquint.a
-            target/release/amdpquint.lib
+            target/release/libdecrust.rlib
+            target/release/libdecrust.a
+            target/release/decrust.lib
             target/release/*.dll
             target/release/*.so
             target/release/*.dylib
           if-no-files-found: warn
+
+  # Publish to crates.io on new tags
+  publish:
+    name: Publish to crates.io
+    needs: [release]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Publish to crates.io
+        run: cargo publish
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
