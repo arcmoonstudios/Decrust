@@ -1,0 +1,24 @@
+[package]
+name = "decrust_promac" # The actual name of this proc-macro crate
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+repository.workspace = true
+license.workspace = true
+description = "Procedural macros for the Decrust Error handling framework"
+
+[lib]
+proc-macro = true # THIS IS CRUCIAL for procedural macros
+
+[dependencies]
+syn = { workspace = true, features = ["full", "extra-traits"] }
+quote = { workspace = true }
+proc-macro2 = { workspace = true }
+regex = "1.11.1"
+
+# Runtime dependency for testing and development
+decrust = { path = "..", version = "0.1.0" }
+decrust-promac-runtime = { path = "../decrust-promac-runtime" }
+
+# Note: The generated code will use `::decrust::types::DecrustError` etc.
+# This works because the user of the `decrust` crate will have it in their scope.

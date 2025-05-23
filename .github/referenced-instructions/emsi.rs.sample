@@ -1,0 +1,1073 @@
+### Enhanced Memory System Implementation v2.4.0.
+
+\```rust
+//src/storage/memory/emsi.rs
+use std::fs::{self, File, create_dir_all};
+use std::io::{Read, Write, Error as IoError};
+use std::path::{Path, PathBuf};
+use std::collections::{HashMap, HashSet, BTreeMap};
+use std::sync::{Arc, RwLock, Mutex};
+use std::time::{Duration, SystemTime};
+
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
+use thiserror::Error;
+use rayon::prelude::*;
+use regex::Regex;
+use blake3::Hasher;
+
+/// Comprehensive error handling for Memory System operations
+#[derive(Error, Debug)]
+pub enum MemoryError {
+    #[error("IO error: {0}")]
+    Io(#[from] IoError),
+
+    #[error("JSON error: {0}")]
+    Json(#[from] serde_json::Error),
+
+    #[error("Serialization error: {0}")]
+    Serialization(String),
+
+    #[error("Consistency violation: {0}")]
+    ConsistencyViolation(String),
+
+    #[error("Transaction error: {0}")]
+    Transaction(String),
+
+    #[error("Validation error: {0}")]
+    Validation(String),
+
+    #[error("Indexing error: {0}")]
+    Indexing(String),
+
+    #[error("Query error: {0}")]
+    Query(String),
+
+    #[error("Security error: {0}")]
+    Security(String),
+
+    #[error("Regex error: {0}")]
+    Regex(#[from] regex::Error),
+
+    #[error("Failed to assess importance: {0}")]
+    ImportanceAssessment(String),
+
+    #[error("Concurrent access error: {0}")]
+    ConcurrentAccess(String),
+}
+
+/// Result type alias for Memory System operations
+pub type Result<T> = std::result::Result<T, MemoryError>;
+
+/// Core memory structure with comprehensive metadata
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Memory {
+    /// Unique identifier for the memory
+    id: String,
+    
+    /// Creation timestamp (UTC)
+    timestamp: DateTime<Utc>,
+    
+    /// Last accessed timestamp
+    last_accessed: DateTime<Utc>,
+    
+    /// Access count for popularity tracking
+    access_count: u32,
+    
+    /// Main content of the memory
+    content: String,
+    
+    /// Calculated importance score (1-100)
+    importance: u8,
+    
+    /// Categorization tags
+    tags: Vec<String>,
+    
+    /// Optional surrounding context
+    context: Option<String>,
+    
+    /// Content hash for integrity verification
+    #[serde(skip_serializing_if = "Option::is_none")]
+    content_hash: Option<String>,
+    
+    /// Vector embedding for semantic search (when available)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    embedding: Option<Vec<f32>>,
+    
+    /// Related memory IDs
+    #[serde(skip_serializing_if = "Option::is_none")]
+    related_memories: Option<Vec<String>>,
+    
+    /// Content type (text, code, architecture, etc.)
+    content_type: String,
+    
+    /// Version for tracking updates
+    version: u32,
+    
+    /// Creation method (automatic, manual, etc.)
+    creation_method: String,
+}
+
+/// Structure for memory retrieval statistics
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MemoryStats {
+    total_memories: usize,
+    total_highlights: usize,
+    tag_distribution: HashMap<String, usize>,
+    importance_distribution: BTreeMap<u8, usize>,
+    content_type_distribution: HashMap<String, usize>,
+    average_importance: f32,
+    memory_size_bytes: u64,
+    last_updated: DateTime<Utc>,
+}
+
+/// Memory search query with advanced filtering capabilities
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MemoryQuery {
+    /// Text search term
+    text: Option<String>,
+    
+    /// Required tags (AND logic)
+    tags: Option<Vec<String>>,
+    
+    /// Tags to exclude
+    exclude_tags: Option<Vec<String>>,
+    
+    /// Minimum importance threshold
+    min_importance: Option<u8>,
+    
+    /// Date range start
+    date_from: Option<DateTime<Utc>>,
+    
+    /// Date range end
+    date_to: Option<DateTime<Utc>>,
+    
+    /// Content types to include
+    content_types: Option<Vec<String>>,
+    
+    /// Maximum results to return
+    limit: Option<usize>,
+    
+    /// Offset for pagination
+    offset: Option<usize>,
+    
+    /// Sort field
+    sort_by: Option<String>,
+    
+    /// Sort direction
+    sort_descending: Option<bool>,
+    
+    /// Use semantic search when available
+    semantic_search: bool,
+    
+    /// Semantic query vector (for semantic search)
+    query_embedding: Option<Vec<f32>>,
+}
+
+/// Memory indexing strategy for optimized retrieval
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum IndexStrategy {
+    /// Index by tag with forward and inverted indices
+    TagBased,
+    
+    /// Full-text search with trigram indexing
+    FullText,
+    
+    /// Semantic vector embedding search
+    Semantic,
+}
+
+/// Transaction operation for atomic memory changes
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum TransactionOp {
+    Create(Memory),
+    Update(String, Memory),
+    Delete(String),
+}
+
+/// Thread-safe memory system with advanced features
+pub struct MemorySystem {
+    /// Base directory for memory storage
+    root_path: PathBuf,
+    
+    /// In-memory cache for fast access
+    memory_cache: Arc<RwLock<HashMap<String, Memory>>>,
+    
+    /// Tag-based index for fast retrieval
+    tag_index: Arc<RwLock<HashMap<String, HashSet<String>>>>,
+    
+    /// Importance-based index
+    importance_index: Arc<RwLock<BTreeMap<u8, HashSet<String>>>>,
+    
+    /// Content type index
+    content_type_index: Arc<RwLock<HashMap<String, HashSet<String>>>>,
+    
+    /// Full-text search index
+    text_index: Arc<RwLock<HashMap<String, HashSet<String>>>>,
+    
+    /// Regular expressions for code extraction
+    code_extractors: HashMap<String, Regex>,
+    
+    /// Transaction log for crash recovery
+    transaction_log: Arc<Mutex<File>>,
+    
+    /// Cached system statistics
+    stats: Arc<RwLock<MemoryStats>>,
+    
+    /// Concurrent access coordinator
+    access_lock: tokio::sync::RwLock<()>,
+    
+    /// Index update queue
+    index_queue: Arc<Mutex<Vec<String>>>,
+}
+
+impl MemorySystem {
+    /// Initialize a new memory system with advanced features
+    pub async fn new() -> Result<Self> {
+        let root_path = PathBuf::from(".xMemories");
+        
+        // Create directory structure if it doesn't exist
+        if !root_path.exists() {
+            create_dir_all(&root_path)?;
+            create_dir_all(root_path.join("highlights"))?;
+            create_dir_all(root_path.join("transactions"))?;
+            create_dir_all(root_path.join("indexes"))?;
+        }
+        
+        // Initialize transaction logging
+        let transaction_path = root_path.join("transactions").join(format!(
+            "txn_{}.log",
+            Utc::now().format("%Y%m%d_%H%M%S_%f")
+        ));
+        let transaction_log = Arc::new(Mutex::new(
+            File::create(&transaction_path)?
+        ));
+        
+        // Compile regex patterns for different languages
+        let mut code_extractors = HashMap::new();
+        code_extractors.insert(
+            "general".to_string(),
+            Regex::new(r"(?s)```[a-zA-Z]*\n.*?\n```")?
+        );
+        code_extractors.insert(
+            "rust".to_string(),
+            Regex::new(r"(?s)```rust\n.*?\n```")?
+        );
+        code_extractors.insert(
+            "js".to_string(),
+            Regex::new(r"(?s)```(js|javascript)\n.*?\n```")?
+        );
+        code_extractors.insert(
+            "py".to_string(),
+            Regex::new(r"(?s)```(py|python)\n.*?\n```")?
+        );
+        
+        let mut system = Self {
+            root_path,
+            memory_cache: Arc::new(RwLock::new(HashMap::new())),
+            tag_index: Arc::new(RwLock::new(HashMap::new())),
+            importance_index: Arc::new(RwLock::new(BTreeMap::new())),
+            content_type_index: Arc::new(RwLock::new(HashMap::new())),
+            text_index: Arc::new(RwLock::new(HashMap::new())),
+            code_extractors,
+            transaction_log,
+            stats: Arc::new(RwLock::new(MemoryStats {
+                total_memories: 0,
+                total_highlights: 0,
+                tag_distribution: HashMap::new(),
+                importance_distribution: BTreeMap::new(),
+                content_type_distribution: HashMap::new(),
+                average_importance: 0.0,
+                memory_size_bytes: 0,
+                last_updated: Utc::now(),
+            })),
+            access_lock: tokio::sync::RwLock::new(()),
+            index_queue: Arc::new(Mutex::new(Vec::new())),
+        };
+        
+        // Load existing memories into cache and build indexes
+        system.rebuild_indexes().await?;
+        
+        // Start background workers
+        system.start_background_workers();
+        
+        Ok(system)
+    }
+
+    /// Load all memories into cache and rebuild indexes
+    async fn rebuild_indexes(&self) -> Result<()> {
+        let _guard = self.access_lock.write().await;
+        
+        let mut memories = Vec::new();
+        let paths = fs::read_dir(&self.root_path)?;
+        
+        // First pass: load all memories
+        for entry in paths {
+            let entry = entry?;
+            let path = entry.path();
+            
+            if path.is_file() && path.extension().map_or(false, |ext| ext == "json") {
+                match self.load_memory_from_file(&path) {
+                    Ok(memory) => memories.push(memory),
+                    Err(e) => eprintln!("Error loading memory from {:?}: {}", path, e),
+                }
+            }
+        }
+        
+        // Second pass: build indexes
+        {
+            let mut cache = self.memory_cache.write().unwrap();
+            let mut tag_idx = self.tag_index.write().unwrap();
+            let mut imp_idx = self.importance_index.write().unwrap();
+            let mut ct_idx = self.content_type_index.write().unwrap();
+            
+            for memory in memories {
+                cache.insert(memory.id.clone(), memory.clone());
+                
+                // Update tag index
+                for tag in &memory.tags {
+                    tag_idx.entry(tag.clone())
+                           .or_insert_with(HashSet::new)
+                           .insert(memory.id.clone());
+                }
+                
+                // Update importance index
+                imp_idx.entry(memory.importance)
+                       .or_insert_with(HashSet::new)
+                       .insert(memory.id.clone());
+                
+                // Update content type index
+                ct_idx.entry(memory.content_type.clone())
+                      .or_insert_with(HashSet::new)
+                      .insert(memory.id.clone());
+            }
+        }
+        
+        // Update statistics
+        self.update_statistics()?;
+        
+        Ok(())
+    }
+
+    /// Load a single memory from file
+    fn load_memory_from_file(&self, path: &Path) -> Result<Memory> {
+        let mut file = File::open(path)?;
+        let mut contents = String::new();
+        file.read_to_string(&mut contents)?;
+        
+        let memory: Memory = serde_json::from_str(&contents)?;
+        
+        // Verify content hash if available
+        if let Some(hash) = &memory.content_hash {
+            let calculated_hash = self.calculate_hash(&memory.content);
+            if calculated_hash != *hash {
+                return Err(MemoryError::ConsistencyViolation(
+                    format!("Content hash mismatch for memory {}", memory.id)
+                ));
+            }
+        }
+        
+        Ok(memory)
+    }
+
+    /// Calculate a cryptographic hash of content
+    fn calculate_hash(&self, content: &str) -> String {
+        let mut hasher = Hasher::new();
+        hasher.update(content.as_bytes());
+        hasher.finalize().to_hex().to_string()
+    }
+
+    /// Start background workers for maintenance tasks
+    fn start_background_workers(&self) {
+        let index_queue = self.index_queue.clone();
+        let memory_cache = self.memory_cache.clone();
+        let tag_index = self.tag_index.clone();
+        let importance_index = self.importance_index.clone();
+        let content_type_index = self.content_type_index.clone();
+        let text_index = self.text_index.clone();
+        let root_path = self.root_path.clone();
+        
+        // Index updater worker
+        std::thread::spawn(move || {
+            loop {
+                let ids_to_process = {
+                    let mut queue = index_queue.lock().unwrap();
+                    std::mem::take(&mut *queue)
+                };
+                
+                if !ids_to_process.is_empty() {
+                    let cache = memory_cache.read().unwrap();
+                    let mut tag_idx = tag_index.write().unwrap();
+                    let mut imp_idx = importance_index.write().unwrap();
+                    let mut ct_idx = content_type_index.write().unwrap();
+                    let mut txt_idx = text_index.write().unwrap();
+                    
+                    for id in ids_to_process {
+                        if let Some(memory) = cache.get(&id) {
+                            // Update tag index
+                            for tag in &memory.tags {
+                                tag_idx.entry(tag.clone())
+                                       .or_insert_with(HashSet::new)
+                                       .insert(id.clone());
+                            }
+                            
+                            // Update importance index
+                            imp_idx.entry(memory.importance)
+                                   .or_insert_with(HashSet::new)
+                                   .insert(id.clone());
+                            
+                            // Update content type index
+                            ct_idx.entry(memory.content_type.clone())
+                                   .or_insert_with(HashSet::new)
+                                   .insert(id.clone());
+                            
+                            // Update full-text index
+                            for word in memory.content.split_whitespace() {
+                                let word = word.to_lowercase();
+                                if word.len() >= 3 {
+                                    txt_idx.entry(word)
+                                           .or_insert_with(HashSet::new)
+                                           .insert(id.clone());
+                                }
+                            }
+                            
+                            // Index trigrams for fuzzy search
+                            for i in 0..(memory.content.len().saturating_sub(3)) {
+                                if let Some(trigram) = memory.content[i..].chars().take(3).collect::<String>().into() {
+                                    txt_idx.entry(trigram)
+                                           .or_insert_with(HashSet::new)
+                                           .insert(id.clone());
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                // Sleep for a short while before processing the next batch
+                std::thread::sleep(Duration::from_millis(100));
+            }
+        });
+    }
+
+    /// Assess the importance of memory content and tags
+    pub fn assess_importance(&self, content: &str, tags: &[String]) -> u8 {
+        let mut score: u32 = 50;
+        
+        // Tag-based boosting with weighted scoring
+        for tag in tags {
+            match tag.to_lowercase().as_str() {
+                "architecture" | "critical" => score += 30,
+                "code" | "algorithm" => score += 15,
+                "optimization" | "performance" => score += 20,
+                "pattern" | "design" => score += 15,
+                "bug" | "fix" => score += 10,
+                "security" => score += 25,
+                "documentation" => score += 5,
+                "test" => score += 5,
+                "manual" => score += 8,
+                _ => score += 2, // Small boost for custom tags
+            }
+        }
+        
+        // Content-based checks (sophisticated keyword analysis)
+        let content_lower = content.to_lowercase();
+        
+        // Critical importance indicators
+        if content_lower.contains("critical") || content_lower.contains("urgent") || 
+           content_lower.contains("high priority") || content_lower.contains("important") {
+            score += 20;
+        }
+        
+        // Performance considerations
+        if content_lower.contains("performance") || content_lower.contains("optimize") || 
+           content_lower.contains("efficiency") || content_lower.contains("bottleneck") {
+            score += 15;
+        }
+        
+        // Problem indicators
+        if content_lower.contains("error") || content_lower.contains("bug") || 
+           content_lower.contains("fix") || content_lower.contains("issue") || 
+           content_lower.contains("crash") || content_lower.contains("failure") {
+            score += 10;
+        }
+        
+        // Design and architecture significance
+        if content_lower.contains("design") || content_lower.contains("architecture") || 
+           content_lower.contains("pattern") || content_lower.contains("framework") || 
+           content_lower.contains("structure") {
+            score += 18;
+        }
+        
+        // Programming language indicators
+        let language_bonus = if content_lower.contains("```rust") { 15 }
+                    else if content_lower.contains("```js") || content_lower.contains("```javascript") { 12 }
+                    else if content_lower.contains("```ts") || content_lower.contains("```typescript") { 12 }
+                    else if content_lower.contains("```py") || content_lower.contains("```python") { 10 }
+                    else if content_lower.contains("```") { 8 }
+                    else { 0 };
+        score += language_bonus;
+        
+        // Length heuristic with diminishing returns
+        let length_factor = (content.len() as f32).sqrt() / 10.0;
+        score += (length_factor as u32).min(15);
+        
+        // Content complexity heuristic
+        let complexity_score = content.lines().count() as u32 / 5;
+        score += complexity_score.min(10);
+        
+        // Normalize to 1-100 range with ceiling and floor effects
+        if score < 20 {
+            score = 20 + (score / 5); // Raise floor but compress low scores
+        } else if score > 90 {
+            score = 90 + ((score - 90) / 5); // Lower ceiling but preserve distinction in high scores
+        }
+        
+        score.min(100) as u8
+    }
+
+    /// Extract code blocks from text content using language-specific regex
+    pub fn extract_code_blocks(&self, content: &str) -> Result<String> {
+        // Try to extract language-specific blocks first
+        for (_, regex) in &self.code_extractors {
+            let matches: Vec<_> = regex.find_iter(content)
+                .map(|mat| mat.as_str())
+                .collect();
+            
+            if !matches.is_empty() {
+                return Ok(matches.join("\n\n"));
+            }
+        }
+        
+        // Fallback to general code block extraction
+        match self.code_extractors.get("general") {
+            Some(regex) => {
+                let matches: Vec<_> = regex.find_iter(content)
+                    .map(|mat| mat.as_str())
+                    .collect();
+                
+                if matches.is_empty() {
+                    Ok("[No code blocks found]".to_string())
+                } else {
+                    Ok(matches.join("\n\n"))
+                }
+            },
+            None => Err(MemoryError::Regex("General code extractor not found".into()))
+        }
+    }
+
+    /// Save memory with transactional guarantees
+    pub async fn save_memory(&self, content: &str, tags: Vec<String>, context: Option<String>) -> Result<String> {
+        let _guard = self.access_lock.read().await;
+        
+        // Generate a unique ID
+        let id = format!("mem_{}", Utc::now().format("%Y%m%d_%H%M%S_%f"));
+        
+        // Determine content type
+        let content_type = if content.contains("```") {
+            "code".to_string()
+        } else if tags.contains(&"architecture".to_string()) {
+            "architecture".to_string()
+        } else {
+            "text".to_string()
+        };
+        
+        // Calculate importance score
+        let importance = self.assess_importance(content, &tags);
+        
+        // Calculate content hash
+        let content_hash = self.calculate_hash(content);
+        
+        // Create memory object
+        let memory = Memory {
+            id: id.clone(),
+            timestamp: Utc::now(),
+            last_accessed: Utc::now(),
+            access_count: 0,
+            content: content.to_string(),
+            importance,
+            tags,
+            context,
+            content_hash: Some(content_hash),
+            embedding: None, // To be filled by background worker if semantic search is enabled
+            related_memories: None,
+            content_type,
+            version: 1,
+            creation_method: "manual".to_string(),
+        };
+        
+        // Begin transaction
+        self.begin_transaction(TransactionOp::Create(memory.clone()))?;
+        
+        // Write to file
+        let memory_path = self.root_path.join(format!("{}.json", id));
+        let memory_json = serde_json::to_string_pretty(&memory)?;
+        fs::write(&memory_path, memory_json.as_bytes())?;
+        
+        // If high importance, also save to highlights folder
+        if importance >= 80 {
+            let highlights_dir = self.root_path.join("highlights");
+            if !highlights_dir.exists() {
+                create_dir_all(&highlights_dir)?;
+            }
+            
+            let highlight_path = highlights_dir.join(format!("{}.json", id));
+            fs::write(&highlight_path, memory_json.as_bytes())?;
+        }
+        
+        // Update cache and add to index queue
+        {
+            let mut cache = self.memory_cache.write().unwrap();
+            cache.insert(id.clone(), memory);
+            
+            let mut queue = self.index_queue.lock().unwrap();
+            queue.push(id.clone());
+        }
+        
+        // Commit transaction
+        self.commit_transaction()?;
+        
+        // Update statistics asynchronously
+        let stats = self.stats.clone();
+        let memory_cache = self.memory_cache.clone();
+        tokio::spawn(async move {
+            let cache = memory_cache.read().unwrap();
+            if let Ok(mut stats_guard) = stats.write() {
+                stats_guard.total_memories = cache.len();
+                // ... other stats updates
+                stats_guard.last_updated = Utc::now();
+            }
+        });
+        
+        Ok(id)
+    }
+
+    /// Process and save memory from command input
+    pub async fn save_from_command(&self, command: &str, full_context: &str) -> Result<String> {
+        let parts: Vec<&str> = command.split_whitespace().collect();
+        let mut tags = vec!["manual".to_string()];
+        let mut content_to_save;
+        let mut context_for_memory = None;
+        
+        if parts.len() >= 2 {
+            match parts[1] {
+                "code" => {
+                    tags.push("code".to_string());
+                    // Extract only code blocks from the full context
+                    content_to_save = self.extract_code_blocks(full_context)?;
+                    // Keep the full conversation as context for the code snippet
+                    context_for_memory = Some(full_context.to_string());
+                },
+                "arch" => {
+                    tags.push("architecture".to_string());
+                    content_to_save = full_context.to_string();
+                },
+                label => {
+                    // Custom label
+                    tags.push(label.to_string());
+                    content_to_save = full_context.to_string();
+                }
+            }
+        } else {
+            // Basic 'xmem' command
+            tags.push("conversation".to_string());
+            content_to_save = full_context.to_string();
+        }
+        
+        self.save_memory(&content_to_save, tags, context_for_memory).await
+    }
+
+    /// Begin a transaction
+    fn begin_transaction(&self, op: TransactionOp) -> Result<()> {
+        let transaction = serde_json::to_string(&op)?;
+        
+        let mut guard = self.transaction_log.lock().unwrap();
+        writeln!(guard, "BEGIN {}", transaction)?;
+        guard.flush()?;
+        
+        Ok(())
+    }
+
+    /// Commit a transaction
+    fn commit_transaction(&self) -> Result<()> {
+        let mut guard = self.transaction_log.lock().unwrap();
+        writeln!(guard, "COMMIT")?;
+        guard.flush()?;
+        
+        Ok(())
+    }
+
+    /// Update system statistics
+    fn update_statistics(&self) -> Result<()> {
+        let cache = self.memory_cache.read().unwrap();
+        
+        let mut stats = self.stats.write().unwrap();
+        let mut tag_distribution = HashMap::new();
+        let mut importance_distribution = BTreeMap::new();
+        let mut content_type_distribution = HashMap::new();
+        let mut total_importance = 0;
+        let mut memory_size_bytes = 0;
+        
+        for memory in cache.values() {
+            // Update tag distribution
+            for tag in &memory.tags {
+                *tag_distribution.entry(tag.clone()).or_insert(0) += 1;
+            }
+            
+            // Update importance distribution
+            *importance_distribution.entry(memory.importance).or_insert(0) += 1;
+            total_importance += memory.importance as u32;
+            
+            // Update content type distribution
+            *content_type_distribution.entry(memory.content_type.clone()).or_insert(0) += 1;
+            
+            // Estimate memory size
+            memory_size_bytes += memory.content.len() as u64;
+            if let Some(context) = &memory.context {
+                memory_size_bytes += context.len() as u64;
+            }
+        }
+        
+        // Count highlights
+        let highlights_dir = self.root_path.join("highlights");
+        let total_highlights = if highlights_dir.exists() {
+            fs::read_dir(highlights_dir)?.count()
+        } else {
+            0
+        };
+        
+        // Calculate average importance
+        let average_importance = if !cache.is_empty() {
+            total_importance as f32 / cache.len() as f32
+        } else {
+            0.0
+        };
+        
+        // Update stats
+        stats.total_memories = cache.len();
+        stats.total_highlights = total_highlights;
+        stats.tag_distribution = tag_distribution;
+        stats.importance_distribution = importance_distribution;
+        stats.content_type_distribution = content_type_distribution;
+        stats.average_importance = average_importance;
+        stats.memory_size_bytes = memory_size_bytes;
+        stats.last_updated = Utc::now();
+        
+        Ok(())
+    }
+
+    /// Advanced memory retrieval with filters and ranking
+    pub async fn retrieve_memories(&self, query: MemoryQuery) -> Result<Vec<Memory>> {
+        let _guard = self.access_lock.read().await;
+        
+        let cache = self.memory_cache.read().unwrap();
+        
+        // Multi-stage filtering pipeline
+        let mut candidate_ids = HashSet::new();
+        
+        // 1. Initial candidate selection using indexes
+        if let Some(text) = &query.text {
+            // Full-text search
+            let text_idx = self.text_index.read().unwrap();
+            let text_lower = text.to_lowercase();
+            
+            // First try exact matches
+            for word in text_lower.split_whitespace() {
+                if let Some(ids) = text_idx.get(word) {
+                    if candidate_ids.is_empty() {
+                        candidate_ids = ids.clone();
+                    } else {
+                        candidate_ids = candidate_ids.intersection(ids).cloned().collect();
+                    }
+                }
+            }
+            
+            // If no results, try trigram search for fuzzy matching
+            if candidate_ids.is_empty() && text_lower.len() >= 3 {
+                let mut trigram_matches = HashMap::new();
+                
+                for i in 0..(text_lower.len().saturating_sub(2)) {
+                    if let Some(trigram) = text_lower[i..].chars().take(3).collect::<String>().into() {
+                        if let Some(ids) = text_idx.get(&trigram) {
+                            for id in ids {
+                                *trigram_matches.entry(id.clone()).or_insert(0) += 1;
+                            }
+                        }
+                    }
+                }
+                
+                // Select memories with at least 2 trigram matches
+                for (id, count) in trigram_matches {
+                    if count >= 2 {
+                        candidate_ids.insert(id);
+                    }
+                }
+            }
+        } else if let Some(tags) = &query.tags {
+            // Tag-based search
+            let tag_idx = self.tag_index.read().unwrap();
+            
+            for tag in tags {
+                if let Some(ids) = tag_idx.get(tag) {
+                    if candidate_ids.is_empty() {
+                        candidate_ids = ids.clone();
+                    } else {
+                        candidate_ids = candidate_ids.intersection(ids).cloned().collect();
+                    }
+                }
+            }
+        } else if let Some(min_importance) = query.min_importance {
+            // Importance-based search
+            let importance_idx = self.importance_index.read().unwrap();
+            
+            for (importance, ids) in importance_idx.range(min_importance..) {
+                for id in ids {
+                    candidate_ids.insert(id.clone());
+                }
+            }
+        } else if let Some(types) = &query.content_types {
+            // Content type search
+            let type_idx = self.content_type_index.read().unwrap();
+            
+            for content_type in types {
+                if let Some(ids) = type_idx.get(content_type) {
+                    for id in ids {
+                        candidate_ids.insert(id.clone());
+                    }
+                }
+            }
+        } else {
+            // No filters, include all memories
+            candidate_ids = cache.keys().cloned().collect();
+        }
+        
+        // 2. Secondary filtering
+        let mut filtered_memories = Vec::new();
+        
+        for id in candidate_ids {
+            if let Some(memory) = cache.get(&id) {
+                let mut include = true;
+                
+                // Apply tag exclusion if specified
+                if let Some(exclude_tags) = &query.exclude_tags {
+                    for tag in exclude_tags {
+                        if memory.tags.contains(tag) {
+                            include = false;
+                            break;
+                        }
+                    }
+                }
+                
+                // Apply importance threshold if specified
+                if let Some(min_importance) = query.min_importance {
+                    if memory.importance < min_importance {
+                        include = false;
+                    }
+                }
+                
+                // Apply date range if specified
+                if let Some(date_from) = query.date_from {
+                    if memory.timestamp < date_from {
+                        include = false;
+                    }
+                }
+                
+                if let Some(date_to) = query.date_to {
+                    if memory.timestamp > date_to {
+                        include = false;
+                    }
+                }
+                
+                // Apply content type filter if specified
+                if let Some(types) = &query.content_types {
+                    if !types.contains(&memory.content_type) {
+                        include = false;
+                    }
+                }
+                
+                if include {
+                    filtered_memories.push(memory.clone());
+                }
+            }
+        }
+        
+        // 3. Ranking
+        if let Some(sort_by) = &query.sort_by {
+            match sort_by.as_str() {
+                "importance" => {
+                    filtered_memories.sort_by(|a, b| {
+                        if query.sort_descending.unwrap_or(true) {
+                            b.importance.cmp(&a.importance)
+                        } else {
+                            a.importance.cmp(&b.importance)
+                        }
+                    });
+                },
+                "date" => {
+                    filtered_memories.sort_by(|a, b| {
+                        if query.sort_descending.unwrap_or(true) {
+                            b.timestamp.cmp(&a.timestamp)
+                        } else {
+                            a.timestamp.cmp(&b.timestamp)
+                        }
+                    });
+                },
+                "access" => {
+                    filtered_memories.sort_by(|a, b| {
+                        if query.sort_descending.unwrap_or(true) {
+                            b.access_count.cmp(&a.access_count)
+                        } else {
+                            a.access_count.cmp(&b.access_count)
+                        }
+                    });
+                },
+                _ => {
+                    // Default sort by importance then date
+                    filtered_memories.sort_by(|a, b| {
+                        let imp_cmp = b.importance.cmp(&a.importance);
+                        if imp_cmp == std::cmp::Ordering::Equal {
+                            b.timestamp.cmp(&a.timestamp)
+                        } else {
+                            imp_cmp
+                        }
+                    });
+                }
+            }
+        } else {
+            // Default sort by importance then date
+            filtered_memories.sort_by(|a, b| {
+                let imp_cmp = b.importance.cmp(&a.importance);
+                if imp_cmp == std::cmp::Ordering::Equal {
+                    b.timestamp.cmp(&a.timestamp)
+                } else {
+                    imp_cmp
+                }
+            });
+        }
+        
+        // 4. Pagination
+        let offset = query.offset.unwrap_or(0);
+        let limit = query.limit.unwrap_or(usize::MAX);
+        
+        let paginated_memories = filtered_memories.into_iter()
+            .skip(offset)
+            .take(limit)
+            .collect::<Vec<_>>();
+        
+        // 5. Update access statistics
+        for memory in &paginated_memories {
+            self.update_access_stats(&memory.id).await?;
+        }
+        
+        Ok(paginated_memories)
+    }
+
+    /// Simple retrieval by relevance to query
+    pub async fn retrieve_relevant_memories(&self, query: &str, max_results: usize) -> Result<Vec<Memory>> {
+        self.retrieve_memories(MemoryQuery {
+            text: Some(query.to_string()),
+            tags: None,
+            exclude_tags: None,
+            min_importance: None,
+            date_from: None,
+            date_to: None,
+            content_types: None,
+            limit: Some(max_results),
+            offset: None,
+            sort_by: None,
+            sort_descending: None,
+            semantic_search: false,
+            query_embedding: None,
+        }).await
+    }
+
+    /// Update access statistics when memory is retrieved
+    async fn update_access_stats(&self, id: &str) -> Result<()> {
+        let mut cache = self.memory_cache.write().unwrap();
+        
+        if let Some(memory) = cache.get_mut(id) {
+            memory.last_accessed = Utc::now();
+            memory.access_count += 1;
+            
+            // Write updated memory back to disk asynchronously
+            let memory_clone = memory.clone();
+            let root_path = self.root_path.clone();
+            
+            tokio::spawn(async move {
+                let memory_path = root_path.join(format!("{}.json", memory_clone.id));
+                if let Ok(memory_json) = serde_json::to_string_pretty(&memory_clone) {
+                    let _ = fs::write(&memory_path, memory_json.as_bytes());
+                }
+            });
+        }
+        
+        Ok(())
+    }
+
+    /// Get memory system statistics
+    pub fn get_statistics(&self) -> Result<MemoryStats> {
+        Ok(self.stats.read().unwrap().clone())
+    }
+
+    /// Perform system maintenance tasks
+    pub async fn maintenance(&self) -> Result<()> {
+        let _guard = self.access_lock.write().await;
+        
+        // Rebuild indexes
+        self.rebuild_indexes().await?;
+        
+        // Check for file system consistency
+        self.verify_consistency()?;
+        
+        // Update statistics
+        self.update_statistics()?;
+        
+        Ok(())
+    }
+
+    /// Verify system consistency
+    fn verify_consistency(&self) -> Result<()> {
+        let cache = self.memory_cache.read().unwrap();
+        
+        // Check all cached memories have files
+        for (id, memory) in cache.iter() {
+            let memory_path = self.root_path.join(format!("{}.json", id));
+            if !memory_path.exists() {
+                return Err(MemoryError::ConsistencyViolation(
+                    format!("Memory {} exists in cache but not on disk", id)
+                ));
+            }
+            
+            // Verify content hash
+            if let Some(hash) = &memory.content_hash {
+                let calculated_hash = self.calculate_hash(&memory.content);
+                if calculated_hash != *hash {
+                    return Err(MemoryError::ConsistencyViolation(
+                        format!("Content hash mismatch for memory {}", id)
+                    ));
+                }
+            }
+        }
+        
+        // Check all files have cached memories
+        let paths = fs::read_dir(&self.root_path)?;
+        
+        for entry in paths {
+            let entry = entry?;
+            let path = entry.path();
+            
+            if path.is_file() && path.extension().map_or(false, |ext| ext == "json") {
+                if let Some(file_stem) = path.file_stem() {
+                    let id = file_stem.to_string_lossy().to_string();
+                    if !cache.contains_key(&id) {
+                        return Err(MemoryError::ConsistencyViolation(
+                            format!("Memory {} exists on disk but not in cache", id)
+                        ));
+                    }
+                }
+            }
+        }
+        
+        Ok(())
+    }
+}
+\```

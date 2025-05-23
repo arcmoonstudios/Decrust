@@ -1,0 +1,86 @@
+# Workspace configuration for the decrust project
+# This manages both the runtime library and the procedural macros
+
+[workspace]
+members = [
+".",
+"decrust-promac",
+"decrust-promac-runtime"]
+resolver = "2"
+
+# Workspace-wide dependencies that can be inherited by members
+[workspace.dependencies]
+chrono = { version = "0.4.31", features = ["serde"] }
+serde = { version = "1.0.188", features = ["derive"] }
+tokio = { version = "1.32.0", features = ["full"] }
+syn = { version = "2.0.101", features = ["full"] }
+thiserror = "1.0.48"
+anyhow = "1.0.75"
+regex = "1.11.1"
+tracing = "0.1.37"
+derivative = "2.2.0"
+proc-macro2 = "1.0"
+quote = "1.0.40"
+rand = "0.8"
+
+# Workspace-wide metadata
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["Lord Xyn <LordXyn@proton.me>"]
+repository = "https://github.com/arcmoonstudios/decrust"
+license = "MIT"
+description = "Decrust Error handling framework"
+
+# Package configuration for the main decrust crate
+[package]
+name = "decrust"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+repository.workspace = true
+license.workspace = true
+description = "Decrust Error handling framework"
+
+[dependencies]
+# Use workspace dependencies
+thiserror = { workspace = true }
+regex = { workspace = true }
+anyhow = { workspace = true }
+chrono = { workspace = true }
+serde = { workspace = true }
+tracing = { workspace = true }
+derivative = { workspace = true }
+quote = { workspace = true }
+syn = { workspace = true }
+
+# Optional dependencies
+tokio = { workspace = true, optional = true }
+rand = { workspace = true, optional = true }
+
+[features]
+default = []
+tokio = ["dep:tokio"]
+rand = ["dep:rand"]
+std-thread = []
+
+[lib]
+name = "decrust"
+path = "src/lib.rs"
+doctest = true
+test = true
+
+[dev-dependencies]
+tokio = { workspace = true }
+rand = { workspace = true }
+proptest = "1.0"
+
+[profile.release]
+opt-level = 3
+lto = true
+panic = "abort"
+codegen-units = 1
+
+[profile.dev]
+opt-level = 0
+debug = true
