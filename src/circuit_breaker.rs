@@ -40,6 +40,7 @@ impl<T: Clone + ?Sized> Clone for DebugIgnore<T> {
 }
 
 #[cfg(feature = "rand")]
+#[allow(unused_imports)]
 use rand::Rng;
 #[cfg(feature = "tokio")]
 use tokio::time;
