@@ -1,0 +1,27 @@
+{
+  // Disable GitHub Actions extension warnings completely
+  "github-actions.workflows.pinned.workflows": [],
+  "github-actions.workflows.pinned.refresh.enabled": false,
+
+  // Disable YAML validation that causes warnings
+  "yaml.validate": false,
+  "yaml.completion": false,
+  "yaml.hover": false,
+
+  // Disable specific language server features for workflow files
+  "[yaml]": {
+    "editor.quickSuggestions": {
+      "other": false,
+      "comments": false,
+      "strings": false
+    },
+    "editor.suggest.showWords": false,
+    "editor.wordBasedSuggestions": "off"
+  },
+
+  // File associations
+  "files.associations": {
+    "*.yml": "yaml",
+    "*.yaml": "yaml"
+  }
+}
