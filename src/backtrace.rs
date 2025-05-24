@@ -390,11 +390,6 @@ impl<E: std::error::Error + BacktraceCompat> BacktraceProvider for E {
         if let Some(bt) = self.backtrace() {
             return Some(bt);
         }
-
-        // For now, we only check the current error since we can't easily
-        // downcast to BacktraceCompat in the error chain without knowing
-        // the concrete types. This is a limitation we can address later
-        // by implementing a registry or using Any trait.
         None
     }
 }
@@ -779,9 +774,9 @@ mod tests {
         let bt = DecrustBacktrace::force_capture();
         let frames = bt.extract_frames();
 
-        // We should have at least some frames in a force-captured backtrace
-        // The exact count depends on the test environment
-        assert!(frames.len() >= 0); // Always true, but documents expectation
+        // We should have frames available (exact count depends on test environment)
+        // Just verify that the extraction doesn't panic and returns a valid Vec
+        let _frame_count = frames.len(); // Documents that we expect frames to be extractable
     }
 
     #[test]
