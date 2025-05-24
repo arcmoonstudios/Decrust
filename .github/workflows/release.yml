@@ -18,8 +18,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: 📦 Publish to crates.io
-        run: cargo publish --token $CARGO_REGISTRY_TOKEN
+        run: cargo publish
         env:
-          # GitHub Actions secret for crates.io publishing
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }} # pragma: allowlist secret
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
           CARGO_TERM_COLOR: always
