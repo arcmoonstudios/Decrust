@@ -47,6 +47,9 @@ fn test_decrust_macro_error_handling() {
         Err(DecrustError::Validation {
             field: "test".to_string(),
             message: "Test error".to_string(),
+            expected: None,
+            actual: None,
+            rule: None,
             backtrace: Backtrace::capture(),
         })
     }
@@ -74,6 +77,9 @@ fn test_decrust_macro_autocorrection() {
         let err = DecrustError::Validation {
             field: "test".to_string(),
             message: "Test error with autocorrection".to_string(),
+            expected: None,
+            actual: None,
+            rule: None,
             backtrace: Backtrace::capture(),
         };
 

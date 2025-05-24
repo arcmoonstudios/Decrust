@@ -10,6 +10,9 @@ fn test_decrust_derive() {
     let error = DecrustError::Validation {
         field: "test".to_string(),
         message: "Test error".to_string(),
+        expected: None,
+        actual: None,
+        rule: None,
         backtrace: Backtrace::capture().into(),
     };
 
@@ -24,6 +27,9 @@ fn test_autocorrection() {
     let error = DecrustError::Validation {
         field: "test".to_string(),
         message: "Test error".to_string(),
+        expected: None,
+        actual: None,
+        rule: None,
         backtrace: Backtrace::capture().into(),
     };
 
@@ -38,6 +44,9 @@ fn test_decrust_derive_with_decrust_macro() {
     let error = DecrustError::Validation {
         field: "username".to_string(),
         message: "Username too short".to_string(),
+        expected: None,
+        actual: None,
+        rule: None,
         backtrace: Backtrace::capture().into(),
     };
 
@@ -52,6 +61,9 @@ fn test_autocorrection_with_suggest_mode() {
     let error = DecrustError::Validation {
         field: "test".to_string(),
         message: "Test error".to_string(),
+        expected: None,
+        actual: None,
+        rule: None,
         backtrace: Backtrace::capture().into(),
     };
 

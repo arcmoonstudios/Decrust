@@ -12,6 +12,9 @@ fn test_decrust_enhance_attribute() {
             return Err(DecrustError::Validation {
                 field: "input".to_string(),
                 message: "Input cannot be zero".to_string(),
+                expected: None,
+                actual: None,
+                rule: None,
                 backtrace: Backtrace::capture(),
             });
         }
@@ -43,6 +46,9 @@ fn test_decrust_enhance_error_handling() {
         Err(DecrustError::Validation {
             field: "test".to_string(),
             message: "Test error".to_string(),
+            expected: None,
+            actual: None,
+            rule: None,
             backtrace: Backtrace::capture(),
         })
     }

@@ -2,7 +2,7 @@
 #![warn(missing_docs)]
 #![allow(stable_features)]
 //! # Decrust: Advanced Error Handling Framework for Rust
-//!
+// ~=####====A===r===c===M===o===o===n====S===t===u===d===i===o===s====X|0|$>
 //! Decrust is a comprehensive, production-ready error handling framework that provides
 //! rich error context, automatic error recovery, circuit breaker patterns, and powerful
 //! debugging capabilities. It's designed to make error handling in Rust applications
@@ -54,14 +54,16 @@
 //! Built-in circuit breaker for handling external service failures gracefully.
 //!
 //! ```rust
-//! use decrust::circuit_breaker::{CircuitBreaker, CircuitBreakerConfig};
+//! use decrust::{circuit_breaker::{CircuitBreaker, CircuitBreakerConfig}, DecrustError, Backtrace};
 //! use std::time::Duration;
 //!
 //! // Configure circuit breaker
-//! let config = CircuitBreakerConfig::new()
-//!     .failure_threshold(5)
-//!     .reset_timeout(Duration::from_secs(30))
-//!     .operation_timeout(Duration::from_secs(5));
+//! let config = CircuitBreakerConfig {
+//!     failure_threshold: 5,
+//!     reset_timeout: Duration::from_secs(30),
+//!     operation_timeout: Some(Duration::from_secs(5)),
+//!     ..Default::default()
+//! };
 //!
 //! let circuit_breaker = CircuitBreaker::new("external-api", config);
 //!
@@ -72,7 +74,7 @@
 //!     external_api_call().map_err(|e| DecrustError::Oops {
 //!         message: "API call failed".to_string(),
 //!         source: Box::new(e),
-//!         backtrace: Default::default(),
+//!         backtrace: Backtrace::generate(),
 //!     })
 //! });
 //! ```
@@ -81,7 +83,7 @@
 //! Smart error recovery with configurable retry strategies and fix suggestions.
 //!
 //! ```rust
-//! use decrust::{DecrustError, decrust::{Decrust, AutocorrectableError}};
+//! use decrust::{DecrustError, decrust::{Decrust, AutocorrectableError}, Backtrace};
 //!
 //! let mut decrust = Decrust::new();
 //!
@@ -89,8 +91,15 @@
 //! // decrust.register_fix_generator(Box::new(CustomFixGenerator::new()));
 //!
 //! // Apply fixes automatically
-//! # let error = DecrustError::Validation { field: "test".to_string(), message: "test".to_string(), backtrace: Default::default() };
-//! if let Some(fix) = decrust.suggest_fix(&error) {
+//! # let error = DecrustError::Validation {
+//! #     field: "test".to_string(),
+//! #     message: "test".to_string(),
+//! #     expected: None,
+//! #     actual: None,
+//! #     rule: None,
+//! #     backtrace: Backtrace::generate()
+//! # };
+//! if let Some(fix) = decrust.suggest_autocorrection(&error, None) {
 //!     println!("Suggested fix: {}", fix.description);
 //! }
 //! ```
@@ -121,7 +130,7 @@
 //! Pre-built error variants for common scenarios with rich metadata.
 //!
 //! ```rust
-//! use decrust::DecrustError;
+//! use decrust::{DecrustError, Backtrace, OptionalError};
 //! use std::time::Duration;
 //!
 //! // Network errors with retry information
@@ -129,15 +138,15 @@
 //!     source: Box::new(std::io::Error::new(std::io::ErrorKind::ConnectionRefused, "refused")),
 //!     kind: "HTTP".to_string(),
 //!     url: Some("https://api.example.com".to_string()),
-//!     backtrace: Default::default(),
+//!     backtrace: Backtrace::generate(),
 //! };
 //!
 //! // Configuration errors with suggestions
 //! let config_error = DecrustError::Config {
 //!     message: "Invalid database URL format".to_string(),
 //!     path: Some("config.toml".into()),
-//!     source: Default::default(),
-//!     backtrace: Default::default(),
+//!     source: OptionalError(None),
+//!     backtrace: Backtrace::generate(),
 //! };
 //! ```
 //!
@@ -148,18 +157,28 @@
 //! You can create domain-specific error types that integrate seamlessly with Decrust:
 //!
 //! ```rust
-//! use decrust::{DecrustError, DecrustResultExt, types::ErrorSeverity};
+//! use decrust::{DecrustError, DecrustResultExt, types::ErrorSeverity, Backtrace, OptionalError};
 //!
+//! # struct User;
 //! // Define your domain-specific error
-//! #[derive(Debug, thiserror::Error)]
+//! #[derive(Debug)]
 //! pub enum UserServiceError {
-//!     #[error("User not found: {id}")]
 //!     NotFound { id: String },
-//!     #[error("Invalid email format: {email}")]
 //!     InvalidEmail { email: String },
-//!     #[error("Permission denied for user: {user_id}")]
 //!     PermissionDenied { user_id: String },
 //! }
+//!
+//! impl std::fmt::Display for UserServiceError {
+//!     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+//!         match self {
+//!             UserServiceError::NotFound { id } => write!(f, "User not found: {}", id),
+//!             UserServiceError::InvalidEmail { email } => write!(f, "Invalid email format: {}", email),
+//!             UserServiceError::PermissionDenied { user_id } => write!(f, "Permission denied for user: {}", user_id),
+//!         }
+//!     }
+//! }
+//!
+//! impl std::error::Error for UserServiceError {}
 //!
 //! // Convert to DecrustError with rich context
 //! impl From<UserServiceError> for DecrustError {
@@ -168,19 +187,22 @@
 //!             UserServiceError::NotFound { id } => DecrustError::NotFound {
 //!                 resource_type: "User".to_string(),
 //!                 identifier: id,
-//!                 backtrace: Default::default(),
+//!                 backtrace: Backtrace::generate(),
 //!             },
 //!             UserServiceError::InvalidEmail { email } => DecrustError::Validation {
 //!                 field: "email".to_string(),
 //!                 message: format!("Invalid email format: {}", email),
-//!                 backtrace: Default::default(),
+//!                 expected: None,
+//!                 actual: None,
+//!                 rule: None,
+//!                 backtrace: Backtrace::generate(),
 //!             },
 //!             UserServiceError::PermissionDenied { user_id } => {
 //!                 DecrustError::ExternalService {
 //!                     service_name: "UserService".to_string(),
 //!                     message: format!("Permission denied for user: {}", user_id),
-//!                     source: Default::default(),
-//!                     backtrace: Default::default(),
+//!                     source: OptionalError(None),
+//!                     backtrace: Backtrace::generate(),
 //!                 }
 //!             }
 //!         }
@@ -199,11 +221,11 @@
 //!         .map_err(|e| DecrustError::Oops {
 //!             message: "Database query failed".to_string(),
 //!             source: Box::new(e),
-//!             backtrace: Default::default(),
+//!             backtrace: Backtrace::generate(),
 //!         })
 //!         .decrust_context_msg("Fetching user from database")?;
 //!
-//!     # struct User; Ok(User)
+//!     Ok(User)
 //! }
 //! # fn database_call() -> Result<(), std::io::Error> { Ok(()) }
 //! ```
@@ -211,35 +233,46 @@
 //! ### Error Reporting and Monitoring
 //!
 //! ```rust
-//! use decrust::{ErrorReporter, ErrorReportConfig, types::ErrorReportFormat};
+//! use decrust::{ErrorReporter, ErrorReportConfig, types::ErrorReportFormat, DecrustError, Backtrace};
 //!
 //! // Configure error reporting
-//! let config = ErrorReportConfig::new()
-//!     .with_format(ErrorReportFormat::Json)
-//!     .with_include_backtrace(true)
-//!     .with_include_context(true);
+//! let config = ErrorReportConfig {
+//!     format: ErrorReportFormat::Json,
+//!     include_backtrace: true,
+//!     include_rich_context: true,
+//!     ..Default::default()
+//! };
 //!
-//! let reporter = ErrorReporter::new(config);
+//! let reporter = ErrorReporter::new();
 //!
 //! // Report errors with rich context
-//! # let error = DecrustError::Validation { field: "test".to_string(), message: "test".to_string(), backtrace: Default::default() };
-//! let report = reporter.generate_report(&error);
+//! # let error = DecrustError::Validation {
+//! #     field: "test".to_string(),
+//! #     message: "test".to_string(),
+//! #     expected: None,
+//! #     actual: None,
+//! #     rule: None,
+//! #     backtrace: Backtrace::generate()
+//! # };
+//! let report = reporter.report_to_string(&error, &config);
 //! println!("Error Report: {}", report);
 //! ```
 //!
 //! ### Circuit Breaker with Custom Policies
 //!
 //! ```rust
-//! use decrust::circuit_breaker::{CircuitBreaker, CircuitBreakerConfig};
+//! use decrust::{circuit_breaker::{CircuitBreaker, CircuitBreakerConfig}, DecrustError};
 //! use std::time::Duration;
 //!
 //! // Advanced circuit breaker configuration
-//! let config = CircuitBreakerConfig::new()
-//!     .failure_threshold(3)                    // Open after 3 failures
-//!     .success_threshold_to_close(2)           // Close after 2 successes in half-open
-//!     .reset_timeout(Duration::from_secs(60))  // Try half-open after 60 seconds
-//!     .operation_timeout(Duration::from_secs(10)) // Individual operation timeout
-//!     .half_open_max_concurrent_operations(1); // Only 1 operation in half-open
+//! let config = CircuitBreakerConfig {
+//!     failure_threshold: 3,                    // Open after 3 failures
+//!     success_threshold_to_close: 2,           // Close after 2 successes in half-open
+//!     reset_timeout: Duration::from_secs(60),  // Try half-open after 60 seconds
+//!     operation_timeout: Some(Duration::from_secs(10)), // Individual operation timeout
+//!     half_open_max_concurrent_operations: 1, // Only 1 operation in half-open
+//!     ..Default::default()
+//! };
 //!
 //! let circuit_breaker = CircuitBreaker::new("payment-service", config);
 //!
@@ -259,25 +292,34 @@
 //! # fn call_payment_service() -> Result<String, DecrustError> { Ok("success".to_string()) }
 //! ```
 //!
-//! ### Dyn-Compatible Trait Usage
+//! ### Object-Safe Extension Trait Usage
 //!
-//! The extension traits are object-safe, allowing for dynamic dispatch:
+//! The extension traits are object-safe and support dynamic dispatch:
 //!
 //! ```rust
 //! use decrust::{DecrustResultExt, DecrustOptionExt, DecrustError};
 //!
-//! // Use traits with dynamic dispatch
-//! fn process_with_trait(
-//!     result_trait: &dyn DecrustResultExt<String, std::io::Error>,
-//!     option_trait: &dyn DecrustOptionExt<i32>
+//! // Object-safe trait usage with dynamic dispatch
+//! fn process_with_dyn_traits(
+//!     result: &dyn DecrustResultExt<String, std::io::Error>,
+//!     option: &dyn DecrustOptionExt<i32>
 //! ) {
 //!     // These work because the traits are object-safe
 //! }
 //!
-//! let result: Result<String, std::io::Error> = Ok("test".to_string());
-//! let option: Option<i32> = Some(42);
+//! // Regular usage for better error handling
+//! fn process_data() -> Result<String, DecrustError> {
+//!     let result: Result<String, std::io::Error> = Ok("test".to_string());
+//!     let option: Option<i32> = Some(42);
 //!
-//! process_with_trait(&result, &option);
+//!     // Add context to results (object-safe methods)
+//!     let processed = result.decrust_context_msg("Processing data")?;
+//!
+//!     // Convert options to results with meaningful errors (object-safe methods)
+//!     let value = option.decrust_ok_or_missing_value("required value")?;
+//!
+//!     Ok(format!("{} - {}", processed, value))
+//! }
 //! ```
 //!
 //! ## 📚 Feature Flags
@@ -298,62 +340,73 @@
 //! ## 🔗 Integration Examples
 //!
 //! ### With Tokio and Async
-//! ```rust,ignore
-//! use decrust::{DecrustError, DecrustResultExt};
-//! use tokio;
+//! ```rust
+//! use decrust::{DecrustError, DecrustResultExt, Backtrace};
+//! use std::path::PathBuf;
 //!
-//! #[tokio::main]
-//! async fn main() -> Result<(), DecrustError> {
-//!     let result = tokio::fs::read_to_string("config.json")
-//!         .await
+//! // Simulate async file reading without requiring tokio dependency
+//! async fn read_config_async() -> Result<String, DecrustError> {
+//!     // Simulate reading a config file
+//!     let result = std::fs::read_to_string("Cargo.toml") // Use existing file
 //!         .map_err(|e| DecrustError::Io {
 //!             source: e,
-//!             path: Some("config.json".into()),
+//!             path: Some("Cargo.toml".into()),
 //!             operation: "read config file".to_string(),
-//!             backtrace: Default::default(),
+//!             backtrace: Backtrace::generate(),
 //!         })
 //!         .decrust_context_msg("Loading application configuration")?;
 //!
-//!     println!("Config loaded: {}", result);
-//!     Ok(())
+//!     Ok(result)
 //! }
+//!
+//! // Test the async function (without actually running it)
+//! let _future = read_config_async();
 //! ```
 //!
-//! ### With Serde for Configuration
-//! ```rust,ignore
-//! use decrust::{DecrustError, validation_error};
-//! use serde::{Deserialize, Serialize};
+//! ### With Configuration Parsing
+//! ```rust
+//! use decrust::{DecrustError, Backtrace, OptionalError};
+//! use std::path::PathBuf;
 //!
-//! #[derive(Deserialize, Serialize)]
+//! // Simple configuration struct (without serde dependency)
 //! struct AppConfig {
 //!     database_url: String,
 //!     api_key: String,
 //! }
 //!
 //! fn load_config() -> Result<AppConfig, DecrustError> {
-//!     let config_str = std::fs::read_to_string("app.toml")
+//!     // Simulate reading configuration from Cargo.toml (which exists)
+//!     let config_str = std::fs::read_to_string("Cargo.toml")
 //!         .map_err(|e| DecrustError::Config {
 //!             message: "Failed to read configuration file".to_string(),
-//!             path: Some("app.toml".into()),
-//!             source: Some(Box::new(e)).into(),
-//!             backtrace: Default::default(),
+//!             path: Some("Cargo.toml".into()),
+//!             source: OptionalError::new(Some(Box::new(e))),
+//!             backtrace: Backtrace::generate(),
 //!         })?;
 //!
-//!     let config: AppConfig = toml::from_str(&config_str)
-//!         .map_err(|e| DecrustError::Parse {
-//!             source: Box::new(e),
-//!             kind: "TOML".to_string(),
-//!             context_info: "application configuration".to_string(),
-//!             backtrace: Default::default(),
-//!         })?;
+//!     // Simulate parsing (just create a dummy config)
+//!     let config = AppConfig {
+//!         database_url: "postgresql://localhost/mydb".to_string(),
+//!         api_key: "dummy_key".to_string(),
+//!     };
 //!
 //!     // Validate configuration
 //!     if config.database_url.is_empty() {
-//!         return Err(validation_error!("database_url", "Database URL cannot be empty"));
+//!         return Err(DecrustError::Validation {
+//!             field: "database_url".to_string(),
+//!             message: "Database URL cannot be empty".to_string(),
+//!             expected: None,
+//!             actual: None,
+//!             rule: None,
+//!             backtrace: Backtrace::generate(),
+//!         });
 //!     }
 //!
 //!     Ok(config)
 //! }
+//!
+//! // Test the function
+//! let _config = load_config();
 //! ```
 // ~=####====A===r===c===M===o===o===n====S===t===u===d===i===o===s====X|0|$>
 // **GitHub:** [ArcMoon Studios](https://github.com/arcmoonstudios)
@@ -385,6 +438,9 @@ pub use self::backtrace::{
     // FromString,                 // Will add back if `oops!` macro or FromString trait is used directly
     // ensure,                     // Will add back if used
 };
+
+// Macros are automatically exported at crate root due to #[macro_export]
+// Available macros: implicit_data!, location!, error_context!, oops!, validation_error!
 
 pub use self::circuit_breaker::{
     CircuitBreaker,
@@ -1295,6 +1351,8 @@ impl DecrustError {
 ///
 /// This trait provides methods to add context to errors in a Result,
 /// making it easier to provide additional information about the error.
+///
+/// This trait is object-safe and can be used with dynamic dispatch.
 pub trait DecrustResultExt<T, EOrig> {
     /// Adds a simple message context to an error in a Result
     ///
@@ -1375,6 +1433,8 @@ where
 ///
 /// This trait provides methods to convert an Option to a Result, with a MissingValue
 /// error if the Option is None.
+///
+/// This trait is object-safe and can be used with dynamic dispatch.
 pub trait DecrustOptionExt<T> {
     /// Converts an Option to a Result, with a MissingValue error if None
     ///
@@ -1451,8 +1511,13 @@ impl<E> InfallibleResultExt<E> for Result<std::convert::Infallible, E> {
 }
 
 /// Convenience trait for backward compatibility with generic string types
+///
+/// **Note:** This trait is NOT object-safe due to the use of `impl Into<String>`.
+/// Use `DecrustResultExt` for object-safe operations.
 pub trait DecrustResultExtConvenience<T, EOrig> {
     /// Convenience method for adding context with any string-like type
+    ///
+    /// **Warning:** This method makes the trait NOT object-safe.
     fn decrust_context<S: Into<String>>(self, message: S) -> Result<T, DecrustError>;
 }
 
@@ -1466,14 +1531,31 @@ where
 }
 
 /// Convenience trait for backward compatibility with generic string types
+///
+/// **Note:** This trait is NOT object-safe due to the use of `impl Into<String>`.
+/// Use `DecrustOptionExt` for object-safe operations.
 pub trait DecrustOptionExtConvenience<T> {
     /// Convenience method for converting to Result with any string-like type
+    ///
+    /// **Warning:** This method makes the trait NOT object-safe.
     fn decrust_ok_or_missing<S: Into<String>>(self, item_description: S) -> Result<T, DecrustError>;
 }
 
 impl<T> DecrustOptionExtConvenience<T> for Option<T> {
     fn decrust_ok_or_missing<S: Into<String>>(self, item_description: S) -> Result<T, DecrustError> {
         self.decrust_ok_or_missing_value_owned(item_description.into())
+    }
+}
+
+/// Implementation of From<std::io::Error> for DecrustError to support extension traits
+impl From<std::io::Error> for DecrustError {
+    fn from(err: std::io::Error) -> Self {
+        DecrustError::Io {
+            source: err,
+            path: None,
+            operation: "I/O operation".to_string(),
+            backtrace: Backtrace::generate(),
+        }
     }
 }
 
@@ -1602,13 +1684,27 @@ mod tests {
     }
 
     #[test]
-    fn test_dyn_compatibility() {
-        // Test that the traits are dyn-compatible (object-safe)
+    fn test_object_safety() {
+        // Test that the main traits are object-safe (dyn-compatible)
         let result: Result<i32, DecrustError> = Ok(42);
-        let _result_trait: &dyn DecrustResultExt<i32, DecrustError> = &result;
-        let _option_trait: &dyn DecrustOptionExt<i32> = &Some(42);
+        let option: Option<i32> = Some(42);
 
-        // This should compile without errors, proving the traits are object-safe
+        // These should compile without errors, proving the traits are object-safe
+        let _result_trait: &dyn DecrustResultExt<i32, DecrustError> = &result;
+        let _option_trait: &dyn DecrustOptionExt<i32> = &option;
+
+        // Test that we can actually use the object-safe methods
+        fn use_dyn_result_trait(_r: &dyn DecrustResultExt<i32, DecrustError>) {
+            // This function signature proves the trait is object-safe
+        }
+
+        fn use_dyn_option_trait(_o: &dyn DecrustOptionExt<i32>) {
+            // This function signature proves the trait is object-safe
+        }
+
+        use_dyn_result_trait(&result);
+        use_dyn_option_trait(&option);
+
         assert!(true);
     }
 

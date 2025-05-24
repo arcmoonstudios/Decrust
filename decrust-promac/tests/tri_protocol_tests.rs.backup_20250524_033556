@@ -95,7 +95,6 @@ fn test_codemaster_integration() {
                     std::io::ErrorKind::ConnectionRefused,
                     "Database connection failed",
                 )))),
-                component: Some("database".to_string()),
                 backtrace: DecrustBacktrace::capture(),
             });
         }

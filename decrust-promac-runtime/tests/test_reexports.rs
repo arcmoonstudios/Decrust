@@ -60,6 +60,7 @@ fn test_decrust_error() {
     let error = DecrustError::Internal {
         message: "Test error".to_string(),
         source: OptionalError(None),
+        component: Some("test".to_string()),
         backtrace: backtrace::DecrustBacktrace::generate(),
     };
 
@@ -80,6 +81,7 @@ fn test_reporter_module() {
     let error = DecrustError::Internal {
         message: "Test error".to_string(),
         source: OptionalError(None),
+        component: Some("reporter_test".to_string()),
         backtrace: backtrace::DecrustBacktrace::generate(),
     };
 
