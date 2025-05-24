@@ -468,6 +468,8 @@ impl CircuitBreaker {
                                 )
                                 .unwrap_or_default(),
                         ),
+                        failure_count: Some(self.inner.read().unwrap().consecutive_failures as u32),
+                        last_error: self.inner.read().unwrap().last_error.clone(),
                         backtrace: Backtrace::generate(),
                     })
                 }
@@ -517,6 +519,8 @@ impl CircuitBreaker {
                                 )
                                 .unwrap_or_default(),
                         ),
+                        failure_count: Some(self.inner.read().unwrap().consecutive_failures as u32),
+                        last_error: self.inner.read().unwrap().last_error.clone(),
                         backtrace: Backtrace::generate(),
                     })
                 }
@@ -689,6 +693,8 @@ impl CircuitBreaker {
                 return Err(DecrustError::CircuitBreakerOpen {
                     name: self.name.clone(),
                     retry_after: Some(Duration::from_millis(100)),
+                    failure_count: Some(self.inner.read().unwrap().consecutive_failures as u32),
+                    last_error: self.inner.read().unwrap().last_error.clone(),
                     backtrace: Backtrace::generate(),
                 });
             }
@@ -804,6 +810,8 @@ impl CircuitBreaker {
                 return Err(DecrustError::CircuitBreakerOpen {
                     name: self.name.clone(),
                     retry_after: Some(Duration::from_millis(100)),
+                    failure_count: Some(self.inner.read().unwrap().consecutive_failures as u32),
+                    last_error: self.inner.read().unwrap().last_error.clone(),
                     backtrace: Backtrace::generate(),
                 });
             }
