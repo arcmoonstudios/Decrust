@@ -12,7 +12,14 @@ use std::path::PathBuf;
 // Helper function to create a validation error
 #[allow(dead_code)]
 fn create_validation_error(field: &str, message: &str) -> DecrustError {
-    DecrustError::Validation { field: field.to_string(), message: message.to_string(), expected: None, actual: None, rule: None, backtrace: Backtrace::capture(), }
+    DecrustError::Validation {
+        field: field.to_string(),
+        message: message.to_string(),
+        expected: None,
+        actual: None,
+        rule: None,
+        backtrace: Backtrace::capture(),
+    }
 }
 
 // Helper function to create an IO error

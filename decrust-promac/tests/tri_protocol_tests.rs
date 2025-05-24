@@ -42,7 +42,14 @@ fn test_luna_ultima_integration() {
     // Define a function that would be enhanced with Luna⚛︎Ultima
     fn luna_ultima_function(input: u32) -> Result<String, DecrustError> {
         if input == 0 {
-            return Err(DecrustError::Validation { field: "input".to_string(), message: "Input cannot be zero".to_string(), expected: None, actual: None, rule: None, backtrace: DecrustBacktrace::capture(), });
+            return Err(DecrustError::Validation {
+                field: "input".to_string(),
+                message: "Input cannot be zero".to_string(),
+                expected: None,
+                actual: None,
+                rule: None,
+                backtrace: DecrustBacktrace::capture(),
+            });
         }
         Ok(format!("Processed: {}", input))
     }
@@ -73,7 +80,14 @@ fn test_codemaster_integration() {
     // Define a function that would use CodeMASTER v3 error handling
     fn codemaster_error_handling(input: &str) -> Result<String, DecrustError> {
         if input.is_empty() {
-            return Err(DecrustError::Validation { field: "input".to_string(), message: "Input cannot be empty".to_string(), expected: None, actual: None, rule: None, backtrace: DecrustBacktrace::capture(), });
+            return Err(DecrustError::Validation {
+                field: "input".to_string(),
+                message: "Input cannot be empty".to_string(),
+                expected: None,
+                actual: None,
+                rule: None,
+                backtrace: DecrustBacktrace::capture(),
+            });
         }
 
         if input == "network_error" {
@@ -135,7 +149,14 @@ fn test_tri_protocol_fusion() {
     // Define a function that would use the complete Tri-Protocol Fusion System
     fn tri_protocol_function(input: &str) -> Result<String, DecrustError> {
         if input.is_empty() {
-            return Err(DecrustError::Validation { field: "input".to_string(), message: "Input cannot be empty".to_string(), expected: None, actual: None, rule: None, backtrace: DecrustBacktrace::capture(), });
+            return Err(DecrustError::Validation {
+                field: "input".to_string(),
+                message: "Input cannot be empty".to_string(),
+                expected: None,
+                actual: None,
+                rule: None,
+                backtrace: DecrustBacktrace::capture(),
+            });
         }
 
         // Simulate processing with all three protocols
@@ -143,7 +164,14 @@ fn test_tri_protocol_fusion() {
 
         // Add M.A.R.S. error handling
         if processed.len() > 100 {
-            return Err(DecrustError::Validation { field: "processed".to_string(), message: "Processed data too large".to_string(), expected: None, actual: None, rule: None, backtrace: DecrustBacktrace::capture(), });
+            return Err(DecrustError::Validation {
+                field: "processed".to_string(),
+                message: "Processed data too large".to_string(),
+                expected: None,
+                actual: None,
+                rule: None,
+                backtrace: DecrustBacktrace::capture(),
+            });
         }
 
         // Add Luna⚛︎Ultima optimization
@@ -151,7 +179,14 @@ fn test_tri_protocol_fusion() {
 
         // Add CodeMASTER v3 quality check
         if optimized.contains("error") {
-            return Err(DecrustError::Validation { field: "optimized".to_string(), message: "Optimized data contains error keyword".to_string(), expected: None, actual: None, rule: None, backtrace: DecrustBacktrace::capture(), });
+            return Err(DecrustError::Validation {
+                field: "optimized".to_string(),
+                message: "Optimized data contains error keyword".to_string(),
+                expected: None,
+                actual: None,
+                rule: None,
+                backtrace: DecrustBacktrace::capture(),
+            });
         }
 
         Ok(optimized)

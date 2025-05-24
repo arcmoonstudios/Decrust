@@ -425,31 +425,26 @@ use std::path::PathBuf;
 use std::time::Duration;
 
 pub use self::backtrace::{
-    DecrustBacktrace as Backtrace, // For Backtrace::generate()
-    GenerateImplicitData,
-    BacktraceCompat,
-    BacktraceProvider,
     AsBacktrace,
-    Timestamp,
-    ThreadId,
-    Location,
-    BacktraceStatus,
+    BacktraceCompat,
     BacktraceFrame,
     // FromString,                 // Will add back if `oops!` macro or FromString trait is used directly
     // ensure,                     // Will add back if used
+    BacktraceProvider,
+    BacktraceStatus,
+    DecrustBacktrace as Backtrace, // For Backtrace::generate()
+    GenerateImplicitData,
+    Location,
+    ThreadId,
+    Timestamp,
 };
 
 // Macros are automatically exported at crate root due to #[macro_export]
 // Available macros: implicit_data!, location!, error_context!, oops!, validation_error!
 
 pub use self::circuit_breaker::{
-    CircuitBreaker,
-    CircuitBreakerConfig,
-    CircuitBreakerObserver,
-    CircuitBreakerState,
-    CircuitOperationType,
-    CircuitTransitionEvent,
-    CircuitMetrics,
+    CircuitBreaker, CircuitBreakerConfig, CircuitBreakerObserver, CircuitBreakerState,
+    CircuitMetrics, CircuitOperationType, CircuitTransitionEvent,
 };
 
 pub use self::decrust::{
@@ -977,7 +972,14 @@ impl Clone for DecrustError {
                 source: source.clone(),
                 backtrace: Backtrace::generate(),
             },
-            Self::Validation { field, message, expected, actual, rule, .. } => Self::Validation {
+            Self::Validation {
+                field,
+                message,
+                expected,
+                actual,
+                rule,
+                ..
+            } => Self::Validation {
                 field: field.clone(),
                 message: message.clone(),
                 expected: expected.clone(),
@@ -986,7 +988,10 @@ impl Clone for DecrustError {
                 backtrace: Backtrace::generate(),
             },
             Self::Internal {
-                message, source, component, ..
+                message,
+                source,
+                component,
+                ..
             } => Self::Internal {
                 message: message.clone(),
                 source: source.clone(),
@@ -994,7 +999,11 @@ impl Clone for DecrustError {
                 backtrace: Backtrace::generate(),
             },
             Self::CircuitBreakerOpen {
-                name, retry_after, failure_count, last_error, ..
+                name,
+                retry_after,
+                failure_count,
+                last_error,
+                ..
             } => Self::CircuitBreakerOpen {
                 name: name.clone(),
                 retry_after: *retry_after,
@@ -1443,10 +1452,7 @@ pub trait DecrustOptionExt<T> {
     ///
     /// # Returns
     /// Ok(value) if the Option is Some(value), Err(DecrustError::MissingValue) otherwise
-    fn decrust_ok_or_missing_value(
-        self,
-        item_description: &str,
-    ) -> Result<T, DecrustError>;
+    fn decrust_ok_or_missing_value(self, item_description: &str) -> Result<T, DecrustError>;
 
     /// Converts an Option to a Result, with a MissingValue error if None (owned string version)
     ///
@@ -1455,18 +1461,13 @@ pub trait DecrustOptionExt<T> {
     ///
     /// # Returns
     /// Ok(value) if the Option is Some(value), Err(DecrustError::MissingValue) otherwise
-    fn decrust_ok_or_missing_value_owned(
-        self,
-        item_description: String,
-    ) -> Result<T, DecrustError>;
+    fn decrust_ok_or_missing_value_owned(self, item_description: String)
+        -> Result<T, DecrustError>;
 }
 
 impl<T> DecrustOptionExt<T> for Option<T> {
     #[track_caller]
-    fn decrust_ok_or_missing_value(
-        self,
-        item_description: &str,
-    ) -> Result<T, DecrustError> {
+    fn decrust_ok_or_missing_value(self, item_description: &str) -> Result<T, DecrustError> {
         match self {
             Some(v) => Ok(v),
             None => Err(DecrustError::MissingValue {
@@ -1538,11 +1539,15 @@ pub trait DecrustOptionExtConvenience<T> {
     /// Convenience method for converting to Result with any string-like type
     ///
     /// **Warning:** This method makes the trait NOT object-safe.
-    fn decrust_ok_or_missing<S: Into<String>>(self, item_description: S) -> Result<T, DecrustError>;
+    fn decrust_ok_or_missing<S: Into<String>>(self, item_description: S)
+        -> Result<T, DecrustError>;
 }
 
 impl<T> DecrustOptionExtConvenience<T> for Option<T> {
-    fn decrust_ok_or_missing<S: Into<String>>(self, item_description: S) -> Result<T, DecrustError> {
+    fn decrust_ok_or_missing<S: Into<String>>(
+        self,
+        item_description: S,
+    ) -> Result<T, DecrustError> {
         self.decrust_ok_or_missing_value_owned(item_description.into())
     }
 }

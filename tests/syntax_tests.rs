@@ -13,9 +13,7 @@
 
 #[cfg(test)]
 mod tests {
-    use decrust::{
-        FixTemplate, ErrorCategory, SyntaxGenerator, TemplateRegistry
-    };
+    use decrust::{ErrorCategory, FixTemplate, SyntaxGenerator, TemplateRegistry};
     use std::collections::HashMap;
 
     #[test]

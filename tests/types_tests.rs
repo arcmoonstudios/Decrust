@@ -12,16 +12,13 @@
 // **Author:** Lord Xyn
 // **License:** MIT
 
-use decrust::{DecrustError, FixType, Autocorrection, ErrorCategory};
+use decrust::{Autocorrection, DecrustError, ErrorCategory, FixType};
 use std::collections::HashMap;
 
 #[cfg(test)]
 mod tests {
-    use super::{FixType, Autocorrection, ErrorCategory};
-    use decrust::{
-        ErrorContext, ErrorSeverity, ErrorSource, FixDetails,
-        ErrorReportFormat
-    };
+    use super::{Autocorrection, ErrorCategory, FixType};
+    use decrust::{ErrorContext, ErrorReportFormat, ErrorSeverity, ErrorSource, FixDetails};
     use std::path::PathBuf;
 
     #[test]

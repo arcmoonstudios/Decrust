@@ -1,13 +1,11 @@
-
 #[cfg(test)]
 mod tests {
     use decrust::{
-        DecrustError, OptionalError, Backtrace, BacktraceCompat,
-        DecrustResultExt, DecrustOptionExt, DecrustOptionExtConvenience,
-        InfallibleResultExt, ErrorCategory
+        Backtrace, BacktraceCompat, DecrustError, DecrustOptionExt, DecrustOptionExtConvenience,
+        DecrustResultExt, ErrorCategory, InfallibleResultExt, OptionalError,
     };
     use std::path::PathBuf;
-                                    // GenerateImplicitData is not needed in tests unless you call Backtrace::generate() directly.
+    // GenerateImplicitData is not needed in tests unless you call Backtrace::generate() directly.
 
     #[test]
     fn test_error_creation_and_context() {

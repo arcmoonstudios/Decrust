@@ -77,7 +77,14 @@ fn simulate_config_error() -> Result<()> {
 
 /// Simulates a validation error
 fn simulate_validation_error() -> Result<()> {
-    Err(DecrustError::Validation { field: "email".to_string(), message: "Invalid email format: missing '@' symbol".to_string(), expected: None, actual: None, rule: None, backtrace: Backtrace::capture(), })
+    Err(DecrustError::Validation {
+        field: "email".to_string(),
+        message: "Invalid email format: missing '@' symbol".to_string(),
+        expected: None,
+        actual: None,
+        rule: None,
+        backtrace: Backtrace::capture(),
+    })
 }
 
 /// Simulates a network error

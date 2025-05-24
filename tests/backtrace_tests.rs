@@ -15,13 +15,20 @@
 
 #[cfg(test)]
 mod tests {
-    use decrust::{
-        DecrustError, BacktraceStatus,
-        Timestamp, ThreadId, ErrorSeverity,
-        // Macros are automatically available at crate root
-        implicit_data, location, error_context, oops, validation_error
-    };
     use decrust::backtrace::DecrustBacktrace;
+    use decrust::{
+        error_context,
+        // Macros are automatically available at crate root
+        implicit_data,
+        location,
+        oops,
+        validation_error,
+        BacktraceStatus,
+        DecrustError,
+        ErrorSeverity,
+        ThreadId,
+        Timestamp,
+    };
     use std::collections::HashMap;
 
     #[test]
@@ -211,7 +218,10 @@ mod tests {
         );
         if let DecrustError::WithRichContext { context, source } = suggestion_validation {
             assert_eq!(context.message, "Invalid email format");
-            assert_eq!(context.recovery_suggestion, Some("Use format: user@domain.com".to_string()));
+            assert_eq!(
+                context.recovery_suggestion,
+                Some("Use format: user@domain.com".to_string())
+            );
             assert!(matches!(source.as_ref(), DecrustError::Validation { .. }));
         } else {
             panic!("Expected WithRichContext error variant");
@@ -286,12 +296,11 @@ mod tests {
 // Example usage patterns for the library
 #[cfg(test)]
 mod usage_examples {
-    use decrust::{
-        BacktraceCompat, BacktraceStatus, BacktraceProvider,
-        Timestamp, ThreadId, Location,
-        implicit_data, location
-    };
     use decrust::backtrace::DecrustBacktrace;
+    use decrust::{
+        implicit_data, location, BacktraceCompat, BacktraceProvider, BacktraceStatus, Location,
+        ThreadId, Timestamp,
+    };
     use std::collections::HashMap;
     use std::fmt;
 

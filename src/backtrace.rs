@@ -668,21 +668,11 @@ macro_rules! location {
     };
 
     (context: $context:expr) => {
-        $crate::backtrace::Location::with_context(
-            file!(),
-            line!(),
-            column!(),
-            $context
-        )
+        $crate::backtrace::Location::with_context(file!(), line!(), column!(), $context)
     };
 
     (function: $function:expr) => {
-        $crate::backtrace::Location::with_function(
-            file!(),
-            line!(),
-            column!(),
-            $function
-        )
+        $crate::backtrace::Location::with_function(file!(), line!(), column!(), $function)
     };
 
     (context: $context:expr, function: $function:expr) => {
@@ -691,7 +681,7 @@ macro_rules! location {
             line!(),
             column!(),
             $context,
-            $function
+            $function,
         )
     };
 
@@ -701,7 +691,7 @@ macro_rules! location {
             line!(),
             column!(),
             $context,
-            $function
+            $function,
         )
     };
 }

@@ -14,9 +14,7 @@
 
 #[cfg(test)]
 mod tests {
-    use decrust::{
-        ErrorReporter, ErrorReportConfig, ErrorReportFormat
-    };
+    use decrust::{ErrorReportConfig, ErrorReportFormat, ErrorReporter};
     use std::error::Error;
     use std::fmt;
 

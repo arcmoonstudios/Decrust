@@ -17,12 +17,12 @@
 #[cfg(test)]
 mod tests {
     use decrust::{
-        OptionalError, DecrustError, Backtrace,
-        CircuitBreaker, CircuitBreakerConfig, CircuitBreakerObserver,
-        CircuitBreakerState, CircuitTransitionEvent, CircuitOperationType
+        Backtrace, CircuitBreaker, CircuitBreakerConfig, CircuitBreakerObserver,
+        CircuitBreakerState, CircuitOperationType, CircuitTransitionEvent, DecrustError,
+        OptionalError,
     };
-    use std::{sync::Arc, time::Duration};
     use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::{sync::Arc, time::Duration};
 
     // Mock observer for testing
     struct TestObserver {

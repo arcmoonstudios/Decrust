@@ -16,30 +16,34 @@
 
 #[cfg(test)]
 mod tests {
-    use decrust::types::{DiagnosticResult, ErrorContext, ErrorLocation, FixType, FixDetails, FixGenerator, ExtractedParameters};
-    use decrust::{DecrustError, OptionalError, Decrust};
     use decrust::backtrace::DecrustBacktrace as Backtrace;
     use decrust::decrust::{
-        RegexParameterExtractor, DiagnosticParameterExtractor, NotFoundFixGenerator,
-        UnusedImportFixGenerator, UnusedVariableFixGenerator, UnnecessaryBracesFixGenerator,
-        BorrowAfterMoveFixGenerator, MissingSemicolonFixGenerator, MismatchedTypeFixGenerator,
-        ImmutableBorrowFixGenerator, MissingLifetimeFixGenerator, MatchPatternFixGenerator,
-        PrivateFieldAccessFixGenerator, GenericParamConflictFixGenerator, MissingReturnFixGenerator,
-        EnumParameterMatchFixGenerator, StructParameterMatchFixGenerator, MissingTraitImplFixGenerator,
-        AstTraitImplementationFixGenerator
+        AstTraitImplementationFixGenerator, BorrowAfterMoveFixGenerator,
+        DiagnosticParameterExtractor, EnumParameterMatchFixGenerator,
+        GenericParamConflictFixGenerator, ImmutableBorrowFixGenerator, MatchPatternFixGenerator,
+        MismatchedTypeFixGenerator, MissingLifetimeFixGenerator, MissingReturnFixGenerator,
+        MissingSemicolonFixGenerator, MissingTraitImplFixGenerator, NotFoundFixGenerator,
+        PrivateFieldAccessFixGenerator, RegexParameterExtractor, StructParameterMatchFixGenerator,
+        UnnecessaryBracesFixGenerator, UnusedImportFixGenerator, UnusedVariableFixGenerator,
     };
-    use decrust::{
-        AstMissingImportFixGenerator, AstUnusedCodeFixGenerator, IoMissingDirectoryFixGenerator,
-        IoPermissionFixGenerator, ReturnLocalReferenceFixGenerator, UnstableFeatureFixGenerator,
-        InvalidArgumentCountFixGenerator, Autocorrection, UnsafeUnwrapFixGenerator,
-        MissingOkErrFixGenerator, DivisionByZeroFixGenerator, ClosureCaptureLifetimeFixGenerator,
-        RecursiveTypeFixGenerator, RuntimePanicFixGenerator, QuestionMarkPropagationFixGenerator,
-        NetworkTlsFixGenerator, NetworkConnectionFixGenerator, UnusedMutFixGenerator,
-        UnnecessaryParenthesesFixGenerator, UnnecessaryCloneFixGenerator, YamlParseFixGenerator,
-        JsonParseFixGenerator, ConfigMissingKeyFixGenerator, ConfigSyntaxFixGenerator
+    use decrust::types::{
+        DiagnosticResult, ErrorContext, ErrorLocation, ExtractedParameters, FixDetails,
+        FixGenerator, FixType,
     };
     use decrust::FixTemplate;
+    use decrust::{
+        AstMissingImportFixGenerator, AstUnusedCodeFixGenerator, Autocorrection,
+        ClosureCaptureLifetimeFixGenerator, ConfigMissingKeyFixGenerator, ConfigSyntaxFixGenerator,
+        DivisionByZeroFixGenerator, InvalidArgumentCountFixGenerator,
+        IoMissingDirectoryFixGenerator, IoPermissionFixGenerator, JsonParseFixGenerator,
+        MissingOkErrFixGenerator, NetworkConnectionFixGenerator, NetworkTlsFixGenerator,
+        QuestionMarkPropagationFixGenerator, RecursiveTypeFixGenerator,
+        ReturnLocalReferenceFixGenerator, RuntimePanicFixGenerator, UnnecessaryCloneFixGenerator,
+        UnnecessaryParenthesesFixGenerator, UnsafeUnwrapFixGenerator, UnstableFeatureFixGenerator,
+        UnusedMutFixGenerator, YamlParseFixGenerator,
+    };
     use decrust::{AutocorrectableError, ParameterExtractor};
+    use decrust::{Decrust, DecrustError, OptionalError};
     use std::path::PathBuf;
 
     use regex::Regex;
@@ -454,7 +458,14 @@ mod tests {
         let source_context = "fn process(x: i32, y: i32) -> i32 {\n    y * 2\n}";
 
         let fix = generator.generate_fix(
-            &DecrustError::Validation { field: "variables".to_string(), message: "unused variable: `x`".to_string(), expected: None, actual: None, rule: None, backtrace: Backtrace::generate(), },
+            &DecrustError::Validation {
+                field: "variables".to_string(),
+                message: "unused variable: `x`".to_string(),
+                expected: None,
+                actual: None,
+                rule: None,
+                backtrace: Backtrace::generate(),
+            },
             &params,
             Some(source_context),
         );
@@ -478,7 +489,14 @@ mod tests {
         let source_context = "match result {\n    Ok(val) => println!(\"Success!\"),\n    Err(e) => println!(\"Error: {}\", e),\n}";
 
         let fix = generator.generate_fix(
-            &DecrustError::Validation { field: "variables".to_string(), message: "unused variable: `val`".to_string(), expected: None, actual: None, rule: None, backtrace: Backtrace::generate(), },
+            &DecrustError::Validation {
+                field: "variables".to_string(),
+                message: "unused variable: `val`".to_string(),
+                expected: None,
+                actual: None,
+                rule: None,
+                backtrace: Backtrace::generate(),
+            },
             &params,
             Some(source_context),
         );
@@ -554,7 +572,14 @@ mod tests {
         params.set_confidence(0.8);
 
         let fix = generator.generate_fix(
-            &DecrustError::Validation { field: "variables".to_string(), message: "value used here after move: `data`".to_string(), expected: None, actual: None, rule: None, backtrace: Backtrace::generate(), },
+            &DecrustError::Validation {
+                field: "variables".to_string(),
+                message: "value used here after move: `data`".to_string(),
+                expected: None,
+                actual: None,
+                rule: None,
+                backtrace: Backtrace::generate(),
+            },
             &params,
             None,
         );
@@ -594,7 +619,14 @@ mod tests {
         let source_context = "fn main() {\n    let x = 42\n    println!(\"Hello, world!\");\n}";
 
         let fix = generator.generate_fix(
-            &DecrustError::Validation { field: "syntax".to_string(), message: "expected `;`".to_string(), expected: None, actual: None, rule: None, backtrace: Backtrace::generate(), },
+            &DecrustError::Validation {
+                field: "syntax".to_string(),
+                message: "expected `;`".to_string(),
+                expected: None,
+                actual: None,
+                rule: None,
+                backtrace: Backtrace::generate(),
+            },
             &params,
             Some(source_context),
         );
@@ -619,7 +651,14 @@ mod tests {
         params.set_confidence(0.9);
 
         let fix = generator.generate_fix(
-            &DecrustError::Validation { field: "syntax".to_string(), message: "missing semicolon after statement".to_string(), expected: None, actual: None, rule: None, backtrace: Backtrace::generate(), },
+            &DecrustError::Validation {
+                field: "syntax".to_string(),
+                message: "missing semicolon after statement".to_string(),
+                expected: None,
+                actual: None,
+                rule: None,
+                backtrace: Backtrace::generate(),
+            },
             &params,
             None,
         );
@@ -853,7 +892,14 @@ mod tests {
         let source_context = "struct Example { field: &str }";
 
         let fix = generator.generate_fix(
-            &DecrustError::Validation { field: "lifetime".to_string(), message: "missing lifetime specifier".to_string(), expected: None, actual: None, rule: None, backtrace: Backtrace::generate(), },
+            &DecrustError::Validation {
+                field: "lifetime".to_string(),
+                message: "missing lifetime specifier".to_string(),
+                expected: None,
+                actual: None,
+                rule: None,
+                backtrace: Backtrace::generate(),
+            },
             &params,
             Some(source_context),
         );
@@ -898,7 +944,14 @@ mod tests {
         }";
 
         let fix = generator.generate_fix(
-            &DecrustError::Validation { field: "match".to_string(), message: "non-exhaustive patterns: `None` not covered".to_string(), expected: None, actual: None, rule: None, backtrace: Backtrace::generate(), },
+            &DecrustError::Validation {
+                field: "match".to_string(),
+                message: "non-exhaustive patterns: `None` not covered".to_string(),
+                expected: None,
+                actual: None,
+                rule: None,
+                backtrace: Backtrace::generate(),
+            },
             &params,
             Some(context),
         );
@@ -930,7 +983,14 @@ mod tests {
         params.set_confidence(0.8);
 
         let fix = generator.generate_fix(
-            &DecrustError::Validation { field: "match".to_string(), message: "unreachable pattern".to_string(), expected: None, actual: None, rule: None, backtrace: Backtrace::generate(), },
+            &DecrustError::Validation {
+                field: "match".to_string(),
+                message: "unreachable pattern".to_string(),
+                expected: None,
+                actual: None,
+                rule: None,
+                backtrace: Backtrace::generate(),
+            },
             &params,
             None,
         );
@@ -960,7 +1020,14 @@ mod tests {
         params.set_confidence(0.8);
 
         let fix = generator.generate_fix(
-            &DecrustError::Validation { field: "access".to_string(), message: "field `name` of struct `Person` is private".to_string(), expected: None, actual: None, rule: None, backtrace: Backtrace::generate(), },
+            &DecrustError::Validation {
+                field: "access".to_string(),
+                message: "field `name` of struct `Person` is private".to_string(),
+                expected: None,
+                actual: None,
+                rule: None,
+                backtrace: Backtrace::generate(),
+            },
             &params,
             None,
         );
@@ -1002,7 +1069,14 @@ mod tests {
         let source_context = "fn process<T, T>(value: T) -> T { value }";
 
         let fix = generator.generate_fix(
-            &DecrustError::Validation { field: "generics".to_string(), message: "generic parameter `T` shadows another parameter".to_string(), expected: None, actual: None, rule: None, backtrace: Backtrace::generate(), },
+            &DecrustError::Validation {
+                field: "generics".to_string(),
+                message: "generic parameter `T` shadows another parameter".to_string(),
+                expected: None,
+                actual: None,
+                rule: None,
+                backtrace: Backtrace::generate(),
+            },
             &params,
             Some(source_context),
         );
@@ -1169,7 +1243,14 @@ mod tests {
         let source_context = "let person = Person {\n    age: 30,\n    // missing name field\n};";
 
         let fix = generator.generate_fix(
-            &DecrustError::Validation { field: "struct_fields".to_string(), message: "missing field `name` in struct `Person`".to_string(), expected: None, actual: None, rule: None, backtrace: Backtrace::generate(), },
+            &DecrustError::Validation {
+                field: "struct_fields".to_string(),
+                message: "missing field `name` in struct `Person`".to_string(),
+                expected: None,
+                actual: None,
+                rule: None,
+                backtrace: Backtrace::generate(),
+            },
             &params,
             Some(source_context),
         );
@@ -1203,7 +1284,14 @@ mod tests {
         params.set_confidence(0.8);
 
         let fix = generator.generate_fix(
-            &DecrustError::Validation { field: "struct_fields".to_string(), message: "unknown field `email` in struct `Person`".to_string(), expected: None, actual: None, rule: None, backtrace: Backtrace::generate(), },
+            &DecrustError::Validation {
+                field: "struct_fields".to_string(),
+                message: "unknown field `email` in struct `Person`".to_string(),
+                expected: None,
+                actual: None,
+                rule: None,
+                backtrace: Backtrace::generate(),
+            },
             &params,
             None,
         );
@@ -1282,8 +1370,15 @@ mod tests {
         params.set_confidence(0.7);
 
         let fix = generator.generate_fix(
-            &DecrustError::Validation { field: "traits".to_string(), message: "the trait `std::fmt::Display` is not implemented for `MyType`"
-                    .to_string(), expected: None, actual: None, rule: None, backtrace: Backtrace::generate(), },
+            &DecrustError::Validation {
+                field: "traits".to_string(),
+                message: "the trait `std::fmt::Display` is not implemented for `MyType`"
+                    .to_string(),
+                expected: None,
+                actual: None,
+                rule: None,
+                backtrace: Backtrace::generate(),
+            },
             &params,
             None,
         );
@@ -1322,7 +1417,14 @@ mod tests {
         params.set_confidence(0.7);
 
         let fix = generator.generate_fix(
-            &DecrustError::Validation { field: "traits".to_string(), message: "the trait `Clone` is not implemented for `MyType`".to_string(), expected: None, actual: None, rule: None, backtrace: Backtrace::generate(), },
+            &DecrustError::Validation {
+                field: "traits".to_string(),
+                message: "the trait `Clone` is not implemented for `MyType`".to_string(),
+                expected: None,
+                actual: None,
+                rule: None,
+                backtrace: Backtrace::generate(),
+            },
             &params,
             None,
         );
@@ -1557,7 +1659,12 @@ mod tests {
         };
 
         let fix = generator.generate_fix(
-            &DecrustError::Internal { message: "Ownership error".to_string(), source: OptionalError::new(None), component: None, backtrace: Backtrace::generate(), },
+            &DecrustError::Internal {
+                message: "Ownership error".to_string(),
+                source: OptionalError::new(None),
+                component: None,
+                backtrace: Backtrace::generate(),
+            },
             &params,
             Some(
                 "fn get_value() -> &str {\n    let value = String::from(\"hello\");\n    &value\n}",
@@ -1777,7 +1884,12 @@ mod tests {
         // Test with code containing unwrap()
         let code = "fn get_value() -> String {\n    let result: Result<String, Error> = process();\n    result.unwrap()\n}";
 
-        let error = DecrustError::Internal { message: "Runtime error".to_string(), source: OptionalError::new(None), component: None, backtrace: Backtrace::generate(), };
+        let error = DecrustError::Internal {
+            message: "Runtime error".to_string(),
+            source: OptionalError::new(None),
+            component: None,
+            backtrace: Backtrace::generate(),
+        };
 
         let params = ExtractedParameters::new();
 
@@ -1833,7 +1945,12 @@ mod tests {
         // Test with code containing incomplete match on Result
         let code = "fn process_result(result: Result<String, Error>) {\n    match result {\n        Ok(value) => {\n            println!(\"Success: {}\", value);\n        }\n        // Missing Err arm\n    }\n}";
 
-        let error = DecrustError::Internal { message: "Incomplete match".to_string(), source: OptionalError::new(None), component: None, backtrace: Backtrace::generate(), };
+        let error = DecrustError::Internal {
+            message: "Incomplete match".to_string(),
+            source: OptionalError::new(None),
+            component: None,
+            backtrace: Backtrace::generate(),
+        };
 
         let params = ExtractedParameters::new();
 
@@ -1915,7 +2032,8 @@ mod tests {
             suggested_code_snippet,
             explanation,
             ..
-        }) = &fix.details {
+        }) = &fix.details
+        {
             assert!(
                 explanation.contains("zero") || explanation.contains("division"),
                 "Explanation should mention zero or division"
@@ -1943,7 +2061,12 @@ mod tests {
         params.add_parameter("file_path", "src/main.rs");
         params.add_parameter("line", "10");
 
-        let error = DecrustError::Internal { message: "Closure capture error".to_string(), source: OptionalError::new(None), component: None, backtrace: Backtrace::generate(), };
+        let error = DecrustError::Internal {
+            message: "Closure capture error".to_string(),
+            source: OptionalError::new(None),
+            component: None,
+            backtrace: Backtrace::generate(),
+        };
 
         let source_code = "fn process_data(data: Vec<String>) {\n    let closure = || {\n        println!(\"{:?}\", data);\n    };\n    std::thread::spawn(closure);\n}";
 
@@ -2005,7 +2128,12 @@ mod tests {
         params.add_parameter("file_path", "src/main.rs");
         params.add_parameter("line", "15");
 
-        let error = DecrustError::Internal { message: "Recursive type error".to_string(), source: OptionalError::new(None), component: None, backtrace: Backtrace::generate(), };
+        let error = DecrustError::Internal {
+            message: "Recursive type error".to_string(),
+            source: OptionalError::new(None),
+            component: None,
+            backtrace: Backtrace::generate(),
+        };
 
         let source_code = "struct LinkedList {\n    data: i32,\n    next: Option<LinkedList>,  // Recursive without indirection\n}";
 
@@ -2064,7 +2192,12 @@ mod tests {
         // Test with code containing explicit panic
         let code = "fn process(value: Option<String>) -> String {\n    if value.is_none() {\n        panic!(\"Value is None\");\n    }\n    value.unwrap()\n}";
 
-        let error = DecrustError::Internal { message: "Runtime panic".to_string(), source: OptionalError::new(None), component: None, backtrace: Backtrace::generate(), };
+        let error = DecrustError::Internal {
+            message: "Runtime panic".to_string(),
+            source: OptionalError::new(None),
+            component: None,
+            backtrace: Backtrace::generate(),
+        };
 
         let params = ExtractedParameters::new();
 
@@ -2112,7 +2245,12 @@ mod tests {
         // Test with code using ? operator without Result return type
         let code = "fn process_file(path: &str) {\n    let file = File::open(path)?;\n    let content = read_to_string(file)?;\n    println!(\"{}\", content);\n}";
 
-        let error = DecrustError::Internal { message: "Question mark error".to_string(), source: OptionalError::new(None), component: None, backtrace: Backtrace::generate(), };
+        let error = DecrustError::Internal {
+            message: "Question mark error".to_string(),
+            source: OptionalError::new(None),
+            component: None,
+            backtrace: Backtrace::generate(),
+        };
 
         let params = ExtractedParameters::new();
 
@@ -2201,7 +2339,12 @@ mod tests {
         };
 
         let fix = generator.generate_fix(
-            &DecrustError::Internal { message: "SSL error".to_string(), source: OptionalError::new(None), component: None, backtrace: Backtrace::generate(), },
+            &DecrustError::Internal {
+                message: "SSL error".to_string(),
+                source: OptionalError::new(None),
+                component: None,
+                backtrace: Backtrace::generate(),
+            },
             &params,
             None,
         );
@@ -2234,7 +2377,12 @@ mod tests {
         };
 
         let fix = generator.generate_fix(
-            &DecrustError::Internal { message: "TLS error".to_string(), source: OptionalError::new(None), component: None, backtrace: Backtrace::generate(), },
+            &DecrustError::Internal {
+                message: "TLS error".to_string(),
+                source: OptionalError::new(None),
+                component: None,
+                backtrace: Backtrace::generate(),
+            },
             &params,
             None,
         );
@@ -2305,7 +2453,12 @@ mod tests {
         };
 
         let fix = generator.generate_fix(
-            &DecrustError::Internal { message: "DNS error".to_string(), source: OptionalError::new(None), component: None, backtrace: Backtrace::generate(), },
+            &DecrustError::Internal {
+                message: "DNS error".to_string(),
+                source: OptionalError::new(None),
+                component: None,
+                backtrace: Backtrace::generate(),
+            },
             &params,
             None,
         );
@@ -2335,7 +2488,12 @@ mod tests {
         };
 
         let fix = generator.generate_fix(
-            &DecrustError::Internal { message: "Timeout error".to_string(), source: OptionalError::new(None), component: None, backtrace: Backtrace::generate(), },
+            &DecrustError::Internal {
+                message: "Timeout error".to_string(),
+                source: OptionalError::new(None),
+                component: None,
+                backtrace: Backtrace::generate(),
+            },
             &params,
             None,
         );
@@ -2365,7 +2523,12 @@ mod tests {
         // Test with an unused mut variable
         let code = "let mut counter = 0;\nprintln!(\"Counter: {}\", counter);";
         let fix = generator.generate_fix(
-            &DecrustError::Internal { message: "Style warning".to_string(), source: OptionalError::new(None), component: None, backtrace: Backtrace::generate(), },
+            &DecrustError::Internal {
+                message: "Style warning".to_string(),
+                source: OptionalError::new(None),
+                component: None,
+                backtrace: Backtrace::generate(),
+            },
             &ExtractedParameters::new(),
             Some(code),
         );
@@ -2395,7 +2558,12 @@ mod tests {
         // Test with a variable that is mutated
         let code = "let mut counter = 0;\ncounter += 1;\nprintln!(\"Counter: {}\", counter);";
         let fix = generator.generate_fix(
-            &DecrustError::Internal { message: "Style warning".to_string(), source: OptionalError::new(None), component: None, backtrace: Backtrace::generate(), },
+            &DecrustError::Internal {
+                message: "Style warning".to_string(),
+                source: OptionalError::new(None),
+                component: None,
+                backtrace: Backtrace::generate(),
+            },
             &ExtractedParameters::new(),
             Some(code),
         );
@@ -2409,7 +2577,12 @@ mod tests {
         // Test with a variable that is used with &mut
         let code = "let mut data = vec![1, 2, 3];\nprocess_data(&mut data);\nprintln!(\"Data: {:?}\", data);";
         let fix = generator.generate_fix(
-            &DecrustError::Internal { message: "Style warning".to_string(), source: OptionalError::new(None), component: None, backtrace: Backtrace::generate(), },
+            &DecrustError::Internal {
+                message: "Style warning".to_string(),
+                source: OptionalError::new(None),
+                component: None,
+                backtrace: Backtrace::generate(),
+            },
             &ExtractedParameters::new(),
             Some(code),
         );
@@ -2484,7 +2657,12 @@ mod tests {
         // Test with a move closure
         let code = "let result = items.iter().map(move |item| item.clone()).collect::<Vec<_>>();";
         let fix = generator.generate_fix(
-            &DecrustError::Internal { message: "Style warning".to_string(), source: OptionalError::new(None), component: None, backtrace: Backtrace::generate(), },
+            &DecrustError::Internal {
+                message: "Style warning".to_string(),
+                source: OptionalError::new(None),
+                component: None,
+                backtrace: Backtrace::generate(),
+            },
             &ExtractedParameters::new(),
             Some(code),
         );
@@ -2517,7 +2695,12 @@ mod tests {
         // Test with a reference to a clone
         let code = "let ref_value = &value.clone();";
         let fix = generator.generate_fix(
-            &DecrustError::Internal { message: "Style warning".to_string(), source: OptionalError::new(None), component: None, backtrace: Backtrace::generate(), },
+            &DecrustError::Internal {
+                message: "Style warning".to_string(),
+                source: OptionalError::new(None),
+                component: None,
+                backtrace: Backtrace::generate(),
+            },
             &ExtractedParameters::new(),
             Some(code),
         );
@@ -2550,7 +2733,12 @@ mod tests {
         // Test with a clone in a function call
         let code = "process_data(data.clone());";
         let fix = generator.generate_fix(
-            &DecrustError::Internal { message: "Style warning".to_string(), source: OptionalError::new(None), component: None, backtrace: Backtrace::generate(), },
+            &DecrustError::Internal {
+                message: "Style warning".to_string(),
+                source: OptionalError::new(None),
+                component: None,
+                backtrace: Backtrace::generate(),
+            },
             &ExtractedParameters::new(),
             Some(code),
         );
@@ -2646,7 +2834,12 @@ mod tests {
 
         // Generate fix
         let yaml_fix2 = yaml_generator.generate_fix(
-            &DecrustError::Internal { message: "YAML parsing failed".to_string(), source: OptionalError::new(None), component: None, backtrace: Backtrace::generate(), },
+            &DecrustError::Internal {
+                message: "YAML parsing failed".to_string(),
+                source: OptionalError::new(None),
+                component: None,
+                backtrace: Backtrace::generate(),
+            },
             &yaml_params2,
             None,
         );
@@ -2742,7 +2935,12 @@ mod tests {
 
         // Generate fix
         let json_fix2 = json_generator.generate_fix(
-            &DecrustError::Internal { message: "JSON parsing failed".to_string(), source: OptionalError::new(None), component: None, backtrace: Backtrace::generate(), },
+            &DecrustError::Internal {
+                message: "JSON parsing failed".to_string(),
+                source: OptionalError::new(None),
+                component: None,
+                backtrace: Backtrace::generate(),
+            },
             &json_params2,
             None,
         );
