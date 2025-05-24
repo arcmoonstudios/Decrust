@@ -379,7 +379,8 @@ impl CircuitBreaker {
     /// Execute an operation through the circuit breaker
     pub fn execute<F, Ret>(&self, operation: F) -> Result<Ret>
     where
-        F: FnOnce() -> Result<Ret>,
+        F: FnOnce() -> Result<Ret> + Send,
+        Ret: Send,
     {
         let start_time = Instant::now();
         let state = self.state();
@@ -479,7 +480,8 @@ impl CircuitBreaker {
     // Execute operation in Closed state
     fn execute_closed<F, Ret>(&self, operation: F, start_time: Instant) -> Result<Ret>
     where
-        F: FnOnce() -> Result<Ret>,
+        F: FnOnce() -> Result<Ret> + Send,
+        Ret: Send,
     {
         let result = if let Some(timeout) = self.config.operation_timeout {
             self.execute_with_timeout(operation, timeout)
@@ -514,7 +516,8 @@ impl CircuitBreaker {
     // Execute operation in HalfOpen state
     fn execute_half_open<F, Ret>(&self, operation: F, start_time: Instant) -> Result<Ret>
     where
-        F: FnOnce() -> Result<Ret>,
+        F: FnOnce() -> Result<Ret> + Send,
+        Ret: Send,
     {
         // Check if we can proceed with the operation
         {
@@ -698,7 +701,8 @@ impl CircuitBreaker {
 
     fn execute_with_timeout<F, Ret>(&self, operation: F, timeout: Duration) -> Result<Ret>
     where
-        F: FnOnce() -> Result<Ret>,
+        F: FnOnce() -> Result<Ret> + Send,
+        Ret: Send,
     {
         // Simple timeout implementation for non-async code
         // In a real implementation, you'd likely want to use a more sophisticated approach
