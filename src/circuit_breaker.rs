@@ -469,7 +469,7 @@ impl CircuitBreaker {
                                 .unwrap_or_default(),
                         ),
                         failure_count: Some(self.inner.read().unwrap().consecutive_failures as u32),
-                        last_error: self.inner.read().unwrap().last_error.clone(),
+                        last_error: None, // InnerState doesn't track last_error
                         backtrace: Backtrace::generate(),
                     })
                 }
@@ -520,7 +520,7 @@ impl CircuitBreaker {
                                 .unwrap_or_default(),
                         ),
                         failure_count: Some(self.inner.read().unwrap().consecutive_failures as u32),
-                        last_error: self.inner.read().unwrap().last_error.clone(),
+                        last_error: None, // InnerState doesn't track last_error
                         backtrace: Backtrace::generate(),
                     })
                 }
@@ -694,7 +694,7 @@ impl CircuitBreaker {
                     name: self.name.clone(),
                     retry_after: Some(Duration::from_millis(100)),
                     failure_count: Some(self.inner.read().unwrap().consecutive_failures as u32),
-                    last_error: self.inner.read().unwrap().last_error.clone(),
+                    last_error: None, // InnerState doesn't track last_error
                     backtrace: Backtrace::generate(),
                 });
             }
@@ -811,7 +811,7 @@ impl CircuitBreaker {
                     name: self.name.clone(),
                     retry_after: Some(Duration::from_millis(100)),
                     failure_count: Some(self.inner.read().unwrap().consecutive_failures as u32),
-                    last_error: self.inner.read().unwrap().last_error.clone(),
+                    last_error: None, // InnerState doesn't track last_error
                     backtrace: Backtrace::generate(),
                 });
             }
