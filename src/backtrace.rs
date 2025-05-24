@@ -103,13 +103,7 @@ impl DecrustBacktrace {
                 std::backtrace::BacktraceStatus::Unsupported => BacktraceStatus::Unsupported,
                 _ => BacktraceStatus::Unsupported,
             },
-            None => {
-                if self.capture_enabled {
-                    BacktraceStatus::Disabled
-                } else {
-                    BacktraceStatus::Disabled
-                }
-            }
+            None => BacktraceStatus::Disabled
         }
     }
 

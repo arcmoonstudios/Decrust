@@ -35,7 +35,7 @@ impl<T: ?Sized> fmt::Debug for DebugIgnore<T> {
     }
 }
 
-impl<T: Clone + ?Sized> Clone for DebugIgnore<T> {
+impl<T: Clone> Clone for DebugIgnore<T> {
     fn clone(&self) -> Self {
         DebugIgnore(self.0.clone())
     }
@@ -48,20 +48,15 @@ use rand::Rng;
 use tokio::time;
 
 /// Represents the state of the circuit breaker.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum CircuitBreakerState {
     /// The circuit is closed, operations are allowed.
+    #[default]
     Closed,
     /// The circuit is open, operations are rejected immediately.
     Open,
     /// The circuit is partially open, allowing a limited number of test operations.
     HalfOpen,
-}
-
-impl Default for CircuitBreakerState {
-    fn default() -> Self {
-        CircuitBreakerState::Closed
-    }
 }
 
 impl fmt::Display for CircuitBreakerState {
@@ -146,6 +141,9 @@ pub struct CircuitMetrics {
     pub slow_call_rate_in_window: Option<f64>,
 }
 
+/// Type alias for error predicate function
+pub type ErrorPredicate = Arc<dyn Fn(&DecrustError) -> bool + Send + Sync>;
+
 /// Configuration for the CircuitBreaker.
 ///
 /// Defines thresholds and timeouts that control the behavior of the circuit breaker.
@@ -169,7 +167,7 @@ pub struct CircuitBreakerConfig {
     pub sliding_window_size: usize,
     /// An optional predicate to determine if a specific `DecrustError` should be considered a failure.
     /// If `None`, all `Err` results are considered failures.
-    pub error_predicate: Option<Arc<dyn Fn(&DecrustError) -> bool + Send + Sync>>,
+    pub error_predicate: Option<ErrorPredicate>,
     /// The size of the history window for detailed metrics (not fully implemented in this version).
     pub metrics_window_size: usize, // Currently used for result_window and slow_call_window size logic
     /// Whether to track detailed metrics.
