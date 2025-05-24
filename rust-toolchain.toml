@@ -1,7 +1,8 @@
 [toolchain]
 # Rust toolchain for Decrust
 # This ensures consistent builds across all environments
-channel = "stable"
+# Version 1.85.1 for compatibility with all dependencies
+channel = "1.85.1"
 edition = "2021"
 components = ["rustfmt", "clippy"]
 targets = ["x86_64-unknown-linux-gnu", "x86_64-pc-windows-msvc", "x86_64-apple-darwin"]
