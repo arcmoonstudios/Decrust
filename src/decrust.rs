@@ -88,73 +88,69 @@ pub struct RegexParameterExtractor {
     patterns: Vec<(Regex, ErrorCategory, f64)>,
 }
 
+impl Default for RegexParameterExtractor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RegexParameterExtractor {
     /// Creates a new RegexParameterExtractor with default patterns
     pub fn new() -> Self {
-        let mut patterns = Vec::new();
-
-        // Add patterns for NotFound errors
-        patterns.push((
-            Regex::new(r"Resource type '([^']+)' with identifier '([^']+)'").unwrap(),
-            ErrorCategory::NotFound,
-            0.8,
-        ));
-
-        // Add patterns for IO errors
-        patterns.push((
-            Regex::new(r"I/O error during '([^']+)' on path '([^']+)'").unwrap(),
-            ErrorCategory::Io,
-            0.8,
-        ));
-
-        // Add patterns for Configuration errors
-        patterns.push((
-            Regex::new(r"Configuration error: '([^']+)' in '([^']+)'").unwrap(),
-            ErrorCategory::Configuration,
-            0.8,
-        ));
-
-        // Add patterns for unused imports
-        patterns.push((
-            Regex::new(r"unused import: `([^`]+)`").unwrap(),
-            ErrorCategory::Validation,
-            0.9,
-        ));
-
-        patterns.push((
-            Regex::new(r"remove the unused import: `([^`]+)`").unwrap(),
-            ErrorCategory::Validation,
-            0.9,
-        ));
-
-        // Add patterns for unused variables
-        patterns.push((
-            Regex::new(r"unused variable: `([^`]+)`").unwrap(),
-            ErrorCategory::Validation,
-            0.9,
-        ));
-
-        patterns.push((
-            Regex::new(r"if this is intentional, prefix it with an underscore: `_([^`]+)`")
-                .unwrap(),
-            ErrorCategory::Validation,
-            0.9,
-        ));
-
-        // Add patterns for unnecessary braces in imports
-        patterns.push((
-            Regex::new(r"unnecessary braces around single import").unwrap(),
-            ErrorCategory::Style,
-            0.9,
-        ));
-
-        patterns.push((
-            Regex::new(r"braces are unnecessary for single-item imports").unwrap(),
-            ErrorCategory::Style,
-            0.9,
-        ));
-
-        // Add more patterns as needed
+        let patterns = vec![
+            // Add patterns for NotFound errors
+            (
+                Regex::new(r"Resource type '([^']+)' with identifier '([^']+)'").unwrap(),
+                ErrorCategory::NotFound,
+                0.8,
+            ),
+            // Add patterns for IO errors
+            (
+                Regex::new(r"I/O error during '([^']+)' on path '([^']+)'").unwrap(),
+                ErrorCategory::Io,
+                0.8,
+            ),
+            // Add patterns for Configuration errors
+            (
+                Regex::new(r"Configuration error: '([^']+)' in '([^']+)'").unwrap(),
+                ErrorCategory::Configuration,
+                0.8,
+            ),
+            // Add patterns for unused imports
+            (
+                Regex::new(r"unused import: `([^`]+)`").unwrap(),
+                ErrorCategory::Validation,
+                0.9,
+            ),
+            (
+                Regex::new(r"remove the unused import: `([^`]+)`").unwrap(),
+                ErrorCategory::Validation,
+                0.9,
+            ),
+            // Add patterns for unused variables
+            (
+                Regex::new(r"unused variable: `([^`]+)`").unwrap(),
+                ErrorCategory::Validation,
+                0.9,
+            ),
+            (
+                Regex::new(r"if this is intentional, prefix it with an underscore: `_([^`]+)`")
+                    .unwrap(),
+                ErrorCategory::Validation,
+                0.9,
+            ),
+            // Add patterns for unnecessary braces in imports
+            (
+                Regex::new(r"unnecessary braces around single import").unwrap(),
+                ErrorCategory::Style,
+                0.9,
+            ),
+            (
+                Regex::new(r"braces are unnecessary for single-item imports").unwrap(),
+                ErrorCategory::Style,
+                0.9,
+            ),
+        ];
 
         Self { patterns }
     }
@@ -214,6 +210,12 @@ impl ParameterExtractor for RegexParameterExtractor {
 
 /// Extracts parameters from diagnostic information embedded in errors
 pub struct DiagnosticParameterExtractor;
+
+impl Default for DiagnosticParameterExtractor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl DiagnosticParameterExtractor {
     /// Creates a new DiagnosticParameterExtractor
@@ -275,6 +277,12 @@ impl ParameterExtractor for DiagnosticParameterExtractor {
 
 /// Generates fixes for NotFound errors
 pub struct NotFoundFixGenerator;
+
+impl Default for NotFoundFixGenerator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl NotFoundFixGenerator {
     /// Creates a new NotFoundFixGenerator
@@ -344,6 +352,12 @@ impl FixGenerator for NotFoundFixGenerator {
 
 /// Generates fixes for unused import errors
 pub struct UnusedImportFixGenerator;
+
+impl Default for UnusedImportFixGenerator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl UnusedImportFixGenerator {
     /// Creates a new UnusedImportFixGenerator
