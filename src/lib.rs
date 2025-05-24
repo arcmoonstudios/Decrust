@@ -919,7 +919,16 @@ pub trait DecrustResultExt<T, EOrig> {
     ///
     /// # Returns
     /// A new Result with the error wrapped in a WithRichContext variant if it was an error
-    fn decrust_context_msg(self, message: impl Into<String>) -> Result<T, DecrustError>;
+    fn decrust_context_msg(self, message: &str) -> Result<T, DecrustError>;
+
+    /// Adds a simple message context to an error in a Result (owned string version)
+    ///
+    /// # Parameters
+    /// * `message` - The message to add as context
+    ///
+    /// # Returns
+    /// A new Result with the error wrapped in a WithRichContext variant if it was an error
+    fn decrust_context_msg_owned(self, message: String) -> Result<T, DecrustError>;
 
     /// Adds rich context to an error in a Result
     ///
@@ -936,7 +945,21 @@ where
     E: Into<DecrustError>,
 {
     #[track_caller]
-    fn decrust_context_msg(self, message: impl Into<String>) -> Result<T, DecrustError> {
+    fn decrust_context_msg(self, message: &str) -> Result<T, DecrustError> {
+        match self {
+            Ok(value) => Ok(value),
+            Err(err) => {
+                let decrust_err: DecrustError = err.into();
+                Err(DecrustError::WithRichContext {
+                    context: types::ErrorContext::new(message),
+                    source: Box::new(decrust_err),
+                })
+            }
+        }
+    }
+
+    #[track_caller]
+    fn decrust_context_msg_owned(self, message: String) -> Result<T, DecrustError> {
         match self {
             Ok(value) => Ok(value),
             Err(err) => {
@@ -978,7 +1001,19 @@ pub trait DecrustOptionExt<T> {
     /// Ok(value) if the Option is Some(value), Err(DecrustError::MissingValue) otherwise
     fn decrust_ok_or_missing_value(
         self,
-        item_description: impl Into<String>,
+        item_description: &str,
+    ) -> Result<T, DecrustError>;
+
+    /// Converts an Option to a Result, with a MissingValue error if None (owned string version)
+    ///
+    /// # Parameters
+    /// * `item_description` - Description of the missing value for the error message
+    ///
+    /// # Returns
+    /// Ok(value) if the Option is Some(value), Err(DecrustError::MissingValue) otherwise
+    fn decrust_ok_or_missing_value_owned(
+        self,
+        item_description: String,
     ) -> Result<T, DecrustError>;
 }
 
@@ -986,15 +1021,56 @@ impl<T> DecrustOptionExt<T> for Option<T> {
     #[track_caller]
     fn decrust_ok_or_missing_value(
         self,
-        item_description: impl Into<String>,
+        item_description: &str,
     ) -> Result<T, DecrustError> {
         match self {
             Some(v) => Ok(v),
             None => Err(DecrustError::MissingValue {
-                item_description: item_description.into(),
+                item_description: item_description.to_string(),
                 backtrace: Backtrace::generate(),
             }),
         }
+    }
+
+    #[track_caller]
+    fn decrust_ok_or_missing_value_owned(
+        self,
+        item_description: String,
+    ) -> Result<T, DecrustError> {
+        match self {
+            Some(v) => Ok(v),
+            None => Err(DecrustError::MissingValue {
+                item_description,
+                backtrace: Backtrace::generate(),
+            }),
+        }
+    }
+}
+
+/// Convenience trait for backward compatibility with generic string types
+pub trait DecrustResultExtConvenience<T, EOrig> {
+    /// Convenience method for adding context with any string-like type
+    fn decrust_context<S: Into<String>>(self, message: S) -> Result<T, DecrustError>;
+}
+
+impl<T, E> DecrustResultExtConvenience<T, E> for std::result::Result<T, E>
+where
+    E: Into<DecrustError>,
+{
+    fn decrust_context<S: Into<String>>(self, message: S) -> Result<T, DecrustError> {
+        self.decrust_context_msg_owned(message.into())
+    }
+}
+
+/// Convenience trait for backward compatibility with generic string types
+pub trait DecrustOptionExtConvenience<T> {
+    /// Convenience method for converting to Result with any string-like type
+    fn decrust_ok_or_missing<S: Into<String>>(self, item_description: S) -> Result<T, DecrustError>;
+}
+
+impl<T> DecrustOptionExtConvenience<T> for Option<T> {
+    fn decrust_ok_or_missing<S: Into<String>>(self, item_description: S) -> Result<T, DecrustError> {
+        self.decrust_ok_or_missing_value_owned(item_description.into())
     }
 }
 
@@ -1091,6 +1167,45 @@ mod tests {
         } else {
             panic!("Expected MissingValue error variant");
         }
+
+        // Test the owned version
+        let opt_none2: Option<i32> = None;
+        let result2 = opt_none2.decrust_ok_or_missing_value_owned("owned test value".to_string());
+        assert!(result2.is_err());
+
+        if let Err(DecrustError::MissingValue {
+            item_description, ..
+        }) = result2
+        {
+            assert_eq!(item_description, "owned test value");
+        } else {
+            panic!("Expected MissingValue error variant");
+        }
+
+        // Test the convenience method
+        let opt_none3: Option<i32> = None;
+        let result3 = opt_none3.decrust_ok_or_missing("convenience test value");
+        assert!(result3.is_err());
+
+        if let Err(DecrustError::MissingValue {
+            item_description, ..
+        }) = result3
+        {
+            assert_eq!(item_description, "convenience test value");
+        } else {
+            panic!("Expected MissingValue error variant");
+        }
+    }
+
+    #[test]
+    fn test_dyn_compatibility() {
+        // Test that the traits are dyn-compatible (object-safe)
+        let result: Result<i32, DecrustError> = Ok(42);
+        let _result_trait: &dyn DecrustResultExt<i32, DecrustError> = &result;
+        let _option_trait: &dyn DecrustOptionExt<i32> = &Some(42);
+
+        // This should compile without errors, proving the traits are object-safe
+        assert!(true);
     }
 
     #[test]
