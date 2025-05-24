@@ -1047,6 +1047,25 @@ impl<T> DecrustOptionExt<T> for Option<T> {
     }
 }
 
+/// Extension trait for Results that are known to always be Err
+pub trait InfallibleResultExt<E> {
+    /// Extract the error value from a Result that is known to always be Err
+    ///
+    /// This is a stable alternative to the nightly-only `into_err()` method.
+    /// Use this when you have a Result<T, E> where T is an uninhabited type
+    /// or when you know the Result will always be Err.
+    fn extract_err(self) -> E;
+}
+
+impl<E> InfallibleResultExt<E> for Result<std::convert::Infallible, E> {
+    fn extract_err(self) -> E {
+        match self {
+            Ok(infallible) => match infallible {},
+            Err(e) => e,
+        }
+    }
+}
+
 /// Convenience trait for backward compatibility with generic string types
 pub trait DecrustResultExtConvenience<T, EOrig> {
     /// Convenience method for adding context with any string-like type
@@ -1206,6 +1225,33 @@ mod tests {
 
         // This should compile without errors, proving the traits are object-safe
         assert!(true);
+    }
+
+    #[test]
+    fn test_infallible_result_ext() {
+        // Test the stable alternative to nightly-only into_err()
+        fn always_fails() -> Result<std::convert::Infallible, String> {
+            Err("This always fails".to_string())
+        }
+
+        let error: String = always_fails().extract_err();
+        assert_eq!(error, "This always fails");
+
+        // Test with DecrustError
+        fn always_fails_decrust() -> Result<std::convert::Infallible, DecrustError> {
+            Err(DecrustError::Oops {
+                message: "Test oops error".to_string(),
+                source: Box::new(std::io::Error::new(std::io::ErrorKind::Other, "test")),
+                backtrace: Backtrace::generate(),
+            })
+        }
+
+        let error: DecrustError = always_fails_decrust().extract_err();
+        if let DecrustError::Oops { message, .. } = error {
+            assert_eq!(message, "Test oops error");
+        } else {
+            panic!("Expected Oops error variant");
+        }
     }
 
     #[test]
