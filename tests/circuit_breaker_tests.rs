@@ -15,6 +15,7 @@
 // **License:** MIT
 
 #[cfg(test)]
+#[allow(clippy::result_large_err)]
 mod tests {
     use decrust::{
         Backtrace, CircuitBreaker, CircuitBreakerConfig, CircuitBreakerObserver,

@@ -14,6 +14,7 @@
 // **License:** MIT
 
 #[cfg(test)]
+#[allow(clippy::result_large_err)]
 mod tests {
     use decrust::backtrace::DecrustBacktrace;
     use decrust::{
@@ -295,6 +296,7 @@ mod tests {
 
 // Example usage patterns for the library
 #[cfg(test)]
+#[allow(clippy::result_large_err)]
 mod usage_examples {
     use decrust::backtrace::DecrustBacktrace;
     use decrust::{

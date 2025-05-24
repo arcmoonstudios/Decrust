@@ -12,6 +12,7 @@
 //! the autocorrection system.
 
 #[cfg(test)]
+#[allow(clippy::result_large_err)]
 mod tests {
     use decrust::{ErrorCategory, FixTemplate, SyntaxGenerator, TemplateRegistry};
     use std::collections::HashMap;

@@ -16,6 +16,7 @@ use decrust::{Autocorrection, DecrustError, ErrorCategory, FixType};
 use std::collections::HashMap;
 
 #[cfg(test)]
+#[allow(clippy::result_large_err)]
 mod tests {
     use super::{Autocorrection, ErrorCategory, FixType};
     use decrust::{ErrorContext, ErrorReportFormat, ErrorSeverity, ErrorSource, FixDetails};

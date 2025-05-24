@@ -1,6 +1,7 @@
 /* src/lib.rs */
 #![warn(missing_docs)]
 #![allow(stable_features)]
+#![allow(clippy::result_large_err)]
 //! # Decrust: Advanced Error Handling Framework for Rust
 // ~=####====A===r===c===M===o===o===n====S===t===u===d===i===o===s====X|0|$>
 //! Decrust is a comprehensive, production-ready error handling framework that provides
