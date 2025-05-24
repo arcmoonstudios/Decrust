@@ -6,7 +6,7 @@
 //! - Using the error reporting system
 //! - Basic autocorrection suggestions
 
-use decrust::backtrace::{BacktraceCompat, Backtrace::capture};
+use decrust::backtrace::{BacktraceCompat, DecrustBacktrace as Backtrace};
 use decrust::reporter::{ErrorReportConfig, ErrorReporter};
 use decrust::types::ErrorReportFormat;
 use decrust::{DecrustError, Result};
@@ -61,7 +61,7 @@ fn simulate_io_error() -> Result<()> {
         source: io_error,
         path: Some(path),
         operation: "read_file".to_string(),
-        backtrace: Backtrace::capture::capture(),
+        backtrace: Backtrace::capture(),
     })
 }
 
@@ -71,13 +71,13 @@ fn simulate_config_error() -> Result<()> {
         message: "Missing required configuration key 'database_url'".to_string(),
         path: Some(PathBuf::from("config.toml")),
         source: decrust::OptionalError::new(None),
-        backtrace: Backtrace::capture::capture(),
+        backtrace: Backtrace::capture(),
     })
 }
 
 /// Simulates a validation error
 fn simulate_validation_error() -> Result<()> {
-    Err(DecrustError::Validation { field: "email".to_string(), message: "Invalid email format: missing '@' symbol".to_string(), expected: None, actual: None, rule: None, backtrace: Backtrace::capture::capture(), })
+    Err(DecrustError::Validation { field: "email".to_string(), message: "Invalid email format: missing '@' symbol".to_string(), expected: None, actual: None, rule: None, backtrace: Backtrace::capture(), })
 }
 
 /// Simulates a network error
@@ -88,7 +88,7 @@ fn simulate_network_error() -> Result<()> {
         source: Box::new(network_error),
         url: Some("https://api.example.com/users".to_string()),
         kind: "HTTP".to_string(),
-        backtrace: Backtrace::capture::capture(),
+        backtrace: Backtrace::capture(),
     })
 }
 
@@ -97,7 +97,7 @@ fn demonstrate_error_reporting() -> Result<()> {
     let error = DecrustError::NotFound {
         resource_type: "User".to_string(),
         identifier: "user_123".to_string(),
-        backtrace: Backtrace::capture::capture(),
+        backtrace: Backtrace::capture(),
     };
 
     let reporter = ErrorReporter::new();
