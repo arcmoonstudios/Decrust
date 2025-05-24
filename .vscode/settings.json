@@ -23,5 +23,9 @@
   "files.associations": {
     "*.yml": "yaml",
     "*.yaml": "yaml"
-  }
+  },
+
+  // Nuclear option: Disable problems panel for workflow files
+  "problems.decorations.enabled": false,
+  "problems.showCurrentInStatus": false
 }
