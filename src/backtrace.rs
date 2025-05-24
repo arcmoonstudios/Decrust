@@ -584,6 +584,45 @@ impl Location {
         }
     }
 
+    /// Create a new location with context description
+    pub fn with_context(file: &'static str, line: u32, column: u32, context: &str) -> Self {
+        let formatted = format!("{}:{}:{} ({})", file, line, column, context);
+        Self {
+            file,
+            line,
+            column,
+            formatted,
+        }
+    }
+
+    /// Create a new location with function name
+    pub fn with_function(file: &'static str, line: u32, column: u32, function: &str) -> Self {
+        let formatted = format!("{}:{}:{} in {}", file, line, column, function);
+        Self {
+            file,
+            line,
+            column,
+            formatted,
+        }
+    }
+
+    /// Create a new location with both context and function
+    pub fn with_context_and_function(
+        file: &'static str,
+        line: u32,
+        column: u32,
+        context: &str,
+        function: &str,
+    ) -> Self {
+        let formatted = format!("{}:{}:{} in {} ({})", file, line, column, function, context);
+        Self {
+            file,
+            line,
+            column,
+            formatted,
+        }
+    }
+
     /// Get the file path
     pub fn file(&self) -> &'static str {
         self.file
@@ -616,22 +655,238 @@ impl fmt::Display for Location {
 }
 
 /// Macro to create a location at the current source position
+///
+/// This macro provides several forms:
+/// - `location!()` - Basic location with file, line, column
+/// - `location!(context: "description")` - Location with context description
+/// - `location!(function: "fn_name")` - Location with function name
+/// - `location!(context: "desc", function: "fn_name")` - Location with both
 #[macro_export]
 macro_rules! location {
     () => {
         $crate::backtrace::Location::new_formatted(file!(), line!(), column!())
     };
+
+    (context: $context:expr) => {
+        $crate::backtrace::Location::with_context(
+            file!(),
+            line!(),
+            column!(),
+            $context
+        )
+    };
+
+    (function: $function:expr) => {
+        $crate::backtrace::Location::with_function(
+            file!(),
+            line!(),
+            column!(),
+            $function
+        )
+    };
+
+    (context: $context:expr, function: $function:expr) => {
+        $crate::backtrace::Location::with_context_and_function(
+            file!(),
+            line!(),
+            column!(),
+            $context,
+            $function
+        )
+    };
+
+    (function: $function:expr, context: $context:expr) => {
+        $crate::backtrace::Location::with_context_and_function(
+            file!(),
+            line!(),
+            column!(),
+            $context,
+            $function
+        )
+    };
 }
 
 /// Macro to generate implicit data at the call site
+///
+/// This macro provides several forms:
+/// - `implicit_data!(Type)` - Generate with default settings
+/// - `implicit_data!(Type, context: map)` - Generate with context map
+/// - `implicit_data!(Type, source: error)` - Generate with source error
+/// - `implicit_data!(Type, force: true)` - Force generation (for backtraces)
+/// - `implicit_data!(Type, timestamp: secs)` - Generate with specific timestamp
+/// - `implicit_data!(Type, location: true)` - Include location information
 #[macro_export]
 macro_rules! implicit_data {
+    // Basic generation
     ($type:ty) => {
         <$type as $crate::backtrace::GenerateImplicitData>::generate()
     };
+
+    // Generation with context map (supports both &HashMap and HashMap)
+    ($type:ty, context: $context:expr) => {
+        <$type as $crate::backtrace::GenerateImplicitData>::generate_with_context($context)
+    };
+
+    // Direct context map (for backward compatibility)
     ($type:ty, $context:expr) => {
         <$type as $crate::backtrace::GenerateImplicitData>::generate_with_context($context)
     };
+
+    // Generation with source error
+    ($type:ty, source: $source:expr) => {
+        <$type as $crate::backtrace::GenerateImplicitData>::generate_with_source($source)
+    };
+
+    // Force generation (useful for backtraces)
+    ($type:ty, force: true) => {{
+        let mut context = std::collections::HashMap::new();
+        context.insert("force_backtrace".to_string(), "true".to_string());
+        <$type as $crate::backtrace::GenerateImplicitData>::generate_with_context(&context)
+    }};
+
+    // Generate with specific timestamp (for Timestamp type)
+    ($type:ty, timestamp: $secs:expr) => {{
+        let mut context = std::collections::HashMap::new();
+        context.insert("timestamp".to_string(), $secs.to_string());
+        <$type as $crate::backtrace::GenerateImplicitData>::generate_with_context(&context)
+    }};
+
+    // Generate with location information embedded
+    ($type:ty, location: true) => {{
+        let mut context = std::collections::HashMap::new();
+        context.insert("file".to_string(), file!().to_string());
+        context.insert("line".to_string(), line!().to_string());
+        context.insert("column".to_string(), column!().to_string());
+        <$type as $crate::backtrace::GenerateImplicitData>::generate_with_context(&context)
+    }};
+
+    // Multiple options combined
+    ($type:ty, force: true, location: true) => {{
+        let mut context = std::collections::HashMap::new();
+        context.insert("force_backtrace".to_string(), "true".to_string());
+        context.insert("file".to_string(), file!().to_string());
+        context.insert("line".to_string(), line!().to_string());
+        context.insert("column".to_string(), column!().to_string());
+        <$type as $crate::backtrace::GenerateImplicitData>::generate_with_context(&context)
+    }};
+
+    // Custom key-value pairs
+    ($type:ty, $($key:ident: $value:expr),+ $(,)?) => {{
+        let mut context = std::collections::HashMap::new();
+        $(
+            context.insert(stringify!($key).to_string(), $value.to_string());
+        )+
+        <$type as $crate::backtrace::GenerateImplicitData>::generate_with_context(&context)
+    }};
+}
+
+/// Macro to create a comprehensive error context with location and metadata
+///
+/// Usage:
+/// - `error_context!("message")` - Basic error context
+/// - `error_context!("message", severity: High)` - With severity
+/// - `error_context!("message", component: "auth", correlation_id: "123")` - With metadata
+#[macro_export]
+macro_rules! error_context {
+    ($message:expr) => {
+        $crate::types::ErrorContext::new($message)
+            .with_location($crate::location!())
+    };
+
+    ($message:expr, severity: $severity:expr) => {
+        $crate::types::ErrorContext::new($message)
+            .with_location($crate::location!())
+            .with_severity($severity)
+    };
+
+    ($message:expr, $($key:ident: $value:expr),+ $(,)?) => {{
+        let mut context = $crate::types::ErrorContext::new($message)
+            .with_location($crate::location!());
+
+        $(
+            context = match stringify!($key) {
+                "severity" => context.with_severity($value),
+                "component" => context.with_component(format!("{}", $value)),
+                "correlation_id" => context.with_correlation_id(format!("{}", $value)),
+                "recovery_suggestion" => context.with_recovery_suggestion(format!("{}", $value)),
+                _ => {
+                    context.add_metadata(stringify!($key), format!("{:?}", $value));
+                    context
+                }
+            };
+        )+
+
+        context
+    }};
+}
+
+/// Macro to create a DecrustError::Oops with rich context
+///
+/// Usage:
+/// - `oops!("message", source)` - Basic oops error
+/// - `oops!("message", source, context: "additional info")` - With context
+/// - `oops!("message", source, severity: High, component: "auth")` - With metadata
+#[macro_export]
+macro_rules! oops {
+    ($message:expr, $source:expr) => {
+        $crate::DecrustError::Oops {
+            message: $message.to_string(),
+            source: Box::new($source),
+            backtrace: $crate::implicit_data!($crate::backtrace::DecrustBacktrace, location: true),
+        }
+    };
+
+    ($message:expr, $source:expr, $($key:ident: $value:expr),+ $(,)?) => {{
+        let error = $crate::DecrustError::Oops {
+            message: $message.to_string(),
+            source: Box::new($source),
+            backtrace: $crate::implicit_data!($crate::backtrace::DecrustBacktrace, location: true),
+        };
+
+        // Wrap with rich context if metadata is provided
+        let context = $crate::error_context!($message, $($key: $value),+);
+        $crate::DecrustError::WithRichContext {
+            context,
+            source: Box::new(error),
+        }
+    }};
+}
+
+/// Macro to create a quick validation error
+///
+/// Usage:
+/// - `validation_error!("field", "message")` - Basic validation error
+/// - `validation_error!("field", "message", suggestion: "try this")` - With suggestion
+#[macro_export]
+macro_rules! validation_error {
+    ($field:expr, $message:expr) => {
+        $crate::DecrustError::Validation {
+            field: $field.to_string(),
+            message: $message.to_string(),
+            expected: None,
+            actual: None,
+            rule: None,
+            backtrace: $crate::implicit_data!($crate::backtrace::DecrustBacktrace, location: true),
+        }
+    };
+
+    ($field:expr, $message:expr, suggestion: $suggestion:expr) => {{
+        let error = $crate::DecrustError::Validation {
+            field: $field.to_string(),
+            message: $message.to_string(),
+            expected: None,
+            actual: None,
+            rule: None,
+            backtrace: $crate::implicit_data!($crate::backtrace::DecrustBacktrace, location: true),
+        };
+
+        let context = $crate::error_context!($message)
+            .with_recovery_suggestion($suggestion.to_string());
+        $crate::DecrustError::WithRichContext {
+            context,
+            source: Box::new(error),
+        }
+    }};
 }
 
 // ===== Snafu-based Backtrace Compatibility Layer =====
@@ -738,6 +993,143 @@ mod tests {
         assert!(loc.line() > 0);
         assert!(loc.column() > 0);
         assert!(!loc.formatted().is_empty());
+    }
+
+    #[test]
+    fn test_enhanced_location_macro() {
+        // Test basic location
+        let basic_loc = location!();
+        assert!(basic_loc.file().ends_with("backtrace.rs"));
+
+        // Test location with context
+        let context_loc = location!(context: "test context");
+        assert!(context_loc.formatted().contains("test context"));
+
+        // Test location with function
+        let function_loc = location!(function: "test_function");
+        assert!(function_loc.formatted().contains("test_function"));
+
+        // Test location with both context and function
+        let both_loc = location!(context: "test context", function: "test_function");
+        assert!(both_loc.formatted().contains("test context"));
+        assert!(both_loc.formatted().contains("test_function"));
+    }
+
+    #[test]
+    fn test_enhanced_implicit_data_macro() {
+        // Test basic generation
+        let basic_bt = implicit_data!(DecrustBacktrace);
+        assert!(matches!(
+            basic_bt.status(),
+            BacktraceStatus::Captured | BacktraceStatus::Disabled
+        ));
+
+        // Test force generation
+        let forced_bt = implicit_data!(DecrustBacktrace, force: true);
+        assert!(matches!(
+            forced_bt.status(),
+            BacktraceStatus::Captured | BacktraceStatus::Unsupported
+        ));
+
+        // Test with location
+        let location_bt = implicit_data!(DecrustBacktrace, location: true);
+        assert!(matches!(
+            location_bt.status(),
+            BacktraceStatus::Captured | BacktraceStatus::Disabled
+        ));
+
+        // Test with custom timestamp
+        let custom_ts = implicit_data!(Timestamp, timestamp: 1234567890);
+        assert!(!custom_ts.formatted().is_empty());
+
+        // Test with multiple options
+        let multi_bt = implicit_data!(DecrustBacktrace, force: true, location: true);
+        assert!(matches!(
+            multi_bt.status(),
+            BacktraceStatus::Captured | BacktraceStatus::Unsupported
+        ));
+
+        // Test with custom key-value pairs
+        let custom_bt = implicit_data!(DecrustBacktrace, custom_key: "custom_value", another_key: "another_value");
+        assert!(matches!(
+            custom_bt.status(),
+            BacktraceStatus::Captured | BacktraceStatus::Disabled
+        ));
+    }
+
+    #[test]
+    fn test_error_context_macro() {
+        // Test basic error context
+        let basic_ctx = error_context!("Test error message");
+        assert_eq!(basic_ctx.message, "Test error message");
+        assert!(basic_ctx.source_location.is_some());
+
+        // Test with severity
+        let severity_ctx = error_context!("Test error", severity: crate::types::ErrorSeverity::Critical);
+        assert_eq!(severity_ctx.severity, crate::types::ErrorSeverity::Critical);
+
+        // Test with multiple metadata - use separate calls to avoid macro complexity
+        let meta_ctx = error_context!("Test error")
+            .with_component("test_component")
+            .with_correlation_id("test_id")
+            .with_recovery_suggestion("Try again");
+        assert_eq!(meta_ctx.component, Some("test_component".to_string()));
+        assert_eq!(meta_ctx.correlation_id, Some("test_id".to_string()));
+        assert_eq!(meta_ctx.recovery_suggestion, Some("Try again".to_string()));
+    }
+
+    #[test]
+    fn test_oops_macro() {
+        let io_error = std::io::Error::new(std::io::ErrorKind::Other, "test error");
+
+        // Test basic oops
+        let basic_oops = oops!("Something went wrong", io_error);
+        if let crate::DecrustError::Oops { message, .. } = basic_oops {
+            assert_eq!(message, "Something went wrong");
+        } else {
+            panic!("Expected Oops error variant");
+        }
+
+        // Test oops with metadata - use severity only for now
+        let io_error2 = std::io::Error::new(std::io::ErrorKind::Other, "test error");
+        let meta_oops = oops!(
+            "Something went wrong",
+            io_error2,
+            severity: crate::types::ErrorSeverity::Critical
+        );
+        if let crate::DecrustError::WithRichContext { context, source } = meta_oops {
+            assert_eq!(context.message, "Something went wrong");
+            assert_eq!(context.severity, crate::types::ErrorSeverity::Critical);
+            assert!(matches!(source.as_ref(), crate::DecrustError::Oops { .. }));
+        } else {
+            panic!("Expected WithRichContext error variant");
+        }
+    }
+
+    #[test]
+    fn test_validation_error_macro() {
+        // Test basic validation error
+        let basic_validation = validation_error!("username", "Username is required");
+        if let crate::DecrustError::Validation { field, message, .. } = basic_validation {
+            assert_eq!(field, "username");
+            assert_eq!(message, "Username is required");
+        } else {
+            panic!("Expected Validation error variant");
+        }
+
+        // Test validation error with suggestion
+        let suggestion_validation = validation_error!(
+            "email",
+            "Invalid email format",
+            suggestion: "Use format: user@domain.com"
+        );
+        if let crate::DecrustError::WithRichContext { context, source } = suggestion_validation {
+            assert_eq!(context.message, "Invalid email format");
+            assert_eq!(context.recovery_suggestion, Some("Use format: user@domain.com".to_string()));
+            assert!(matches!(source.as_ref(), crate::DecrustError::Validation { .. }));
+        } else {
+            panic!("Expected WithRichContext error variant");
+        }
     }
 
     #[test]

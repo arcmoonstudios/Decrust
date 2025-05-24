@@ -9154,6 +9154,7 @@ mod tests {
         let error = DecrustError::Internal {
             message: "Test error".to_string(),
             source: OptionalError(None),
+            component: None,
             backtrace: Backtrace::generate(),
         }
         .add_context(error_context);
@@ -9235,6 +9236,9 @@ mod tests {
             &DecrustError::Validation {
                 field: "imports".to_string(),
                 message: "unused import: `std::io`".to_string(),
+                expected: None,
+                actual: None,
+                rule: None,
                 backtrace: Backtrace::generate(),
             },
             &params,
@@ -9261,6 +9265,9 @@ mod tests {
             &DecrustError::Validation {
                 field: "imports".to_string(),
                 message: "unused import: `io`".to_string(),
+                expected: None,
+                actual: None,
+                rule: None,
                 backtrace: Backtrace::generate(),
             },
             &params,
@@ -9295,6 +9302,9 @@ mod tests {
             &DecrustError::Validation {
                 field: "variables".to_string(),
                 message: "unused variable: `value`".to_string(),
+                expected: None,
+                actual: None,
+                rule: None,
                 backtrace: Backtrace::generate(),
             },
             &var_params,

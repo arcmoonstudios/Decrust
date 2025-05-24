@@ -6,6 +6,8 @@
 //!  - [Circuit Breaker Pattern]
 //!  - [Fault Tolerance]
 //!  - [Service Resilience]
+//!  - [Adaptive Thresholds]
+//!  - [Performance Monitoring]
 // ~=####====A===r===c===M===o===o===n====S===t===u===d===i===o===s====X|0|$>
 // **GitHub:** [ArcMoon Studios](https://github.com/arcmoonstudios)
 // **Copyright:** (c) 2025 ArcMoon Studios
@@ -415,6 +417,8 @@ impl CircuitBreaker {
                                 )
                                 .unwrap_or_default(),
                         ),
+                        failure_count: None,
+                        last_error: None,
                         backtrace: Backtrace::generate(),
                     })
                 }
@@ -614,6 +618,8 @@ impl CircuitBreaker {
                 return Err(DecrustError::CircuitBreakerOpen {
                     name: self.name.clone(),
                     retry_after: Some(Duration::from_millis(100)),
+                    failure_count: None,
+                    last_error: None,
                     backtrace: Backtrace::generate(),
                 });
             }
@@ -1380,6 +1386,7 @@ mod tests {
             Err(DecrustError::Internal {
                 message: "Test error".to_string(),
                 source: OptionalError::new(None),
+                component: None,
                 backtrace: Backtrace::generate(),
             })
         });

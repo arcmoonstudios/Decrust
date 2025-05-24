@@ -103,6 +103,18 @@ impl std::fmt::Display for ErrorCategory {
     }
 }
 
+impl std::fmt::Display for ErrorSeverity {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Debug => write!(f, "Debug"),
+            Self::Info => write!(f, "Info"),
+            Self::Warning => write!(f, "Warning"),
+            Self::Error => write!(f, "Error"),
+            Self::Critical => write!(f, "Critical"),
+        }
+    }
+}
+
 /// Output formats for error reports
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ErrorReportFormat {
@@ -483,6 +495,26 @@ impl ErrorContext {
     pub fn with_diagnostic_info(mut self, diagnostic: DiagnosticResult) -> Self {
         self.diagnostic_info = Some(diagnostic);
         self
+    }
+
+    /// Adds location information from a Location struct
+    ///
+    /// # Parameters
+    /// * `location` - Location information
+    pub fn with_location(mut self, location: crate::backtrace::Location) -> Self {
+        let source = ErrorSource::new(location.file(), location.line(), "unknown")
+            .with_column(location.column());
+        self.source_location = Some(source);
+        self
+    }
+
+    /// Adds metadata using a mutable reference (for macro usage)
+    ///
+    /// # Parameters
+    /// * `key` - Metadata key
+    /// * `value` - Metadata value
+    pub fn add_metadata(&mut self, key: impl Into<String>, value: impl Into<String>) {
+        self.metadata.insert(key.into(), value.into());
     }
 }
 
