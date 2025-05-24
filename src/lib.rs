@@ -720,6 +720,7 @@ impl AsRef<Option<Box<dyn std::error::Error + Send + Sync + 'static>>> for Optio
 
 /// Unified error type for Decrust.
 #[derive(Debug)]
+#[allow(clippy::result_large_err)]
 pub enum DecrustError {
     /// I/O related errors
     Io {
