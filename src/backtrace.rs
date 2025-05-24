@@ -14,9 +14,9 @@
 // **License:** MIT
 
 use std::collections::HashMap;
-use std::sync::OnceLock;
 use std::env;
 use std::fmt;
+use std::sync::OnceLock;
 
 /// Our own backtrace type that wraps std::backtrace::Backtrace
 /// This provides crisis-resistant backtrace functionality
