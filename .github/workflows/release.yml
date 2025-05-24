@@ -1,5 +1,5 @@
-# Fast Release Workflow - Publishes in under 2 minutes!
-name: Fast Release
+# Lightning-Fast Release Workflow - Publishes in under 2 minutes!
+name: 🚀 Fast Release
 
 on:
   push:
@@ -14,7 +14,7 @@ jobs:
       - name: 📥 Checkout
         uses: actions/checkout@v4
 
-      - name: 🦀 Install Rust (cached)
+      - name: 🦀 Install Rust
         uses: dtolnay/rust-toolchain@stable
 
       - name: 📦 Publish to crates.io
