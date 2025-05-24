@@ -13,10 +13,10 @@
 // **Author:** Lord Xyn
 // **License:** MIT
 
+use std::collections::HashMap;
+use std::sync::OnceLock;
 use std::env;
 use std::fmt;
-use std::sync::OnceLock;
-use std::collections::HashMap;
 
 /// Our own backtrace type that wraps std::backtrace::Backtrace
 /// This provides crisis-resistant backtrace functionality
@@ -230,9 +230,7 @@ impl DecrustBacktrace {
                 let file = Some(parts[1].to_string());
                 (file, line, None)
             }
-            1 => {
-                (Some(parts[0].to_string()), None, None)
-            }
+            1 => (Some(parts[0].to_string()), None, None),
             _ => (None, None, None),
         }
     }
@@ -340,7 +338,11 @@ impl GenerateImplicitData for DecrustBacktrace {
 
     fn generate_with_context(context: &HashMap<String, String>) -> Self {
         // Use context to determine if we should force capture
-        if context.get("force_backtrace").map(|s| s == "true").unwrap_or(false) {
+        if context
+            .get("force_backtrace")
+            .map(|s| s == "true")
+            .unwrap_or(false)
+        {
             Self::force_capture()
         } else {
             Self::capture()
@@ -406,10 +408,7 @@ impl Timestamp {
     pub fn now() -> Self {
         let instant = std::time::SystemTime::now();
         let formatted = Self::format_timestamp(&instant);
-        Self {
-            instant,
-            formatted,
-        }
+        Self { instant, formatted }
     }
 
     /// Create a timestamp from a SystemTime
@@ -440,9 +439,12 @@ impl Timestamp {
 
                 // Convert to human-readable format
                 let datetime = std::time::UNIX_EPOCH + std::time::Duration::from_secs(secs);
-                format!("{}.{:03} (epoch: {})",
-                    secs, millis,
-                    datetime.duration_since(std::time::UNIX_EPOCH)
+                format!(
+                    "{}.{:03} (epoch: {})",
+                    secs,
+                    millis,
+                    datetime
+                        .duration_since(std::time::UNIX_EPOCH)
                         .map(|d| d.as_secs())
                         .unwrap_or(0)
                 )
@@ -642,7 +644,11 @@ impl GenerateImplicitData for std::backtrace::Backtrace {
 
     fn generate_with_context(context: &HashMap<String, String>) -> Self {
         // Check if force capture is requested
-        if context.get("force_backtrace").map(|s| s == "true").unwrap_or(false) {
+        if context
+            .get("force_backtrace")
+            .map(|s| s == "true")
+            .unwrap_or(false)
+        {
             std::backtrace::Backtrace::force_capture()
         } else {
             std::backtrace::Backtrace::capture()
@@ -824,7 +830,10 @@ mod usage_examples {
             }
         }
 
-        pub fn new_with_context(message: impl Into<String>, context: &HashMap<String, String>) -> Self {
+        pub fn new_with_context(
+            message: impl Into<String>,
+            context: &HashMap<String, String>,
+        ) -> Self {
             Self {
                 message: message.into(),
                 backtrace: implicit_data!(DecrustBacktrace, context),
@@ -837,11 +846,10 @@ mod usage_examples {
 
     impl fmt::Display for ExampleError {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            write!(f, "{} [{}] [{}] [{}]",
-                self.message,
-                self.timestamp,
-                self.thread,
-                self.location
+            write!(
+                f,
+                "{} [{}] [{}] [{}]",
+                self.message, self.timestamp, self.thread, self.location
             )
         }
     }
