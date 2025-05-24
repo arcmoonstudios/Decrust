@@ -377,10 +377,59 @@ impl CircuitBreaker {
     }
 
     /// Execute an operation through the circuit breaker
+    #[cfg(not(feature = "std-thread"))]
     pub fn execute<F, Ret>(&self, operation: F) -> Result<Ret>
     where
-        F: FnOnce() -> Result<Ret> + Send,
-        Ret: Send,
+        F: FnOnce() -> Result<Ret>,
+    {
+        let start_time = Instant::now();
+        let state = self.state();
+
+        self.notify_operation_attempt(state);
+
+        match state {
+            CircuitBreakerState::Open => {
+                // Check if reset timeout has elapsed
+                let inner = self.inner.read().unwrap();
+                let should_transition = if let Some(opened_at) = inner.opened_at {
+                    opened_at.elapsed() >= self.config.reset_timeout
+                } else {
+                    false
+                };
+                drop(inner);
+
+                if should_transition {
+                    self.transition_to_half_open("Reset timeout elapsed");
+                    // Continue with half-open logic
+                    self.execute_half_open(operation, start_time)
+                } else {
+                    // Still open, reject the operation
+                    self.record_rejected();
+                    Err(DecrustError::CircuitBreakerOpen {
+                        name: self.name.clone(),
+                        retry_after: Some(
+                            self.config
+                                .reset_timeout
+                                .checked_sub(
+                                    self.inner.read().unwrap().opened_at.unwrap().elapsed(),
+                                )
+                                .unwrap_or_default(),
+                        ),
+                        backtrace: Backtrace::generate(),
+                    })
+                }
+            }
+            CircuitBreakerState::HalfOpen => self.execute_half_open(operation, start_time),
+            CircuitBreakerState::Closed => self.execute_closed(operation, start_time),
+        }
+    }
+
+    /// Execute an operation through the circuit breaker
+    #[cfg(feature = "std-thread")]
+    pub fn execute<F, Ret>(&self, operation: F) -> Result<Ret>
+    where
+        F: FnOnce() -> Result<Ret> + Send + 'static,
+        Ret: Send + 'static,
     {
         let start_time = Instant::now();
         let state = self.state();
@@ -478,10 +527,46 @@ impl CircuitBreaker {
     // Private helper methods
 
     // Execute operation in Closed state
+    #[cfg(not(feature = "std-thread"))]
     fn execute_closed<F, Ret>(&self, operation: F, start_time: Instant) -> Result<Ret>
     where
-        F: FnOnce() -> Result<Ret> + Send,
-        Ret: Send,
+        F: FnOnce() -> Result<Ret>,
+    {
+        let result = if let Some(timeout) = self.config.operation_timeout {
+            self.execute_with_timeout(operation, timeout)
+        } else {
+            operation()
+        };
+
+        let duration = start_time.elapsed();
+
+        match &result {
+            Ok(_) => {
+                self.record_success(duration);
+            }
+            Err(e) => {
+                if self.should_count_as_failure(e) {
+                    self.record_failure(e, duration);
+
+                    // Check if we need to open the circuit
+                    if self.should_open_circuit() {
+                        self.transition_to_open("Failure threshold reached");
+                    }
+                } else {
+                    // Error not counted as failure for circuit breaking
+                    self.record_success(duration);
+                }
+            }
+        }
+
+        result
+    }
+
+    #[cfg(feature = "std-thread")]
+    fn execute_closed<F, Ret>(&self, operation: F, start_time: Instant) -> Result<Ret>
+    where
+        F: FnOnce() -> Result<Ret> + Send + 'static,
+        Ret: Send + 'static,
     {
         let result = if let Some(timeout) = self.config.operation_timeout {
             self.execute_with_timeout(operation, timeout)
@@ -514,10 +599,79 @@ impl CircuitBreaker {
     }
 
     // Execute operation in HalfOpen state
+    #[cfg(not(feature = "std-thread"))]
     fn execute_half_open<F, Ret>(&self, operation: F, start_time: Instant) -> Result<Ret>
     where
-        F: FnOnce() -> Result<Ret> + Send,
-        Ret: Send,
+        F: FnOnce() -> Result<Ret>,
+    {
+        // Check if we can proceed with the operation
+        {
+            let mut inner = self.inner.write().unwrap();
+            if inner.half_open_concurrency_count >= self.config.half_open_max_concurrent_operations
+            {
+                // Too many concurrent operations in half-open state
+                self.record_rejected();
+                return Err(DecrustError::CircuitBreakerOpen {
+                    name: self.name.clone(),
+                    retry_after: Some(Duration::from_millis(100)),
+                    backtrace: Backtrace::generate(),
+                });
+            }
+
+            // Increment concurrency count
+            inner.half_open_concurrency_count += 1;
+        }
+
+        // Execute the operation
+        let result = if let Some(timeout) = self.config.operation_timeout {
+            self.execute_with_timeout(operation, timeout)
+        } else {
+            operation()
+        };
+
+        let duration = start_time.elapsed();
+
+        // Decrement concurrency count
+        {
+            let mut inner = self.inner.write().unwrap();
+            inner.half_open_concurrency_count = inner.half_open_concurrency_count.saturating_sub(1);
+        }
+
+        match &result {
+            Ok(_) => {
+                self.record_success(duration);
+
+                // Check if we can close the circuit
+                let close_circuit = {
+                    let inner = self.inner.read().unwrap();
+                    inner.consecutive_successes >= self.config.success_threshold_to_close
+                };
+
+                if close_circuit {
+                    self.transition_to_closed("Success threshold reached");
+                }
+            }
+            Err(e) => {
+                if self.should_count_as_failure(e) {
+                    self.record_failure(e, duration);
+
+                    // Any failure in half-open should open the circuit again
+                    self.transition_to_open("Failure in half-open state");
+                } else {
+                    // Error not counted as failure for circuit breaking
+                    self.record_success(duration);
+                }
+            }
+        }
+
+        result
+    }
+
+    #[cfg(feature = "std-thread")]
+    fn execute_half_open<F, Ret>(&self, operation: F, start_time: Instant) -> Result<Ret>
+    where
+        F: FnOnce() -> Result<Ret> + Send + 'static,
+        Ret: Send + 'static,
     {
         // Check if we can proceed with the operation
         {
@@ -699,58 +853,58 @@ impl CircuitBreaker {
 
     // Timeout helpers
 
+    // Non-threaded timeout implementation
+    #[cfg(not(feature = "std-thread"))]
     fn execute_with_timeout<F, Ret>(&self, operation: F, timeout: Duration) -> Result<Ret>
     where
-        F: FnOnce() -> Result<Ret> + Send,
-        Ret: Send,
+        F: FnOnce() -> Result<Ret>,
     {
-        // Simple timeout implementation for non-async code
-        // In a real implementation, you'd likely want to use a more sophisticated approach
+        // Fallback implementation without threads
+        let start = Instant::now();
+        let result = operation();
+        if start.elapsed() > timeout {
+            self.record_timeout();
+            Err(DecrustError::Timeout {
+                operation: format!("Operation in circuit breaker '{}'", self.name),
+                duration: timeout,
+                backtrace: Backtrace::generate(),
+            })
+        } else {
+            result
+        }
+    }
 
-        #[cfg(not(feature = "std-thread"))]
-        {
-            // Fallback implementation without threads
-            let start = Instant::now();
+    // Threaded timeout implementation
+    #[cfg(feature = "std-thread")]
+    fn execute_with_timeout<F, Ret>(&self, operation: F, timeout: Duration) -> Result<Ret>
+    where
+        F: FnOnce() -> Result<Ret> + Send + 'static,
+        Ret: Send + 'static,
+    {
+        use std::sync::mpsc;
+        use std::thread;
+
+        let (tx, rx) = mpsc::channel();
+
+        let handle = thread::spawn(move || {
             let result = operation();
-            if start.elapsed() > timeout {
+            let _ = tx.send(result);
+        });
+
+        match rx.recv_timeout(timeout) {
+            Ok(result) => {
+                // Operation completed within timeout
+                let _ = handle.join();
+                result
+            }
+            Err(_) => {
+                // Operation timed out
                 self.record_timeout();
                 Err(DecrustError::Timeout {
                     operation: format!("Operation in circuit breaker '{}'", self.name),
                     duration: timeout,
                     backtrace: Backtrace::generate(),
                 })
-            } else {
-                result
-            }
-        }
-
-        #[cfg(feature = "std-thread")]
-        {
-            use std::sync::mpsc;
-            use std::thread;
-
-            let (tx, rx) = mpsc::channel();
-
-            let handle = thread::spawn(move || {
-                let result = operation();
-                let _ = tx.send(result);
-            });
-
-            match rx.recv_timeout(timeout) {
-                Ok(result) => {
-                    // Operation completed within timeout
-                    let _ = handle.join();
-                    result
-                }
-                Err(_) => {
-                    // Operation timed out
-                    self.record_timeout();
-                    Err(DecrustError::Timeout {
-                        operation: format!("Operation in circuit breaker '{}'", self.name),
-                        duration: timeout,
-                        backtrace: Backtrace::generate(),
-                    })
-                }
             }
         }
     }
