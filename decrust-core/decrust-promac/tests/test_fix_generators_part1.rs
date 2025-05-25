@@ -278,6 +278,7 @@ fn test_decrust_macro_integration_file_operation() {
 #[test]
 fn test_decrust_macro_integration_success() {
     // Test the decrust! macro with a successful operation
+    #[allow(clippy::result_large_err)]
     fn successful_operation() -> Result<String, DecrustError> {
         Ok("Success!".to_string())
     }

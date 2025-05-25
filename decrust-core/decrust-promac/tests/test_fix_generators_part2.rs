@@ -40,10 +40,7 @@ fn create_network_error(url: &str, kind: &str) -> DecrustError {
 fn create_whatever_error(message: &str) -> DecrustError {
     DecrustError::Oops {
         message: message.to_string(),
-        source: Box::new(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            "Other error",
-        )),
+        source: Box::new(std::io::Error::other("Other error")),
         backtrace: Backtrace::capture(),
     }
 }

@@ -9,6 +9,9 @@ repository.workspace = true
 license.workspace = true
 description = "The ultimate all-in-one error handling framework for Rust - use decrust::* and decrust!(any_operation())"
 
+[lints]
+workspace = true
+
 [dependencies]
 # Re-export the core framework
 decrust-core = { path = "../decrust-core", version = "1.2.1" }

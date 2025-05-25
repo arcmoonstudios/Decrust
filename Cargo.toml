@@ -34,6 +34,11 @@ repository = "https://github.com/arcmoonstudios/decrust"
 license = "MIT"
 description = "The ultimate all-in-one error handling framework for Rust"
 
+# Workspace-wide lints
+[workspace.lints.clippy]
+# Allow large error types - this is intentional for comprehensive error handling
+result_large_err = "allow"
+
 # The workspace only manages members, the actual decrust package is in decrust/
 
 [profile.release]

@@ -1,11 +1,10 @@
 /* tests\test_reexports.rs */
-/// Brief: Tests to verify that decrust-promac-runtime correctly re-exports types from decrust
+// Brief: Tests to verify that decrust-promac-runtime correctly re-exports types from decrust
 // ~=####====A===r===c===M===o===o===n====S===t===u===d===i===o===s====X|0|$>
 // **GitHub:** [ArcMoon Studios](https://github.com/arcmoonstudios)
 // **Copyright:** (c) 2025 ArcMoon Studios
 // **Author:** Lord Xyn
 // **License:** MIT
-
 // Import all the re-exported modules
 use decrust_promac_runtime::backtrace;
 use decrust_promac_runtime::circuit_breaker;

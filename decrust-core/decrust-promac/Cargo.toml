@@ -7,6 +7,9 @@ repository.workspace = true
 license.workspace = true
 description = "Procedural macros for the Decrust Error handling framework"
 
+[lints]
+workspace = true
+
 [lib]
 proc-macro = true # THIS IS CRUCIAL for procedural macros
 

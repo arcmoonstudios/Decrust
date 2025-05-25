@@ -9,6 +9,9 @@ repository.workspace = true
 license.workspace = true
 description = "Core error handling framework for Decrust"
 
+[lints]
+workspace = true
+
 [dependencies]
 # Use workspace dependencies
 thiserror = { workspace = true }

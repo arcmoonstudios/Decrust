@@ -6,46 +6,46 @@
 //!
 //!  - [Autocorrection System]
 //!    * Automatic (8) Directly corrects:
-//!       ~ warning: unused import
-//!       ~ warning: unused variable
-//!       ~ warning: missing semicolon
-//!       ~ warning: unnecessary clone
-//!       ~ warning: unnecessary braces
-//!       ~ warning: unused mut keyword
-//!       ~ warning: unreachable or unused code
-//!       ~ **E0433**: missing imports
+//!     - warning: unused import
+//!     - warning: unused variable
+//!     - warning: missing semicolon
+//!     - warning: unnecessary clone
+//!     - warning: unnecessary braces
+//!     - warning: unused mut keyword
+//!     - warning: unreachable or unused code
+//!     - **E0433**: missing imports
 //!
 //!    * **Interactive** (13) Presents options for:
-//!       ~ **E0308**: type mismatches
-//!       ~ **E0106**: missing lifetimes
-//!       ~ **E0603**: private field access
-//!       ~ **E0618**/**E0617**: parameter mismatches
-//!       ~ **E0403**: generic parameter conflicts
-//!       ~ **E0599**: missing trait implementations
-//!       ~ **E0277**: required trait not implemented
-//!       ~ **E0596**: immutable borrow used as mutable
-//!       ~ **E0308**: missing or mismatched return values
-//!       ~ **E0382**: use of moved value (borrow-after-move)
-//!       ~ **E0005**: non-exhaustive or invalid match patterns
-//!       ~ **E0023**/**E0027**: enum or struct parameter mismatches
+//!     - **E0308**: type mismatches
+//!     - **E0106**: missing lifetimes
+//!     - **E0603**: private field access
+//!     - **E0618**/**E0617**: parameter mismatches
+//!     - **E0403**: generic parameter conflicts
+//!     - **E0599**: missing trait implementations
+//!     - **E0277**: required trait not implemented
+//!     - **E0596**: immutable borrow used as mutable
+//!     - **E0308**: missing or mismatched return values
+//!     - **E0382**: use of moved value (borrow-after-move)
+//!     - **E0005**: non-exhaustive or invalid match patterns
+//!     - **E0023**/**E0027**: enum or struct parameter mismatches
 //!
 //!    * **Manual** (18) Provides guidance for:
-//!       ~ **E0601**/**E0593**: potential division by zero
-//!       ~ **E0061**: incorrect number of function arguments
-//!       ~ **E0515**: cannot return reference to local variable
-//!       ~ **E0072**: recursive type definitions with no indirection
-//!       ~ **E0658**: use of unstable features without nightly or flags
-//!       ~ **E0373**: closure may outlive the current function, but it borrows
-//!       ~ error: network connection refused, timed out, or DNS failure
-//!       ~ error: file permission denied (e.g., EACCES, EPERM)
-//!       ~ error: configuration file format or schema issues
-//!       ~ error: missing directories or file paths
-//!       ~ error: JSON or YAML parsing failures
-//!       ~ error: TLS certificate validation failure
-//!       ~ warning: incomplete match arms for Result/Option (non-exhaustive)
-//!       ~ warning: unsafe usage of unwrap()/expect() that may panic at runtime
-//!       ~ warning: complex architectural mismatches requiring domain-level analysis
-//!       ~ panic sources: explicit panic!, index out of bounds, unsafe transmute/casts
+//!     - **E0601**/**E0593**: potential division by zero
+//!     - **E0061**: incorrect number of function arguments
+//!     - **E0515**: cannot return reference to local variable
+//!     - **E0072**: recursive type definitions with no indirection
+//!     - **E0658**: use of unstable features without nightly or flags
+//!     - **E0373**: closure may outlive the current function, but it borrows
+//!     - error: network connection refused, timed out, or DNS failure
+//!     - error: file permission denied (e.g., EACCES, EPERM)
+//!     - error: configuration file format or schema issues
+//!     - error: missing directories or file paths
+//!     - error: JSON or YAML parsing failures
+//!     - error: TLS certificate validation failure
+//!     - warning: incomplete match arms for Result/Option (non-exhaustive)
+//!     - warning: unsafe usage of unwrap()/expect() that may panic at runtime
+//!     - warning: complex architectural mismatches requiring domain-level analysis
+//!     - panic sources: explicit panic!, index out of bounds, unsafe transmute/casts
 //!
 //!  - [Error Diagnostic Tools]
 //!    * Extracts detailed context from errors to enable precise fixes
