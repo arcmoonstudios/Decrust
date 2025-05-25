@@ -32,8 +32,9 @@ jobs:
           fi
 
       - name: 🦀 Install Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@master
         with:
+          toolchain: "1.87.0"
           components: rustfmt, clippy
 
       - name: 📦 Cache dependencies
@@ -90,7 +91,9 @@ jobs:
           fi
 
       - name: 🦀 Install Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.87.0"
 
       - name: 📦 Cache dependencies
         uses: swatinem/rust-cache@v2
@@ -139,7 +142,9 @@ jobs:
           fi
 
       - name: 🦀 Install Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.87.0"
 
       - name: 📦 Cache dependencies
         uses: swatinem/rust-cache@v2

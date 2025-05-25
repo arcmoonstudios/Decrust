@@ -505,7 +505,7 @@ impl Clone for OptionalError {
         match &self.0 {
             Some(err) => {
                 // Create a new error with the string representation of the original error
-                let cloned_err = std::io::Error::new(std::io::ErrorKind::Other, format!("{}", err));
+                let cloned_err = std::io::Error::other(format!("{}", err));
                 OptionalError(Some(Box::new(cloned_err)))
             }
             None => OptionalError(None),
@@ -971,8 +971,7 @@ impl Clone for DecrustError {
             Self::Network {
                 source, url, kind, ..
             } => Self::Network {
-                source: Box::new(std::io::Error::new(
-                    std::io::ErrorKind::Other,
+                source: Box::new(std::io::Error::other(
                     format!("{}", source),
                 )),
                 url: url.clone(),
@@ -1105,8 +1104,7 @@ impl Clone for DecrustError {
                 message, source, ..
             } => Self::Oops {
                 message: message.clone(),
-                source: Box::new(std::io::Error::new(
-                    std::io::ErrorKind::Other,
+                source: Box::new(std::io::Error::other(
                     format!("{}", source),
                 )),
                 backtrace: Backtrace::generate(),
@@ -1745,7 +1743,7 @@ mod tests {
         fn always_fails_decrust() -> Result<std::convert::Infallible, DecrustError> {
             Err(DecrustError::Oops {
                 message: "Test oops error".to_string(),
-                source: Box::new(std::io::Error::new(std::io::ErrorKind::Other, "test")),
+                source: Box::new(std::io::Error::other("test")),
                 backtrace: Backtrace::generate(),
             })
         }
@@ -1804,7 +1802,7 @@ mod tests {
 
     #[test]
     fn test_whatever_error() {
-        let original_io_error = std::io::Error::new(std::io::ErrorKind::Other, "some io problem");
+        let original_io_error = std::io::Error::other("some io problem");
         // Create a Oops variant directly
         let err = DecrustError::Oops {
             message: "A oops message".to_string(),

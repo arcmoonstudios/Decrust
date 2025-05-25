@@ -166,7 +166,7 @@ mod tests {
         fn always_fails_decrust() -> Result<std::convert::Infallible, DecrustError> {
             Err(DecrustError::Oops {
                 message: "Test oops error".to_string(),
-                source: Box::new(std::io::Error::new(std::io::ErrorKind::Other, "test")),
+                source: Box::new(std::io::Error::other("test")),
                 backtrace: Backtrace::generate(),
             })
         }
@@ -225,7 +225,7 @@ mod tests {
 
     #[test]
     fn test_whatever_error() {
-        let original_io_error = std::io::Error::new(std::io::ErrorKind::Other, "some io problem");
+        let original_io_error = std::io::Error::other("some io problem");
         // Create a Oops variant directly
         let err = DecrustError::Oops {
             message: "A oops message".to_string(),

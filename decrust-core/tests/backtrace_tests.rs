@@ -175,7 +175,7 @@ mod tests {
 
     #[test]
     fn test_oops_macro() {
-        let io_error = std::io::Error::new(std::io::ErrorKind::Other, "test error");
+        let io_error = std::io::Error::other("test error");
 
         // Test basic oops
         let basic_oops = oops!("Something went wrong", io_error);
@@ -186,7 +186,7 @@ mod tests {
         }
 
         // Test oops with metadata - use severity only for now
-        let io_error2 = std::io::Error::new(std::io::ErrorKind::Other, "test error");
+        let io_error2 = std::io::Error::other("test error");
         let meta_oops = oops!(
             "Something went wrong",
             io_error2,

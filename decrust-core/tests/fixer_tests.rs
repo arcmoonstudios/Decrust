@@ -2299,8 +2299,7 @@ mod tests {
 
         // Test with a TLS certificate validation error
         let error = DecrustError::Network {
-            source: Box::new(std::io::Error::new(
-                std::io::ErrorKind::Other,
+            source: Box::new(std::io::Error::other(
                 "SSL certificate verification failed",
             )),
             url: Some("https://api.example.com".to_string()),
