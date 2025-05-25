@@ -97,11 +97,17 @@ impl DecrustBacktrace {
     /// Returns the status of this backtrace
     pub fn status(&self) -> BacktraceStatus {
         match &self.inner {
-            Some(bt) => match bt.status() {
-                std::backtrace::BacktraceStatus::Captured => BacktraceStatus::Captured,
-                std::backtrace::BacktraceStatus::Disabled => BacktraceStatus::Disabled,
-                std::backtrace::BacktraceStatus::Unsupported => BacktraceStatus::Unsupported,
-                _ => BacktraceStatus::Unsupported,
+            Some(bt) => {
+                // Handle all possible backtrace status variants more robustly
+                use std::backtrace::BacktraceStatus as StdStatus;
+                match bt.status() {
+                    StdStatus::Captured => BacktraceStatus::Captured,
+                    StdStatus::Disabled => BacktraceStatus::Disabled,
+                    StdStatus::Unsupported => BacktraceStatus::Unsupported,
+                    // Handle any future variants by defaulting to Unsupported
+                    #[allow(unreachable_patterns)]
+                    _ => BacktraceStatus::Unsupported,
+                }
             },
             None => BacktraceStatus::Disabled,
         }

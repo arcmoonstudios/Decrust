@@ -9,7 +9,8 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-  RUST_BACKTRACE: 1
+  RUST_BACKTRACE: full
+  RUST_LIB_BACKTRACE: 1
 
 jobs:
   # Fast-fail checks to catch formatting and lint errors early
@@ -28,6 +29,14 @@ jobs:
 
       - name: 📦 Cache dependencies
         uses: swatinem/rust-cache@v2
+
+      - name: 🐛 Debug Environment
+        run: |
+          echo "Rust version: $(rustc --version)"
+          echo "Cargo version: $(cargo --version)"
+          echo "RUST_BACKTRACE: $RUST_BACKTRACE"
+          echo "RUST_LIB_BACKTRACE: $RUST_LIB_BACKTRACE"
+          echo "Platform: $(uname -a)"
 
       - name: 🎨 Check formatting
         run: cargo fmt --all -- --check
@@ -50,6 +59,13 @@ jobs:
 
       - name: 📦 Cache dependencies
         uses: swatinem/rust-cache@v2
+
+      - name: 🐛 Debug Environment
+        run: |
+          echo "Rust version: $(rustc --version)"
+          echo "Cargo version: $(cargo --version)"
+          echo "RUST_BACKTRACE: $RUST_BACKTRACE"
+          echo "RUST_LIB_BACKTRACE: $RUST_LIB_BACKTRACE"
 
       - name: 🔨 Build
         run: cargo build --all-targets
