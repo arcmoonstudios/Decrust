@@ -341,18 +341,20 @@ Automated quality assurance for Rust crates"""
                     print(f"   {Colors.YELLOW}⚠️  Git add failed: {add_result.stderr.strip()}{Colors.END}")
             else:
                 print(f"   {Colors.CYAN}ℹ️  No changes to commit - repository is clean{Colors.END}")
-                print(f"   {Colors.CYAN}🚀 Triggering CI with empty commit...{Colors.END}")
 
-                # Create empty commit to trigger CI
-                empty_commit_result = subprocess.run(
-                    ["git", "commit", "--allow-empty", "-m", "🚀 Trigger CI - All quality checks passed"],
+                # Check if we're ahead of remote (unpushed commits)
+                ahead_result = subprocess.run(
+                    ["git", "rev-list", "--count", "HEAD", "^origin/HEAD"],
                     capture_output=True,
                     text=True,
-                    timeout=60
+                    timeout=30
                 )
 
-                if empty_commit_result.returncode == 0:
-                    # Push to trigger CI
+                if ahead_result.returncode == 0 and ahead_result.stdout.strip() != "0":
+                    # We have unpushed commits, push them to trigger CI
+                    unpushed_count = ahead_result.stdout.strip()
+                    print(f"   {Colors.CYAN}🚀 Found {unpushed_count} unpushed commit(s) - pushing to trigger CI...{Colors.END}")
+
                     push_result = subprocess.run(
                         ["git", "push"],
                         capture_output=True,
@@ -361,11 +363,15 @@ Automated quality assurance for Rust crates"""
                     )
 
                     if push_result.returncode == 0:
-                        print(f"   {Colors.GREEN}✅ Successfully triggered CI with empty commit!{Colors.END}")
+                        print(f"   {Colors.GREEN}✅ Successfully pushed {unpushed_count} commit(s) - CI triggered!{Colors.END}")
+                        print(f"   {Colors.GREEN}🔄 Check your repository for CI pipeline status{Colors.END}")
                     else:
                         print(f"   {Colors.YELLOW}⚠️  Push failed: {push_result.stderr.strip()}{Colors.END}")
                 else:
-                    print(f"   {Colors.YELLOW}⚠️  Empty commit failed: {empty_commit_result.stderr.strip()}{Colors.END}")
+                    # Repository is clean and up-to-date, no need for CI trigger
+                    print(f"   {Colors.GREEN}✅ Repository is clean and up-to-date{Colors.END}")
+                    print(f"   {Colors.GREEN}🎯 All quality checks passed - ready for crates.io release{Colors.END}")
+                    print(f"   {Colors.CYAN}💡 No CI trigger needed - repository is already synchronized{Colors.END}")
 
         except subprocess.TimeoutExpired:
             print(f"   {Colors.YELLOW}⚠️  Git operation timed out{Colors.END}")
