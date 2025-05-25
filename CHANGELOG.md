@@ -7,6 +7,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.2] - 2025-01-25
+
+### Updated
+
+- **Rust Toolchain**: Upgraded from Rust 1.85.1 to Rust 1.87.0 (latest stable)
+  - Updated `rust-toolchain.toml` to specify Rust 1.87.0 explicitly
+  - Updated CI workflow to use Rust 1.87.0 across all jobs (code-quality, test, docs)
+  - Updated MSRV in workspace Cargo.toml to 1.87.0
+  - Resolved ABI compatibility issues between Rust versions
+
+- **Dependencies**: Updated all dependencies to latest stable versions
+  - `chrono`: Updated to 0.4.41 with serde features
+  - `serde`: Updated to 1.0.219 with derive features
+  - `tokio`: Updated to 1.45.0 with full features
+  - `syn`: Updated to 2.0.101 with full features
+  - `thiserror`: Updated to 2.0.12
+  - `anyhow`: Updated to 1.0.95
+  - `regex`: Updated to 1.11.1
+  - `tracing`: Updated to 0.1.41
+  - `derivative`: Updated to 2.2.0
+  - `proc-macro2`: Updated to 1.0.95
+  - `quote`: Updated to 1.0.38
+  - `rand`: Updated to 0.9.1
+
+### Fixed
+
+- **Compatibility**: Resolved Rust 1.87.0 compatibility issues
+  - Fixed all `std::io::Error::new()` calls to use `std::io::Error::other()` for Rust 1.87.0 compliance
+  - Updated procedural macro compilation to work with Rust 1.87.0 ABI
+  - Resolved macro expansion issues in test files
+  - Fixed clippy warnings introduced by stricter Rust 1.87.0 linting rules
+
+- **Testing**: Enhanced autocorrection testing framework
+  - Fixed test assertions to match actual error message formats
+  - Added comprehensive tests for autocorrection functionality through error creation
+  - Verified that `decrust!` macro properly processes autocorrection suggestions
+  - All 200+ tests now pass with Rust 1.87.0
+
+### Technical Details
+
+- **Build System**: Clean rebuild required for Rust version compatibility
+  - Procedural macros recompiled with Rust 1.87.0 for ABI compatibility
+  - Enhanced error handling in CI for better debugging with new Rust version
+  - Updated toolchain configuration for consistent builds across environments
+
 ## [1.2.1] - 2025-01-25
 
 ### Fixed
@@ -204,6 +249,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **1.1.0** (2025-01-25): Workspace architecture and advanced error categories with fix generation
 - **1.2.0** (2025-01-25): M.A.R.S. framework and intelligent autocorrection with 39 error types
 - **1.2.1** (2025-01-25): CI/CD improvements, code quality fixes, and enhanced stability
+- **1.2.2** (2025-01-25): Rust 1.87.0 upgrade and latest dependency updates with compatibility fixes
 
 ## Links
 

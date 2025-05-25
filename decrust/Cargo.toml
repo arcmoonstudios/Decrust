@@ -14,13 +14,13 @@ workspace = true
 
 [dependencies]
 # Re-export the core framework
-decrust-core = { path = "../decrust-core", version = "1.2.1" }
+decrust-core = { path = "../decrust-core", version = "1.2.2" }
 
 # Re-export the macro (now inside decrust-core)
-decrust_promac = { path = "../decrust-core/decrust-promac", version = "1.2.1" }
+decrust_promac = { path = "../decrust-core/decrust-promac", version = "1.2.2" }
 
 # Re-export the runtime (now inside decrust-core)
-decrust-promac-runtime = { path = "../decrust-core/decrust-promac-runtime", version = "1.2.1" }
+decrust-promac-runtime = { path = "../decrust-core/decrust-promac-runtime", version = "1.2.2" }
 
 [lib]
 name = "decrust"

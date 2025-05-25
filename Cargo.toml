@@ -11,22 +11,22 @@ resolver = "2"
 
 # Workspace-wide dependencies that can be inherited by members
 [workspace.dependencies]
-chrono = { version = "0.4.31", features = ["serde"] }
-serde = { version = "1.0.188", features = ["derive"] }
-tokio = { version = "1.32.0", features = ["full"] }
+chrono = { version = "0.4.41", features = ["serde"] }
+serde = { version = "1.0.219", features = ["derive"] }
+tokio = { version = "1.45.0", features = ["full"] }
 syn = { version = "2.0.101", features = ["full"] }
-thiserror = "1.0.48"
-anyhow = "1.0.75"
+thiserror = "2.0.12"
+anyhow = "1.0.95"
 regex = "1.11.1"
-tracing = "0.1.37"
+tracing = "0.1.41"
 derivative = "2.2.0"
-proc-macro2 = "1.0"
-quote = "1.0.40"
-rand = "0.8"
+proc-macro2 = "1.0.95"
+quote = "1.0.38"
+rand = "0.9.1"
 
 # Workspace-wide metadata
 [workspace.package]
-version = "1.2.1"
+version = "1.2.2"
 edition = "2021"
 rust-version = "1.87.0"
 authors = ["Lord Xyn <LordXyn@proton.me>"]
