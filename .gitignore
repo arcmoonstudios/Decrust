@@ -66,6 +66,7 @@ pydecruster.py
 # Other
 trash/
 errors.json
+metadata.json
 pydecruster.log
 pyKrater-Pro/
 scripts/
