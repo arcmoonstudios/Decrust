@@ -108,7 +108,7 @@ impl DecrustBacktrace {
                     #[allow(unreachable_patterns)]
                     _ => BacktraceStatus::Unsupported,
                 }
-            },
+            }
             None => BacktraceStatus::Disabled,
         }
     }
