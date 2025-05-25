@@ -429,7 +429,11 @@
 // **GitHub:** [ArcMoon Studios](https://github.com/arcmoonstudios)
 // **Copyright:** (c) 2025 ArcMoon Studios
 // **Author:** Lord Xyn
-// **License:** MIT
+// **License:** Business Source License 1.1 (BSL-1.1)
+// **License File:** /LICENSE
+// **License Terms:** Non-production use only; commercial/production use requires a paid license.
+// **Change Date:** 2029-05-25 | **Change License:** GPL v3
+// **Contact:** LordXyn@proton.me
 
 pub mod backtrace;
 pub mod circuit_breaker;
@@ -467,13 +471,15 @@ pub use self::circuit_breaker::{
 pub use self::decrust::{
     AstMissingImportFixGenerator, AstUnusedCodeFixGenerator, AutocorrectableError,
     ClosureCaptureLifetimeFixGenerator, ConfigMissingKeyFixGenerator, ConfigSyntaxFixGenerator,
-    Decrust, DivisionByZeroFixGenerator, InvalidArgumentCountFixGenerator,
+    CrateUsageAnalysis, Decrust, DependencyAnalysisResult, DependencyAnalyzer,
+    DivisionByZeroFixGenerator, InteractiveRecommendation, InvalidArgumentCountFixGenerator,
     IoMissingDirectoryFixGenerator, IoPermissionFixGenerator, JsonParseFixGenerator,
     MissingOkErrFixGenerator, NetworkConnectionFixGenerator, NetworkTlsFixGenerator,
-    QuestionMarkPropagationFixGenerator, RecursiveTypeFixGenerator,
-    ReturnLocalReferenceFixGenerator, RuntimePanicFixGenerator, UnnecessaryCloneFixGenerator,
-    UnnecessaryParenthesesFixGenerator, UnsafeUnwrapFixGenerator, UnstableFeatureFixGenerator,
-    UnusedMutFixGenerator, YamlParseFixGenerator,
+    OptimizationImpact, QuestionMarkPropagationFixGenerator, RecommendationType,
+    RecursiveTypeFixGenerator, ReturnLocalReferenceFixGenerator, RuntimePanicFixGenerator,
+    SecurityImpact, UnnecessaryCloneFixGenerator, UnnecessaryParenthesesFixGenerator,
+    UnsafeUnwrapFixGenerator, UnstableFeatureFixGenerator, UnusedMutFixGenerator,
+    VersionCompatibility, YamlParseFixGenerator,
 };
 
 pub use self::reporter::{ErrorReportConfig, ErrorReporter};
@@ -971,9 +977,7 @@ impl Clone for DecrustError {
             Self::Network {
                 source, url, kind, ..
             } => Self::Network {
-                source: Box::new(std::io::Error::other(
-                    format!("{}", source),
-                )),
+                source: Box::new(std::io::Error::other(format!("{}", source))),
                 url: url.clone(),
                 kind: kind.clone(),
                 backtrace: Backtrace::generate(),
@@ -1104,9 +1108,7 @@ impl Clone for DecrustError {
                 message, source, ..
             } => Self::Oops {
                 message: message.clone(),
-                source: Box::new(std::io::Error::other(
-                    format!("{}", source),
-                )),
+                source: Box::new(std::io::Error::other(format!("{}", source))),
                 backtrace: Backtrace::generate(),
             },
         }
@@ -1575,6 +1577,31 @@ impl From<std::io::Error> for DecrustError {
             source: err,
             path: None,
             operation: "I/O operation".to_string(),
+            backtrace: Backtrace::generate(),
+        }
+    }
+}
+
+/// Implementation of From&lt;Box&lt;dyn std::error::Error&gt;&gt; for DecrustError to support generic error handling
+impl From<Box<dyn std::error::Error + Send + Sync + 'static>> for DecrustError {
+    fn from(err: Box<dyn std::error::Error + Send + Sync + 'static>) -> Self {
+        DecrustError::Oops {
+            message: "Generic error occurred".to_string(),
+            source: err,
+            backtrace: Backtrace::generate(),
+        }
+    }
+}
+
+/// Implementation of From&lt;Box&lt;dyn std::error::Error&gt;&gt; for DecrustError (non-Send+Sync version)
+impl From<Box<dyn std::error::Error>> for DecrustError {
+    fn from(err: Box<dyn std::error::Error>) -> Self {
+        // Convert to Send+Sync version by creating a new error with the message
+        let message = format!("Generic error occurred: {}", err);
+        DecrustError::Internal {
+            message,
+            source: OptionalError(None), // Can't store non-Send+Sync error
+            component: None,
             backtrace: Backtrace::generate(),
         }
     }

@@ -3,7 +3,11 @@
 // **GitHub:** [ArcMoon Studios](https://github.com/arcmoonstudios)
 // **Copyright:** (c) 2025 ArcMoon Studios
 // **Author:** Lord Xyn
-// **License:** MIT
+// **License:** Business Source License 1.1 (BSL-1.1)
+// **License File:** /LICENSE
+// **License Terms:** Non-production use only; commercial/production use requires a paid license.
+// **Change Date:** 2029-05-25 | **Change License:** GPL v3
+// **Contact:** LordXyn@proton.me
 
 // This file tests the syntax functionality in decrust-promac
 use decrust_promac_runtime::syntax::{FixTemplate, SyntaxGenerator, TemplateRegistry};

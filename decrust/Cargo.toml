@@ -9,18 +9,27 @@ repository.workspace = true
 license.workspace = true
 description = "The ultimate all-in-one error handling framework for Rust - use decrust::* and decrust!(any_operation())"
 
+[[bin]]
+name = "crates"
+path = "src/bin/crates.rs"
+
 [lints]
 workspace = true
 
 [dependencies]
 # Re-export the core framework
-decrust-core = { path = "../decrust-core", version = "1.2.2" }
+decrust-core = { path = "../decrust-core", version = "1.2.3" }
 
 # Re-export the macro (now inside decrust-core)
-decrust_promac = { path = "../decrust-core/decrust-promac", version = "1.2.2" }
+decrust_promac = { path = "../decrust-core/decrust-promac", version = "1.2.3" }
 
 # Re-export the runtime (now inside decrust-core)
-decrust-promac-runtime = { path = "../decrust-core/decrust-promac-runtime", version = "1.2.2" }
+decrust-promac-runtime = { path = "../decrust-core/decrust-promac-runtime", version = "1.2.3" }
+
+# Dependencies for test binaries
+serde = { workspace = true }
+serde_json = "1.0"
+regex = { workspace = true }
 
 [lib]
 name = "decrust"
@@ -32,6 +41,9 @@ test = true
 tokio = { workspace = true }
 rand = { workspace = true }
 proptest = "1.0"
+serde = { workspace = true }
+serde_json = "1.0"
+regex = { workspace = true }
 
 # Examples to showcase the ultimate interface
 [[example]]

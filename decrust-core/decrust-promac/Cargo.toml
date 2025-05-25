@@ -20,8 +20,8 @@ proc-macro2 = { workspace = true }
 regex = "1.11.1"
 
 # Runtime dependency for testing and development
-decrust-core = { path = "..", version = "1.2.2" }
-decrust-promac-runtime = { path = "../decrust-promac-runtime", version = "1.2.2" }
+decrust-core = { path = "..", version = "1.2.3" }
+decrust-promac-runtime = { path = "../decrust-promac-runtime", version = "1.2.3" }
 
 # Note: The generated code will use `::decrust::types::DecrustError` etc.
 # This works because the user of the `decrust` crate will have it in their scope.

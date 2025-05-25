@@ -11,4 +11,4 @@ description.workspace = true
 workspace = true
 
 [dependencies]
-decrust-core = { path = "..", version = "1.2.2" }
+decrust-core = { path = "..", version = "1.2.3" }

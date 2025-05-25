@@ -12,7 +12,11 @@
 // **GitHub:** [ArcMoon Studios](https://github.com/arcmoonstudios)
 // **Copyright:** (c) 2025 ArcMoon Studios
 // **Author:** Lord Xyn
-// **License:** MIT
+// **License:** Business Source License 1.1 (BSL-1.1)
+// **License File:** /LICENSE
+// **License Terms:** Non-production use only; commercial/production use requires a paid license.
+// **Change Date:** 2029-05-25 | **Change License:** GPL v3
+// **Contact:** LordXyn@proton.me
 
 #[cfg(test)]
 #[allow(clippy::result_large_err)]
@@ -1036,7 +1040,8 @@ mod tests {
 
         assert!(fix.is_some());
         let fix = fix.unwrap();
-        assert_eq!(fix.fix_type, FixType::ManualInterventionRequired);
+        // "name" is a common field that can be automated
+        assert_eq!(fix.fix_type, FixType::TextReplacement);
         assert!(fix.description.contains("Fix access to private field"));
         assert!(fix.description.contains("name"));
         assert!(fix.description.contains("Person"));
@@ -2299,9 +2304,7 @@ mod tests {
 
         // Test with a TLS certificate validation error
         let error = DecrustError::Network {
-            source: Box::new(std::io::Error::other(
-                "SSL certificate verification failed",
-            )),
+            source: Box::new(std::io::Error::other("SSL certificate verification failed")),
             url: Some("https://api.example.com".to_string()),
             kind: "TLS".to_string(),
             backtrace: Backtrace::generate(),

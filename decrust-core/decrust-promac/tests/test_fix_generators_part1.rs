@@ -3,7 +3,11 @@
 // **GitHub:** [ArcMoon Studios](https://github.com/arcmoonstudios)
 // **Copyright:** (c) 2025 ArcMoon Studios
 // **Author:** Lord Xyn
-// **License:** MIT
+// **License:** Business Source License 1.1 (BSL-1.1)
+// **License File:** /LICENSE
+// **License Terms:** Non-production use only; commercial/production use requires a paid license.
+// **Change Date:** 2029-05-25 | **Change License:** GPL v3
+// **Contact:** LordXyn@proton.me
 
 // This file tests the fix generators functionality in decrust-promac (Part 1)
 // Testing the decrust! macro with autocorrection functionality
@@ -276,8 +280,13 @@ fn test_decrust_macro_integration_file_operation() {
         // Test that the error contains diagnostic information for autocorrection
         let error_string = format!("{}", err);
         // The error might not contain the exact filename, but should contain file-related information
-        assert!(error_string.contains("file") || error_string.contains("NotFound") || error_string.contains("I/O"),
-               "Error should mention file-related information: {}", error_string);
+        assert!(
+            error_string.contains("file")
+                || error_string.contains("NotFound")
+                || error_string.contains("I/O"),
+            "Error should mention file-related information: {}",
+            error_string
+        );
 
         // Test that the decrust! macro actually provides autocorrection suggestions
         // The decrust! macro should have already processed the error and provided autocorrection
@@ -285,16 +294,28 @@ fn test_decrust_macro_integration_file_operation() {
         // the necessary information for autocorrection
 
         // Verify the error category is correct for autocorrection
-        assert_eq!(err.category(), ErrorCategory::Io, "Should categorize as IO error for autocorrection");
+        assert_eq!(
+            err.category(),
+            ErrorCategory::Io,
+            "Should categorize as IO error for autocorrection"
+        );
 
         // Test that the error contains the file path information needed for autocorrection
         let error_string = format!("{}", err);
         // The error might not contain the exact filename in the display, but should contain file-related information
-        assert!(error_string.contains("file") || error_string.contains("NotFound") || error_string.contains("I/O"),
-               "Error should contain file-related information for autocorrection: {}", error_string);
+        assert!(
+            error_string.contains("file")
+                || error_string.contains("NotFound")
+                || error_string.contains("I/O"),
+            "Error should contain file-related information for autocorrection: {}",
+            error_string
+        );
 
         // Test that the error has the operation information needed for autocorrection
-        assert!(error_string.contains("operation"), "Error should contain operation info for autocorrection");
+        assert!(
+            error_string.contains("operation"),
+            "Error should contain operation info for autocorrection"
+        );
 
         // The decrust! macro should have already attempted autocorrection during error processing
         // This is verified by the fact that the macro completed successfully and returned a properly

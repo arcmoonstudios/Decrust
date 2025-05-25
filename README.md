@@ -313,9 +313,18 @@ src/
 
 Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
-## License
+## Licensing
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the **Business Source License 1.1 (BSL 1.1)**.
+
+- **Non-production use is free** (development, testing, academic, personal).
+- **Commercial or production use requires a paid license** from ArcMoon Studios.
+- **Contact:** LordXyn@proton.me for inquiries about commercial licensing.
+
+**Change Date:** 2029-05-25
+**Change License:** GNU GPL v3
+
+See [LICENSE](./LICENSE) for details.
 
 ---
 

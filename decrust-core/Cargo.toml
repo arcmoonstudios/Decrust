@@ -9,6 +9,8 @@ repository.workspace = true
 license.workspace = true
 description = "Core error handling framework for Decrust"
 
+# Test binaries removed for clean release
+
 [lints]
 workspace = true
 

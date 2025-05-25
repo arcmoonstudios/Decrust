@@ -6,32 +6,36 @@ members = [
 "decrust",                             # The ultimate public interface
 "decrust-core",                        # Core framework (renamed from decrust)
 "decrust-core/decrust-promac",         # Procedural macro implementation (inside decrust-core)
-"decrust-core/decrust-promac-runtime"] # Runtime middleware (inside decrust-core)
+"decrust-core/decrust-promac-runtime", # Runtime middleware (inside decrust-core)
+"decrust-core/decrust-crates"]         # Dependency optimizer tool (inside decrust-core)
 resolver = "2"
 
 # Workspace-wide dependencies that can be inherited by members
 [workspace.dependencies]
 chrono = { version = "0.4.41", features = ["serde"] }
 serde = { version = "1.0.219", features = ["derive"] }
-tokio = { version = "1.45.0", features = ["full"] }
+serde_json = "1.0.140"
+tokio = { version = "1.45.0", features = ["fs", "macros", "net", "time"] }
 syn = { version = "2.0.101", features = ["full"] }
-thiserror = "2.0.12"
 anyhow = "1.0.95"
-regex = "1.11.1"
-tracing = "0.1.41"
 derivative = "2.2.0"
 proc-macro2 = "1.0.95"
 quote = "1.0.38"
 rand = "0.9.1"
+regex = "1.11.1"
+thiserror = "2.0.12"
+tracing = "0.1.41"
+walkdir = "2.5"
 
 # Workspace-wide metadata
 [workspace.package]
-version = "1.2.2"
+version = "1.2.3"
 edition = "2021"
 rust-version = "1.87.0"
 authors = ["Lord Xyn <LordXyn@proton.me>"]
 repository = "https://github.com/arcmoonstudios/decrust"
-license = "MIT"
+license = "BSL-1.1"
+license-file = "LICENSE"
 description = "The ultimate all-in-one error handling framework for Rust"
 
 # Workspace-wide lints
@@ -40,15 +44,53 @@ description = "The ultimate all-in-one error handling framework for Rust"
 result_large_err = "allow"
 
 # The workspace only manages members, the actual decrust package is in decrust/
-
 [profile.release]
+# Maximum optimization for speed
 opt-level = 3
-lto = true
+# Enable link-time optimization (use 'fat' for maximum optimization at cost of compile time)
+lto = "thin"
+# Strip debug symbols to reduce binary size
+strip = "symbols"
+# Abort on panic for smaller binary size
 panic = "abort"
+# Minimize codegen units for better optimization
 codegen-units = 1
+# Optimize dependencies as well
+overflow-checks = false
+# Use DWARF 4 format for reduced binary size
+debug = false
+# Parallelize codegen for faster compilation
+incremental = false
 
+# Ultra-optimized profile for maximum performance at release time
+[profile.ultra]
+inherits = "release"
+lto = "fat"
+codegen-units = 1
+opt-level = 3
+strip = "symbols"
+panic = "abort"
+debug = false
+incremental = false
+
+# Profile balancing optimization and debug info
+[profile.profiling]
+inherits = "release"
+strip = false
+debug = 2
+lto = "thin"
+incremental = true
+
+# Profile for efficient development with some optimizations
 [profile.dev]
-opt-level = 0
-debug = true
+opt-level = 1
+debug = 2
+incremental = true
+debug-assertions = true
+overflow-checks = true
+lto = false
+codegen-units = 256
 
-# Examples are defined in the individual crates
+# Profile for debug builds with good performance
+[profile.dev.package."*"]
+opt-level = 2
