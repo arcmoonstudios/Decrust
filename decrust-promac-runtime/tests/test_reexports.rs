@@ -3,6 +3,7 @@
 // Import all the re-exported modules
 use decrust_promac_runtime::backtrace;
 use decrust_promac_runtime::circuit_breaker;
+use decrust_promac_runtime::decrust;
 use decrust_promac_runtime::reporter;
 use decrust_promac_runtime::syntax;
 use decrust_promac_runtime::types;
@@ -107,13 +108,27 @@ fn test_syntax_module() {
 
 #[test]
 fn test_decrust_module() {
-    // Test that Decrust trait is accessible
-    // This is just a compile-time check since we can't easily implement the trait here
-    let _trait_exists = true;
+    // Test that Decrust struct is accessible and can be created
+    let decrust_engine = decrust::Decrust::new();
 
-    // Test that AutocorrectableError is accessible
-    // This is just a compile-time check since we can't easily implement the trait here
-    let _trait_exists = true;
+    // Create a test error to analyze
+    let error = DecrustError::Internal {
+        message: "Test error for decrust analysis".to_string(),
+        source: OptionalError(None),
+        component: Some("decrust_test".to_string()),
+        backtrace: backtrace::DecrustBacktrace::generate(),
+    };
+
+    // Test that we can extract parameters from the error
+    let params = decrust_engine.extract_parameters(&error);
+
+    // Test that we can suggest autocorrection for the error
+    let suggestion = decrust_engine.suggest_autocorrection(&error, None);
+
+    // Verify that we got some kind of response (even if empty)
+    assert!(params.confidence >= 0.0);
+    // suggestion is Option<Autocorrection>, so we just verify it's callable
+    let _has_suggestion = suggestion.is_some();
 }
 
 #[test]

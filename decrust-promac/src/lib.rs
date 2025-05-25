@@ -927,7 +927,7 @@ pub fn decrust(input: TokenStream) -> TokenStream {
                 .as_ref()
                 .map_or(quote!("30s"), |l| quote!(#l));
             let timeout_duration = quote! {
-                ::decrust::utils::parse_duration(#timeout_str).unwrap_or(::std::time::Duration::from_secs(30))
+                ::decrust_promac_runtime::utils::parse_duration(#timeout_str).unwrap_or(::std::time::Duration::from_secs(30))
             };
 
             // New fields
@@ -940,30 +940,30 @@ pub fn decrust(input: TokenStream) -> TokenStream {
                 .as_ref()
                 .map_or(quote!("60s"), |l| quote!(#l));
             let cb_cooldown_duration = quote! {
-                ::decrust::utils::parse_duration(#cb_cooldown_str).unwrap_or(::std::time::Duration::from_secs(60))
+                ::decrust_promac_runtime::utils::parse_duration(#cb_cooldown_str).unwrap_or(::std::time::Duration::from_secs(60))
             };
 
             let enabled = cb_config_args.enabled.unwrap_or(true); // Default true
 
             if enabled {
                 quote! {
-                    let __decrust_cb_config = ::decrust::circuit_breaker::CircuitBreakerConfig {
+                    let __decrust_cb_config = ::decrust_promac_runtime::circuit_breaker::CircuitBreakerConfig {
                         failure_threshold: #threshold,
                         reset_timeout: #timeout_duration,
                         circuit_breaker_threshold: #cb_threshold,
                         circuit_breaker_cooldown: #cb_cooldown_duration,
-                        ..::decrust::circuit_breaker::CircuitBreakerConfig::default()
+                        ..::decrust_promac_runtime::circuit_breaker::CircuitBreakerConfig::default()
                     };
-                    let __decrust_circuit_breaker = ::std::sync::Arc::new(::decrust::circuit_breaker::CircuitBreaker::new("decrust_block", __decrust_cb_config));
+                    let __decrust_circuit_breaker = ::std::sync::Arc::new(::decrust_promac_runtime::circuit_breaker::CircuitBreaker::new("decrust_block", __decrust_cb_config));
                 }
             } else {
                 quote! {
-                    let __decrust_circuit_breaker: Option<::std::sync::Arc<::decrust::circuit_breaker::CircuitBreaker>> = None;
+                    let __decrust_circuit_breaker: Option<::std::sync::Arc<::decrust_promac_runtime::circuit_breaker::CircuitBreaker>> = None;
                 }
             }
         } else {
             quote! {
-                let __decrust_circuit_breaker: Option<::std::sync::Arc<::decrust::circuit_breaker::CircuitBreaker>> = None;
+                let __decrust_circuit_breaker: Option<::std::sync::Arc<::decrust_promac_runtime::circuit_breaker::CircuitBreaker>> = None;
             }
         };
 
