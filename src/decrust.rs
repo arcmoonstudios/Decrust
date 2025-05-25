@@ -3057,10 +3057,7 @@ impl UnnecessaryParenthesesFixGenerator {
             Err(_) => return None,
         };
 
-        let captures = match re.captures(code) {
-            Some(captures) => captures,
-            None => return None,
-        };
+        let captures = re.captures(code)?;
 
         let base_path = match captures.get(1) {
             Some(m) => m.as_str().trim().to_string(),
@@ -3312,10 +3309,7 @@ impl FixGenerator for UnnecessaryCloneFixGenerator {
         }
 
         // Extract the variable being cloned
-        let variable = match self.extract_cloned_variable(code) {
-            Some(var) => var,
-            None => return None,
-        };
+        let variable = self.extract_cloned_variable(code)?;
 
         // Generate fix
         let (fixed_code, explanation, diff) = self.generate_clone_fix(code, &variable);
@@ -4709,49 +4703,55 @@ impl InvalidArgumentCountFixGenerator {
 
         // Add argument count specific suggestions
         if let Some((expected, actual)) = arg_counts {
-            if actual < expected {
-                suggestions.push(format!(
-                    "// 1. Add the missing {} argument(s)",
-                    expected - actual
-                ));
+            match actual.cmp(&expected) {
+                std::cmp::Ordering::Less => {
+                    suggestions.push(format!(
+                        "// 1. Add the missing {} argument(s)",
+                        expected - actual
+                    ));
 
-                // Example with placeholder arguments
-                let mut args = Vec::new();
-                for i in 0..expected {
-                    if i < actual {
-                        args.push(format!("arg{}", i + 1));
+                    // Example with placeholder arguments
+                    let mut args = Vec::new();
+                    for i in 0..expected {
+                        if i < actual {
+                            args.push(format!("arg{}", i + 1));
+                        } else {
+                            args.push(format!("/* missing_arg{} */", i + 1));
+                        }
+                    }
+
+                    if let Some(fn_name) = function_name {
+                        suggestions.push(format!("//    {}({})", fn_name, args.join(", ")));
                     } else {
-                        args.push(format!("/* missing_arg{} */", i + 1));
+                        suggestions.push(format!("//    function_name({})", args.join(", ")));
                     }
                 }
+                std::cmp::Ordering::Greater => {
+                    suggestions.push(format!(
+                        "// 1. Remove the extra {} argument(s)",
+                        actual - expected
+                    ));
 
-                if let Some(fn_name) = function_name {
-                    suggestions.push(format!("//    {}({})", fn_name, args.join(", ")));
-                } else {
-                    suggestions.push(format!("//    function_name({})", args.join(", ")));
+                    // Example with correct number of arguments
+                    let mut args = Vec::new();
+                    for i in 0..expected {
+                        args.push(format!("arg{}", i + 1));
+                    }
+
+                    if let Some(fn_name) = function_name {
+                        suggestions.push(format!("//    {}({})", fn_name, args.join(", ")));
+                    } else {
+                        suggestions.push(format!("//    function_name({})", args.join(", ")));
+                    }
+
+                    // Suggest combining arguments if there are too many
+                    if expected == 1 {
+                        suggestions.push("// 2. If the arguments are related, consider combining them into a struct or tuple".to_string());
+                        suggestions.push("//    function_name((arg1, arg2, ...))".to_string());
+                    }
                 }
-            } else if actual > expected {
-                suggestions.push(format!(
-                    "// 1. Remove the extra {} argument(s)",
-                    actual - expected
-                ));
-
-                // Example with correct number of arguments
-                let mut args = Vec::new();
-                for i in 0..expected {
-                    args.push(format!("arg{}", i + 1));
-                }
-
-                if let Some(fn_name) = function_name {
-                    suggestions.push(format!("//    {}({})", fn_name, args.join(", ")));
-                } else {
-                    suggestions.push(format!("//    function_name({})", args.join(", ")));
-                }
-
-                // Suggest combining arguments if there are too many
-                if expected == 1 {
-                    suggestions.push("// 2. If the arguments are related, consider combining them into a struct or tuple".to_string());
-                    suggestions.push("//    function_name((arg1, arg2, ...))".to_string());
+                std::cmp::Ordering::Equal => {
+                    // Arguments match, no specific suggestions needed
                 }
             }
         } else {
@@ -4817,16 +4817,12 @@ impl UnstableFeatureFixGenerator {
 
     /// Generates fix suggestions for using an unstable feature
     fn generate_fix_suggestions(&self, feature_name: Option<&str>) -> Vec<String> {
-        let mut suggestions = Vec::new();
-
-        // Generic suggestions
-        suggestions.push("// 1. Use the nightly compiler channel".to_string());
-        suggestions.push("//    - rustup default nightly".to_string());
-        suggestions.push("//    - rustup override set nightly (for this project only)".to_string());
-
-        // Add feature flag suggestions
-        suggestions
-            .push("// 2. Enable the feature in your crate root (lib.rs or main.rs)".to_string());
+        let mut suggestions = vec![
+            "// 1. Use the nightly compiler channel".to_string(),
+            "//    - rustup default nightly".to_string(),
+            "//    - rustup override set nightly (for this project only)".to_string(),
+            "// 2. Enable the feature in your crate root (lib.rs or main.rs)".to_string(),
+        ];
 
         if let Some(feature) = feature_name {
             suggestions.push(format!("//    - #![feature({})]", feature));
@@ -4917,23 +4913,14 @@ impl ReturnLocalReferenceFixGenerator {
 
     /// Generates fix suggestions for returning a local reference
     fn generate_fix_suggestions(&self, variable_name: Option<&str>) -> Vec<String> {
-        let mut suggestions = Vec::new();
-
-        // Generic suggestions
-        suggestions.push("// 1. Return an owned value instead of a reference".to_string());
-        suggestions.push("//    - Use Clone: return value.clone()".to_string());
-        suggestions
-            .push("//    - Use Copy: return *value (if the type implements Copy)".to_string());
-        suggestions.push(
+        let mut suggestions = vec![
+            "// 1. Return an owned value instead of a reference".to_string(),
+            "//    - Use Clone: return value.clone()".to_string(),
+            "//    - Use Copy: return *value (if the type implements Copy)".to_string(),
             "//    - Use owned types: String instead of &str, Vec<T> instead of &[T]".to_string(),
-        );
-
-        // Add lifetime-based suggestions
-        suggestions.push(
             "// 2. Change the function signature to take input with the same lifetime".to_string(),
-        );
-        suggestions
-            .push("//    - fn function<'a>(input: &'a Type) -> &'a Type { ... }".to_string());
+            "//    - fn function<'a>(input: &'a Type) -> &'a Type { ... }".to_string(),
+        ];
 
         // Add specific suggestions if we have the variable name
         if let Some(var) = variable_name {
@@ -5873,10 +5860,7 @@ impl FixGenerator for UnusedMutFixGenerator {
         }
 
         // Extract the variable name
-        let variable = match self.extract_variable_name(code) {
-            Some(var) => var,
-            None => return None,
-        };
+        let variable = self.extract_variable_name(code)?;
 
         // Generate fix
         let (fixed_code, explanation, diff) = self.generate_unused_mut_fix(code, &variable);
@@ -6358,16 +6342,10 @@ impl FixGenerator for ConfigMissingKeyFixGenerator {
         }
 
         // Extract the missing key name from the error message
-        let key_name = match self.extract_key_name(&message) {
-            Some(key) => key,
-            None => return None,
-        };
+        let key_name = self.extract_key_name(&message)?;
 
         // Determine the file format based on the file extension
-        let format = match self.determine_file_format(&file_path) {
-            Some(format) => format,
-            None => return None,
-        };
+        let format = self.determine_file_format(&file_path)?;
 
         // Generate the fix suggestion
         let (command, explanation, diff) =

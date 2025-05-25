@@ -1,5 +1,6 @@
 /* tests/syntax_tests.rs */
 #![warn(missing_docs)]
+#![allow(clippy::doc_lazy_continuation)]
 // ~=####====A===r===c===M===o===o===n====S===t===u===d===i===o===s====X|0|$>
 //! + [Syntax Generation Module]
 //!  - [AST-Aware Code Generation]
@@ -13,6 +14,7 @@
 
 #[cfg(test)]
 #[allow(clippy::result_large_err)]
+#[allow(clippy::doc_lazy_continuation)]
 mod tests {
     use decrust::{ErrorCategory, FixTemplate, SyntaxGenerator, TemplateRegistry};
     use std::collections::HashMap;

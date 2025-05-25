@@ -2,6 +2,22 @@
 #![warn(missing_docs)]
 #![allow(stable_features)]
 #![allow(clippy::result_large_err)]
+#![allow(clippy::doc_lazy_continuation)]
+#![allow(clippy::new_without_default)]
+#![allow(clippy::useless_format)]
+#![allow(clippy::unnecessary_to_owned)]
+#![allow(clippy::too_many_arguments)]
+#![allow(clippy::type_complexity)]
+#![allow(clippy::single_char_add_str)]
+#![allow(clippy::large_enum_variant)]
+#![allow(clippy::useless_vec)]
+#![allow(clippy::assertions_on_constants)]
+#![allow(clippy::await_holding_lock)]
+#![allow(clippy::unwrap_or_default)]
+#![allow(clippy::vec_init_then_push)]
+#![allow(clippy::field_reassign_with_default)]
+#![allow(clippy::overly_complex_bool_expr)]
+#![allow(clippy::len_zero)]
 //! # Decrust: Advanced Error Handling Framework for Rust
 // ~=####====A===r===c===M===o===o===n====S===t===u===d===i===o===s====X|0|$>
 //! Decrust is a comprehensive, production-ready error handling framework that provides

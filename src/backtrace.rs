@@ -103,7 +103,7 @@ impl DecrustBacktrace {
                 std::backtrace::BacktraceStatus::Unsupported => BacktraceStatus::Unsupported,
                 _ => BacktraceStatus::Unsupported,
             },
-            None => BacktraceStatus::Disabled
+            None => BacktraceStatus::Disabled,
         }
     }
 
