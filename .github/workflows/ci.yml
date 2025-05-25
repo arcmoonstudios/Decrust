@@ -20,6 +20,17 @@ jobs:
       - name: 📥 Checkout
         uses: actions/checkout@v4
 
+      - name: 🔍 Check Cargo.lock
+        run: |
+          echo "Checking for Cargo.lock..."
+          if [ -f "Cargo.lock" ]; then
+            echo "✅ Cargo.lock found"
+            echo "Cargo.lock hash: $(sha256sum Cargo.lock | cut -d' ' -f1)"
+          else
+            echo "❌ Cargo.lock not found - generating..."
+            cargo generate-lockfile
+          fi
+
       - name: 🦀 Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -27,6 +38,13 @@ jobs:
 
       - name: 📦 Cache dependencies
         uses: swatinem/rust-cache@v2
+        with:
+          # Use a specific cache key for code quality job
+          shared-key: "code-quality"
+          # Cache on Cargo.lock changes
+          cache-on-failure: true
+          # Save cache even if job fails
+          save-if: true
 
       - name: 🐛 Debug Environment
         run: |
@@ -36,6 +54,11 @@ jobs:
           echo "Platform: $(uname -a)"
           echo "Working directory: $(pwd)"
           echo "Cargo.toml exists: $(test -f Cargo.toml && echo 'yes' || echo 'no')"
+          echo "Cache info:"
+          echo "  - Runner OS: ${{ runner.os }}"
+          echo "  - Runner Arch: ${{ runner.arch }}"
+          echo "  - Shared key: code-quality"
+          echo "Target directory: $(ls -la target/ 2>/dev/null || echo 'target/ does not exist')"
 
       - name: 🎨 Check formatting
         run: |
@@ -55,11 +78,29 @@ jobs:
       - name: 📥 Checkout
         uses: actions/checkout@v4
 
+      - name: 🔍 Check Cargo.lock
+        run: |
+          echo "Checking for Cargo.lock..."
+          if [ -f "Cargo.lock" ]; then
+            echo "✅ Cargo.lock found"
+            echo "Cargo.lock hash: $(sha256sum Cargo.lock | cut -d' ' -f1)"
+          else
+            echo "❌ Cargo.lock not found - generating..."
+            cargo generate-lockfile
+          fi
+
       - name: 🦀 Install Rust
         uses: dtolnay/rust-toolchain@stable
 
       - name: 📦 Cache dependencies
         uses: swatinem/rust-cache@v2
+        with:
+          # Use a specific cache key for test job
+          shared-key: "test"
+          # Cache on Cargo.lock changes
+          cache-on-failure: true
+          # Save cache even if job fails
+          save-if: true
 
       - name: 🐛 Debug Environment
         run: |
@@ -86,11 +127,29 @@ jobs:
       - name: 📥 Checkout
         uses: actions/checkout@v4
 
+      - name: 🔍 Check Cargo.lock
+        run: |
+          echo "Checking for Cargo.lock..."
+          if [ -f "Cargo.lock" ]; then
+            echo "✅ Cargo.lock found"
+            echo "Cargo.lock hash: $(sha256sum Cargo.lock | cut -d' ' -f1)"
+          else
+            echo "❌ Cargo.lock not found - generating..."
+            cargo generate-lockfile
+          fi
+
       - name: 🦀 Install Rust
         uses: dtolnay/rust-toolchain@stable
 
       - name: 📦 Cache dependencies
         uses: swatinem/rust-cache@v2
+        with:
+          # Use a specific cache key for docs job
+          shared-key: "docs"
+          # Cache on Cargo.lock changes
+          cache-on-failure: true
+          # Save cache even if job fails
+          save-if: true
 
       - name: 📖 Check documentation
         run: |
