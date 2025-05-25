@@ -18,7 +18,7 @@ regex = "1.11.1"
 
 # Runtime dependency for testing and development
 decrust-core = { path = "..", version = "0.1.1" }
-decrust-promac-runtime = { path = "../decrust-promac-runtime" }
+decrust-promac-runtime = { path = "../decrust-promac-runtime", version = "0.1.1" }
 
 # Note: The generated code will use `::decrust::types::DecrustError` etc.
 # This works because the user of the `decrust` crate will have it in their scope.
