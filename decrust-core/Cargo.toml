@@ -1,0 +1,43 @@
+# Package configuration for the decrust-core crate (renamed from decrust)
+[package]
+name = "decrust-core"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+repository.workspace = true
+license.workspace = true
+description = "Core error handling framework for Decrust"
+
+[dependencies]
+# Use workspace dependencies
+thiserror = { workspace = true }
+regex = { workspace = true }
+anyhow = { workspace = true }
+chrono = { workspace = true }
+serde = { workspace = true }
+tracing = { workspace = true }
+derivative = { workspace = true }
+quote = { workspace = true }
+syn = { workspace = true }
+
+# Optional dependencies
+tokio = { workspace = true, optional = true }
+rand = { workspace = true, optional = true }
+
+[features]
+default = []
+tokio = ["dep:tokio"]
+rand = ["dep:rand"]
+std-thread = []
+
+[lib]
+name = "decrust_core"
+path = "src/lib.rs"
+doctest = true
+test = true
+
+[dev-dependencies]
+tokio = { workspace = true }
+rand = { workspace = true }
+proptest = "1.0"

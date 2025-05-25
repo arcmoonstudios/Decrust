@@ -1,11 +1,12 @@
 # Workspace configuration for the decrust project
-# This manages both the runtime library and the procedural macros
+# The Ultimate Error Handling Framework for Rust
 
 [workspace]
 members = [
-".",
-"decrust-promac",
-"decrust-promac-runtime"]
+"decrust",                             # The ultimate public interface
+"decrust-core",                        # Core framework (renamed from decrust)
+"decrust-core/decrust-promac",         # Procedural macro implementation (inside decrust-core)
+"decrust-core/decrust-promac-runtime"] # Runtime middleware (inside decrust-core)
 resolver = "2"
 
 # Workspace-wide dependencies that can be inherited by members
@@ -31,53 +32,9 @@ rust-version = "1.70.0"
 authors = ["Lord Xyn <LordXyn@proton.me>"]
 repository = "https://github.com/arcmoonstudios/decrust"
 license = "MIT"
-description = "Decrust Error handling framework"
+description = "The ultimate all-in-one error handling framework for Rust"
 
-# Package configuration for the main decrust crate
-[package]
-name = "decrust"
-version.workspace = true
-edition.workspace = true
-rust-version.workspace = true
-authors.workspace = true
-repository.workspace = true
-license.workspace = true
-description = "Decrust Error handling framework"
-
-[dependencies]
-# Use workspace dependencies
-thiserror = { workspace = true }
-regex = { workspace = true }
-anyhow = { workspace = true }
-chrono = { workspace = true }
-serde = { workspace = true }
-tracing = { workspace = true }
-derivative = { workspace = true }
-quote = { workspace = true }
-syn = { workspace = true }
-
-# Optional dependencies
-tokio = { workspace = true, optional = true }
-rand = { workspace = true, optional = true }
-
-[features]
-default = []
-tokio = ["dep:tokio"]
-rand = ["dep:rand"]
-std-thread = []
-
-[lib]
-name = "decrust"
-path = "src/lib.rs"
-doctest = true
-test = true
-
-[dev-dependencies]
-tokio = { workspace = true }
-rand = { workspace = true }
-proptest = "1.0"
-decrust_promac = { path = "decrust-promac" }
-decrust-promac-runtime = { path = "decrust-promac-runtime" }
+# The workspace only manages members, the actual decrust package is in decrust/
 
 [profile.release]
 opt-level = 3
@@ -88,3 +45,5 @@ codegen-units = 1
 [profile.dev]
 opt-level = 0
 debug = true
+
+# Examples are defined in the individual crates
