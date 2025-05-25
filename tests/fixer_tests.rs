@@ -16,6 +16,7 @@
 
 #[cfg(test)]
 #[allow(clippy::result_large_err)]
+#[allow(clippy::len_zero)]
 mod tests {
     use decrust::backtrace::DecrustBacktrace as Backtrace;
     use decrust::decrust::{

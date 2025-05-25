@@ -1,5 +1,6 @@
 #[cfg(test)]
 #[allow(clippy::result_large_err)]
+#[allow(clippy::assertions_on_constants)]
 mod tests {
     use decrust::{
         Backtrace, BacktraceCompat, DecrustError, DecrustOptionExt, DecrustOptionExtConvenience,

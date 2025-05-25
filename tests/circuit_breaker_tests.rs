@@ -16,6 +16,7 @@
 
 #[cfg(test)]
 #[allow(clippy::result_large_err)]
+#[allow(clippy::field_reassign_with_default)]
 mod tests {
     use decrust::{
         Backtrace, CircuitBreaker, CircuitBreakerConfig, CircuitBreakerObserver,
