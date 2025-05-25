@@ -76,6 +76,8 @@ test = true
 tokio = { workspace = true }
 rand = { workspace = true }
 proptest = "1.0"
+decrust_promac = { path = "decrust-promac" }
+decrust-promac-runtime = { path = "decrust-promac-runtime" }
 
 [profile.release]
 opt-level = 3

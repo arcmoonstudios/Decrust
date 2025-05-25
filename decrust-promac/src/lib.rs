@@ -1724,3 +1724,6 @@ pub fn derive_decrust(input: TokenStream) -> TokenStream {
 
     TokenStream::from(expanded)
 }
+
+// Note: Proc-macro crates cannot re-export types due to Rust limitations.
+// Users should import types from decrust-promac-runtime and macros from decrust_promac.
